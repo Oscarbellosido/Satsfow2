@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html lang="es" id="html-root">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"/>
+  <meta name="theme-color" content="#f97316">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="description" content="Bitcoin tracker: precio, análisis técnico, mempool, cajeros y alertas">
+  <title>SatsFlow</title>
+  <!-- RUTAS RELATIVAS para GitHub Pages subdirectorio -->
+  <link rel="manifest" href="./manifest.json">
+  <link rel="icon" type="image/png" href="./icon-96.png">
+  <link rel="apple-touch-icon" href="./icon-192.png">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <style>
+    :root{--bg:#0f172a;--bg2:#1e293b;--bg3:#334155;--text:#f1f5f9;--text2:#94a3b8;--text3:#64748b;--border:#334155;--card-bg:#1e293b;--input-bg:#0f172a;--input-border:#475569;}
+    .light{--bg:#f8fafc;--bg2:#ffffff;--bg3:#e2e8f0;--text:#0f172a;--text2:#475569;--text3:#94a3b8;--border:#e2e8f0;--card-bg:#ffffff;--input-bg:#f8fafc;--input-border:#cbd5e1;}
+    *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+    body{margin:0;font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom);overscroll-behavior-y:none;min-height:100vh}
+    ::-webkit-scrollbar{width:3px}::-webkit-scrollbar-thumb{background:var(--bg3);border-radius:4px}
+    input,select{font-family:'Inter',sans-serif;font-size:15px;color:var(--text);background:var(--input-bg);border:1px solid var(--input-border);border-radius:10px;padding:8px 10px;outline:none;width:100%}
+    input:focus,select:focus{border-color:#f97316}
+    button{cursor:pointer;font-family:'Inter',sans-serif}
+    @keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+    .fade{animation:fadeIn .3s ease-out}
+    @keyframes spin2{to{transform:rotate(360deg)}}
+    .spin{animation:spin2 1s linear infinite;display:inline-block}
+    .card{background:var(--card-bg);border:1px solid var(--border);border-radius:18px;padding:18px}
+    #header{position:sticky;top:0;z-index:100;background:var(--bg);border-bottom:1px solid var(--border);padding:10px 16px;display:flex;align-items:center;justify-content:space-between}
+    .logo{width:34px;height:34px;background:#f97316;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;box-shadow:0 0 12px rgba(249,115,22,.3)}
+    #tabbar{position:fixed;bottom:0;left:0;right:0;z-index:100;background:var(--bg2);border-top:1px solid var(--border);display:flex;overflow-x:auto;-webkit-overflow-scrolling:touch}
+    .tab-btn{flex:1;min-width:50px;display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 4px;border:none;background:transparent;color:var(--text3);font-size:9px;font-weight:500;position:relative}
+    .tab-btn.active{color:#f97316}
+    .tab-btn.active::before{content:'';position:absolute;top:0;left:50%;transform:translateX(-50%);width:20px;height:2px;background:#f97316;border-radius:2px}
+    .tab-icon{font-size:18px;line-height:1}
+    #content{padding:14px 14px 90px;max-width:700px;margin:0 auto}
+    .space-y>*+*{margin-top:14px}
+    .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+    .grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+    .stat-box{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:10px;text-align:center}
+    .stat-label{font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em}
+    .stat-val{font-size:14px;font-weight:700;margin-top:2px}
+    .fee-card{background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:8px 4px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:2px}
+    .cong-track{background:var(--bg3);border-radius:999px;height:8px;overflow:hidden}
+    .cong-bar{height:100%;border-radius:999px;transition:width 1.2s ease}
+    .btn-orange{background:#f97316;color:#fff;border:none;border-radius:10px;padding:10px 20px;font-weight:600;font-size:14px}
+    .btn-ghost{background:var(--bg2);color:var(--text2);border:1px solid var(--border);border-radius:10px;padding:6px 10px;font-size:12px}
+    .btn-icon{background:var(--bg2);color:var(--text2);border:1px solid var(--border);border-radius:8px;padding:6px 8px;display:flex;align-items:center;justify-content:center;font-size:15px}
+    .alert-item{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-radius:12px;border:1px solid var(--border);background:var(--bg2);margin-bottom:8px}
+    .alert-item.triggered{background:rgba(234,179,8,.08);border-color:rgba(234,179,8,.4)}
+    .news-item{display:block;padding:10px 12px;border-radius:12px;border:1px solid var(--border);background:var(--bg2);margin-bottom:8px;text-decoration:none;color:var(--text)}
+    .signal-banner{border-radius:14px;padding:14px;border:1px solid;margin-bottom:14px}
+    .signal-buy{background:rgba(16,185,129,.08);border-color:rgba(16,185,129,.3)}
+    .signal-sell{background:rgba(239,68,68,.08);border-color:rgba(239,68,68,.3)}
+    .signal-neutral{background:rgba(234,179,8,.08);border-color:rgba(234,179,8,.3)}
+    .sr-row{display:flex;justify-content:space-between;align-items:center;padding:8px 12px;border-radius:10px;border:1px solid;margin-bottom:6px}
+    #map-container{height:360px;border-radius:12px;overflow:hidden;margin-top:10px}
+    .prog-track{background:var(--bg3);border-radius:999px;height:6px;overflow:hidden;margin:4px 0}
+    .prog-bar{height:100%;border-radius:999px;transition:width 1s ease}
+    .period-wrap{display:flex;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:3px;gap:2px;overflow-x:auto;margin-bottom:10px}
+    .period-btn{flex:1;min-width:36px;padding:5px 8px;border:none;border-radius:7px;background:transparent;color:var(--text3);font-size:11px;font-weight:500;white-space:nowrap}
+    .period-btn.active{background:var(--bg2);color:var(--text);box-shadow:0 1px 3px rgba(0,0,0,.2)}
+    .chart-type-wrap{display:flex;gap:4px;margin-bottom:8px}
+    .chart-type-btn{padding:4px 10px;border-radius:7px;border:1px solid var(--border);background:var(--bg2);color:var(--text2);font-size:11px;cursor:pointer}
+    .chart-type-btn.active{background:#f97316;color:#fff;border-color:#f97316}
+    .input-row{display:flex;gap:8px;margin-bottom:12px}
+    .input-row input{flex:1}
+    .input-row select{width:auto;min-width:70px}
+    .notif-banner{background:rgba(249,115,22,.08);border:1px solid rgba(249,115,22,.3);border-radius:12px;padding:10px 12px;display:flex;align-items:flex-start;gap:10px;margin-bottom:12px}
+    .notif-ok{background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.3);border-radius:12px;padding:10px 12px;display:flex;align-items:center;gap:8px;margin-bottom:12px}
+    .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:200;display:flex;align-items:center;justify-content:center;padding:16px;backdrop-filter:blur(4px)}
+    .modal-box{background:var(--card-bg);border:1px solid var(--border);border-radius:20px;padding:22px;max-width:360px;width:100%}
+    .modal-step{background:var(--bg3);border-radius:10px;padding:10px 12px;display:flex;gap:10px;align-items:flex-start;margin-bottom:8px}
+    .step-num{width:22px;height:22px;border-radius:50%;background:#f97316;color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+    .mini-chart{width:100%;height:70px}
+    /* Leaflet dark mode */
+    #html-root.dark-mode .leaflet-tile-pane{filter:brightness(.6) invert(1) contrast(3) hue-rotate(200deg) saturate(.3) brightness(.7)}
+    #html-root.dark-mode .leaflet-container{background:#1e293b}
+    .leaflet-container{border-radius:12px}
+    .leaflet-popup-content-wrapper{background:var(--card-bg);color:var(--text);border:1px solid var(--border);border-radius:10px}
+    .leaflet-popup-tip{background:var(--card-bg)}
+  </style>
+</head>
+<body>
+<div id="app">
+  <div id="header">
+    <div style="display:flex;align-items:center;gap:10px">
+      <div class="logo">₿</div>
+      <div>
+        <div style="font-size:17px;font-weight:800;line-height:1.1">SatsFlow</div>
+        <div style="font-size:10px;color:var(--text3)">Bitcoin Tracker</div>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <div style="text-align:right">
+        <div id="header-price" style="font-size:17px;font-weight:800;font-family:monospace">$—</div>
+        <div id="header-change" style="font-size:11px;font-weight:600"></div>
+      </div>
+      <button class="btn-icon" id="theme-btn" title="Cambiar tema" onclick="toggleTheme()">🌙</button>
+      <button class="btn-icon" id="install-btn" style="display:none" onclick="handleInstall()">⬇️</button>
+    </div>
+  </div>
+  <div id="content">
+    <div id="tab-home" class="tab-content fade"></div>
+    <div id="tab-analysis" class="tab-content fade" style="display:none"></div>
+    <div id="tab-market" class="tab-content fade" style="display:none"></div>
+    <div id="tab-mempool" class="tab-content fade" style="display:none"></div>
+    <div id="tab-atm" class="tab-content fade" style="display:none"></div>
+    <div id="tab-news" class="tab-content fade" style="display:none"></div>
+    <div id="tab-alerts" class="tab-content fade" style="display:none"></div>
+  </div>
+  <nav id="tabbar">
+    <button class="tab-btn active" data-tab="home" onclick="switchTab('home')"><span class="tab-icon">🏠</span>Inicio</button>
+    <button class="tab-btn" data-tab="analysis" onclick="switchTab('analysis')"><span class="tab-icon">🧠</span>Análisis</button>
+    <button class="tab-btn" data-tab="market" onclick="switchTab('market')"><span class="tab-icon">📊</span>Mercado</button>
+    <button class="tab-btn" data-tab="mempool" onclick="switchTab('mempool')"><span class="tab-icon">⛓️</span>Mempool</button>
+    <button class="tab-btn" data-tab="atm" onclick="switchTab('atm')"><span class="tab-icon">🏧</span>Cajeros</button>
+    <button class="tab-btn" data-tab="news" onclick="switchTab('news')"><span class="tab-icon">📰</span>Noticias</button>
+    <button class="tab-btn" data-tab="alerts" onclick="switchTab('alerts')"><span class="tab-icon">🔔</span>Alertas</button>
+  </nav>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+/* ══════ STATE ══════ */
+const S={price:{usd:0,eur:0},change24h:0,marketCap:0,history:[],ohlc:[],mempool:null,marketData:null,miningData:null,news:[],alerts:[],days:'30',chartType:'area',dark:localStorage.getItem('sf-theme')!=='light',notifPerm:window.Notification?.permission||'unsupported',atmLoaded:false,leafletMap:null,lastUpdated:null,feeLevel:'hour',txSize:250,currentTab:'home'};
+
+/* ══════ THEME ══════ */
+function applyTheme(){
+  if(S.dark){document.documentElement.classList.remove('light');document.getElementById('html-root').classList.add('dark-mode');document.getElementById('theme-btn').textContent='☀️';}
+  else{document.documentElement.classList.add('light');document.getElementById('html-root').classList.remove('dark-mode');document.getElementById('theme-btn').textContent='🌙';}
+  document.body.style.background=S.dark?'#0f172a':'#f8fafc';
+  document.body.style.color=S.dark?'#f1f5f9':'#0f172a';
+}
+function toggleTheme(){S.dark=!S.dark;localStorage.setItem('sf-theme',S.dark?'dark':'light');applyTheme();renderCurrentTab();}
+applyTheme();
+
+/* ══════ TABS ══════ */
+function switchTab(tab){
+  S.currentTab=tab;
+  document.querySelectorAll('.tab-content').forEach(el=>el.style.display='none');
+  document.querySelectorAll('.tab-btn').forEach(el=>el.classList.toggle('active',el.dataset.tab===tab));
+  const el=document.getElementById('tab-'+tab);
+  el.style.display='block';
+  el.classList.remove('fade');void el.offsetWidth;el.classList.add('fade');
+  renderTab(tab);
+  if(tab==='atm'&&S.leafletMap)setTimeout(()=>S.leafletMap.invalidateSize(),150);
+}
+function renderCurrentTab(){renderTab(S.currentTab);}
+
+/* ══════ UTILS ══════ */
+const fmtN=(v,d=2)=>isNaN(v)?'—':Number(v).toLocaleString('en-US',{maximumFractionDigits:d});
+const fmtBig=v=>{if(!v)return'—';if(v>=1e12)return`$${(v/1e12).toFixed(2)}T`;if(v>=1e9)return`$${(v/1e9).toFixed(1)}B`;return`$${v.toLocaleString()}`;};
+const timeAgo=d=>{const s=Math.floor((Date.now()-d)/1000);if(s<60)return s+'s';if(s<3600)return Math.floor(s/60)+'m';if(s<86400)return Math.floor(s/3600)+'h';return Math.floor(s/86400)+'d';};
+
+/* ══════ INDEXEDDB ══════ */
+function openDB(){return new Promise((res,rej)=>{const r=indexedDB.open('satsflow',1);r.onupgradeneeded=e=>{if(!e.target.result.objectStoreNames.contains('alerts'))e.target.result.createObjectStore('alerts',{keyPath:'id'});};r.onsuccess=e=>res(e.target.result);r.onerror=rej;});}
+async function saveAlerts(){try{const db=await openDB();const tx=db.transaction('alerts','readwrite');const s=tx.objectStore('alerts');s.clear();S.alerts.forEach(a=>s.put(a));}catch{}}
+async function loadAlertsDB(){try{const db=await openDB();const tx=db.transaction('alerts','readonly');return new Promise(res=>{const q=tx.objectStore('alerts').getAll();q.onsuccess=()=>res(q.result||[]);q.onerror=()=>res([]);});}catch{return[];}}
+
+/* ══════ SERVICE WORKER — ruta relativa ══════ */
+if('serviceWorker' in navigator){
+  window.addEventListener('load',async()=>{
+    try{
+      const base=window.location.pathname.replace(/\/[^/]*$/,'/');
+      const swUrl=base+'sw.js';
+      const reg=await navigator.serviceWorker.register(swUrl,{scope:base});
+      console.log('[SW] registrado:',reg.scope);
+      if('periodicSync' in reg){try{const p=await navigator.permissions.query({name:'periodic-background-sync'});if(p.state==='granted')await reg.periodicSync.register('price-check',{minInterval:15*60*1000});}catch{}}
+    }catch(e){console.warn('[SW]',e.message);}
+  });
+}
+
+/* ══════ INSTALL ══════ */
+let deferredPrompt=null;
+window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredPrompt=e;document.getElementById('install-btn').style.display='flex';});
+async function handleInstall(){if(deferredPrompt){deferredPrompt.prompt();await deferredPrompt.userChoice;deferredPrompt=null;document.getElementById('install-btn').style.display='none';}else showInstallModal();}
+function showInstallModal(){
+  const o=document.createElement('div');o.className='modal-overlay';
+  o.innerHTML=`<div class="modal-box"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px"><div style="font-size:16px;font-weight:700">⬇️ Instalar SatsFlow</div><button onclick="this.closest('.modal-overlay').remove()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--text2)">✕</button></div><div class="modal-step"><div class="step-num">1</div><div style="font-size:13px;color:var(--text2)">Pulsa el menú del navegador (⋮ o compartir).</div></div><div class="modal-step"><div class="step-num">2</div><div style="font-size:13px;color:var(--text2)">Selecciona <b>"Instalar aplicación"</b> o <b>"Añadir a pantalla de inicio"</b>.</div></div><div class="modal-step"><div class="step-num">3</div><div style="font-size:13px;color:var(--text2)">Funciona con notificaciones aunque esté cerrada.</div></div><button class="btn-orange" style="width:100%;margin-top:14px" onclick="this.closest('.modal-overlay').remove()">Entendido</button></div>`;
+  document.body.appendChild(o);
+}
+
+/* ══════ NOTIFICATIONS ══════ */
+async function requestNotifPerm(){if(!window.Notification)return'unsupported';const r=await Notification.requestPermission();S.notifPerm=r;return r;}
+function showNotif(title,body){
+  playAlertSound();
+  if(Notification.permission!=='granted')return;
+  const opts={body,icon:'./icon-192.png',vibrate:[300,100,300,100,300],tag:'sf-alert',renotify:true,silent:false};
+  if('serviceWorker' in navigator)navigator.serviceWorker.ready.then(r=>r.showNotification(title,opts));
+  else new Notification(title,opts);
+}
+function playAlertSound(){
+  try{
+    const ctx=new(window.AudioContext||window.webkitAudioContext)();
+    // Secuencia de 3 pitidos ascendentes tipo alerta financiera
+    const notes=[523,659,784]; // Do-Mi-Sol
+    notes.forEach((freq,i)=>{
+      const osc=ctx.createOscillator();
+      const gain=ctx.createGain();
+      osc.connect(gain);gain.connect(ctx.destination);
+      osc.type='sine';
+      osc.frequency.setValueAtTime(freq,ctx.currentTime+i*0.18);
+      gain.gain.setValueAtTime(0,ctx.currentTime+i*0.18);
+      gain.gain.linearRampToValueAtTime(0.4,ctx.currentTime+i*0.18+0.02);
+      gain.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+i*0.18+0.18);
+      osc.start(ctx.currentTime+i*0.18);
+      osc.stop(ctx.currentTime+i*0.18+0.18);
+    });
+    setTimeout(()=>ctx.close(),1000);
+  }catch(e){console.warn('Audio:',e);}
+}
+
+/* ══════ APIS — sin clave, 100% gratuitas ══════ */
+const MEM='https://mempool.space/api';
+
+// Precio: Binance (sin clave, CORS abierto)
+async function fetchPrice(){
+  try{
+    // Precio BTC/USD y BTC/EUR desde Binance
+    const[tickerR,klineR,eurR]=await Promise.all([
+      fetch('https://api.binance.com/api/v3/ticker/24hr?symbol=BTCUSDT'),
+      fetch(`https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=${S.days==='1'?'1h':S.days==='7'?'4h':S.days==='30'?'1d':S.days==='90'?'3d':'1w'}&limit=${S.days==='1'?'24':S.days==='7'?'42':S.days==='90'?'30':'52'}`),
+      fetch('https://api.binance.com/api/v3/ticker/price?symbol=BTCEUR'),
+    ]);
+    const ticker=await tickerR.json();
+    const klines=await klineR.json();
+    const eur=await eurR.json();
+    S.price={usd:parseFloat(ticker.lastPrice),eur:parseFloat(eur.price)};
+    S.change24h=parseFloat(ticker.priceChangePercent)||0;
+    S.marketCap=0; // Binance no da market cap
+    // Historial desde klines [ts, open, high, low, close, ...]
+    S.history=klines.map(k=>{
+      const d=new Date(k[0]);
+      const label=S.days==='1'?d.toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'}):
+        S.days==='7'||S.days==='30'?d.toLocaleDateString('es-ES',{month:'numeric',day:'numeric'}):
+        d.toLocaleDateString('es-ES',{month:'short',year:'2-digit'});
+      return{date:label,price:parseFloat(k[4])}; // close price
+    });
+    // OHLC para velas
+    S.ohlc=klines.map(k=>({
+      ts:k[0],
+      date:new Date(k[0]).toLocaleDateString('es-ES',{month:'numeric',day:'numeric'}),
+      open:parseFloat(k[1]),high:parseFloat(k[2]),low:parseFloat(k[3]),close:parseFloat(k[4])
+    }));
+    S.lastUpdated=new Date();
+    updateHeader();
+  }catch(e){console.error('fetchPrice',e);}
+}
+async function fetchOHLC(){} // ya incluido en fetchPrice con Binance
+
+async function fetchMempool(){
+  try{
+    const[fr,sr,br]=await Promise.all([fetch(`${MEM}/v1/fees/recommended`),fetch(`${MEM}/mempool`),fetch(`${MEM}/v1/blocks`)]);
+    const fees=await fr.json(),stats=await sr.json(),blocks=await br.json();
+    const txCount=stats.count||0,last=blocks[0]||{},height=last.height||0,next=Math.ceil(height/210000)*210000;
+    S.mempool={fees:{fastest:fees.fastestFee||0,halfHour:fees.halfHourFee||0,hour:fees.hourFee||0,economy:fees.economyFee||0,minimum:fees.minimumFee||1},mempool:{txCount,vsize:Math.round((stats.vsize||0)/1e6),congestion:Math.min(100,Math.round((txCount/150000)*100))},network:{height,nextHalving:next,blocksToHalving:next-height}};
+  }catch{}
+}
+
+async function fetchMarket(){
+  try{
+    // Fear & Greed: alternative.me
+    const fgR=await fetch('https://api.alternative.me/fng/');
+    const fg=await fgR.json();
+    const fng=fg.data?.[0];
+    S.marketData={fearGreed:{value:parseInt(fng?.value||50),label:fng?.value_classification||'Neutral'},dominance:{btc:'—',eth:'—'},totalMcap:0};
+  }catch(e){console.error('fetchMarket',e);}
+  // Dominancia: Binance market cap aproximado via tickers
+  try{
+    const[btcR,ethR,totR]=await Promise.all([
+      fetch('https://api.binance.com/api/v3/ticker/24hr?symbol=BTCUSDT'),
+      fetch('https://api.binance.com/api/v3/ticker/24hr?symbol=ETHUSDT'),
+      fetch('https://api.coingecko.com/api/v3/global')
+    ]);
+    const btc=await btcR.json(),eth=await ethR.json();
+    // Circulante BTC ~19.7M, ETH ~120M
+    const btcMcap=parseFloat(btc.lastPrice)*19700000;
+    const ethMcap=parseFloat(eth.lastPrice)*120000000;
+    let totalMcap=0,btcPct='—',ethPct='—';
+    try{
+      const tot=await totR.json();
+      totalMcap=tot.data?.total_market_cap?.usd||0;
+      btcPct=totalMcap>0?(btcMcap/totalMcap*100).toFixed(1):'—';
+      ethPct=totalMcap>0?(ethMcap/totalMcap*100).toFixed(1):'—';
+    }catch{
+      // Si CoinGecko falla, estimamos
+      const estTotal=btcMcap+ethMcap+btcMcap*0.4;
+      btcPct=(btcMcap/estTotal*100).toFixed(1);
+      ethPct=(ethMcap/estTotal*100).toFixed(1);
+      totalMcap=estTotal;
+    }
+    if(S.marketData)S.marketData={...S.marketData,dominance:{btc:btcPct,eth:ethPct},totalMcap};
+  }catch(e){console.error('fetchMarketDom',e);}
+}
+
+async function fetchMining(){
+  try{
+    const adjR=await fetch(`${MEM}/v1/difficulty-adjustment`);
+    const adj=await adjR.json();
+    // Hashrate desde mempool.space
+    const hrR=await fetch(`${MEM}/v1/mining/hashrate/3d`);
+    const hr=await hrR.json();
+    const lastHR=hr.currentHashrate||0;
+    S.miningData={
+      hashrate:(lastHR/1e18).toFixed(2), // H/s → EH/s
+      progressPercent:adj.progressPercent||0,
+      remainingBlocks:adj.remainingBlocks||0,
+      difficultyChange:adj.difficultyChange||0
+    };
+  }catch(e){console.error('fetchMining',e);}
+}
+
+async function fetchNews(){
+  // Fuentes RSS en español — probadas una a una con fallback
+  const feeds=[
+    // CoinTelegraph España — feed directo
+    {url:'https://es.cointelegraph.com/rss',source:'CoinTelegraph ES'},
+    // Criptonoticias Venezuela/Global español
+    {url:'https://www.criptonoticias.com/feed/',source:'CriptoNoticias'},
+    // ElMundo Economía como fallback español general
+    {url:'https://feeds.elpais.com/mrss-s/pages/ep/site/elpais.com/section/economia/portada',source:'El País Economía'},
+  ];
+  const results=[];
+  for(const feed of feeds){
+    if(results.length>=8)break;
+    try{
+      // Usamos allorigins como proxy CORS para feeds que bloquean
+      const proxyUrl=`https://api.allorigins.win/get?url=${encodeURIComponent(feed.url)}`;
+      const r=await fetch(proxyUrl,{signal:AbortSignal.timeout(6000)});
+      const j=await r.json();
+      const xml=j.contents||'';
+      // Parsear RSS manualmente
+      const items=xml.match(/<item[^>]*>[\s\S]*?<\/item>/g)||[];
+      items.slice(0,6).forEach(item=>{
+        const title=(item.match(/<title><!\[CDATA\[(.*?)\]\]><\/title>/)||item.match(/<title>(.*?)<\/title>/))?.[1]||'Sin título';
+        const link=(item.match(/<link>(.*?)<\/link>/)||item.match(/<guid[^>]*>(https?[^<]+)<\/guid>/))?.[1]||'#';
+        const pubDate=item.match(/<pubDate>(.*?)<\/pubDate>/)?.[1]||new Date().toUTCString();
+        const cleanTitle=title.replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&#\d+;/g,'').trim();
+        if(cleanTitle&&link!=='#'){
+          results.push({id:link,title:cleanTitle,url:link,source:feed.source,date:new Date(pubDate)});
+        }
+      });
+    }catch(e){console.warn('feed',feed.source,e.message);}
+  }
+  // Fallback: CoinTelegraph ES directo via rss2json si allorigins falló
+  if(results.length===0){
+    try{
+      const r=await fetch('https://api.rss2json.com/v1/api.json?rss_url=https%3A%2F%2Fes.cointelegraph.com%2Frss&count=12',{signal:AbortSignal.timeout(8000)});
+      const j=await r.json();
+      if(j.status==='ok'&&j.items?.length){
+        j.items.slice(0,10).forEach(n=>{
+          results.push({id:n.guid||n.link,title:n.title,url:n.link,source:'CoinTelegraph ES',date:new Date(n.pubDate)});
+        });
+      }
+    }catch{}
+  }
+  S.news=results.sort((a,b)=>b.date-a.date).slice(0,12);
+}
+
+/* ══════ TECHNICAL ANALYSIS ══════ */
+function calcEMA(p,k){const m=2/(k+1),e=[];p.forEach((v,i)=>{e.push(i===0?v:v*m+e[i-1]*(1-m));});return e;}
+function calcRSI(p,k=14){const r=new Array(k).fill(null);let g=0,l=0;for(let i=1;i<=k;i++){const d=p[i]-p[i-1];d>0?g+=d:l+=Math.abs(d);}let ag=g/k,al=l/k;for(let i=k;i<p.length;i++){const d=p[i]-p[i-1];ag=(ag*(k-1)+(d>0?d:0))/k;al=(al*(k-1)+(d<0?Math.abs(d):0))/k;r.push(100-(100/(1+(al===0?100:ag/al))));}return r;}
+function analyze(){
+  const prices=S.history.map(h=>h.price);
+  if(prices.length<30)return null;
+  const last=prices[prices.length-1];
+  const rsiArr=calcRSI(prices),lastRSI=rsiArr[rsiArr.length-1];
+  const e12=calcEMA(prices,12),e26=calcEMA(prices,26);
+  const macd=e12.map((v,i)=>v-e26[i]);
+  const sig=calcEMA(macd.slice(26),9);
+  const padSig=[...new Array(26).fill(null),...new Array(macd.length-26-sig.length).fill(null),...sig];
+  const lMACD=macd[macd.length-1],lSig=padSig[padSig.length-1];
+  const sma7=prices.slice(-7).reduce((a,b)=>a+b,0)/7;
+  const sma30=prices.slice(-30).reduce((a,b)=>a+b,0)/30;
+  const sl20=prices.slice(-20),m20=sl20.reduce((a,b)=>a+b,0)/20;
+  const std=Math.sqrt(sl20.reduce((a,b)=>a+(b-m20)**2,0)/sl20.length);
+  const bbU=m20+2*std,bbL=m20-2*std;
+  const recent=prices.slice(-30);
+  const support=Math.min(...recent)*0.98,resistance=Math.max(...recent)*1.02;
+  let bull=0,bear=0;
+  if(lastRSI<30)bull+=3;else if(lastRSI<45)bull+=1;else if(lastRSI>70)bear+=3;else if(lastRSI>55)bear+=1;
+  if(sma7>sma30)bull+=2;else bear+=2;
+  if(lMACD>lSig)bull+=2;else bear+=2;
+  if(last<bbL)bull+=2;else if(last>bbU)bear+=2;
+  const total=bull+bear,bullPct=total>0?Math.round((bull/total)*100):50;
+  const signal=bullPct>=65?'COMPRAR':bullPct<=35?'VENDER':'NEUTRAL';
+  return{lastRSI,sma7,sma30,lMACD,lSig,bbU,bbL,support,resistance,bullPct,bearPct:100-bullPct,signal,last,rsiData:rsiArr.slice(-40).filter(v=>v!=null),macdData:macd.slice(-40),sigData:padSig.slice(-40)};
+}
+
+/* ══════ SVG CHARTS ══════ */
+function miniLine(data,color,h=65,refs=[]){
+  const v=data.filter(x=>x!=null);if(!v.length)return'';
+  const min=Math.min(...v),max=Math.max(...v),range=max-min||1;
+  const W=300,H=h,P=4;
+  const pts=data.map((x,i)=>{if(x==null)return null;return`${P+(i/(data.length-1))*(W-P*2)},${P+(1-(x-min)/range)*(H-P*2)}`;}).filter(Boolean).join(' ');
+  const rls=refs.map(({val,color:rc})=>{const y=P+(1-(val-min)/range)*(H-P*2);return`<line x1="${P}" y1="${y}" x2="${W-P}" y2="${y}" stroke="${rc}" stroke-dasharray="4 3" stroke-width="1" opacity=".7"/>`;}).join('');
+  return`<svg viewBox="0 0 ${W} ${H}" class="mini-chart" preserveAspectRatio="none">${rls}<polyline points="${pts}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round"/></svg>`;
+}
+function areaSVG(data){
+  if(!data.length)return'';
+  const prices=data.map(d=>d.price),min=Math.min(...prices),max=Math.max(...prices),range=max-min||1;
+  const W=300,H=100,P=4,last=prices[prices.length-1],first=prices[0],color=last>=first?'#10b981':'#ef4444';
+  const pts=data.map((d,i)=>`${P+(i/(data.length-1))*(W-P*2)},${P+(1-(d.price-min)/range)*(H-P*2)}`);
+  return`<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:120px" preserveAspectRatio="none"><defs><linearGradient id="ag" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${color}" stop-opacity=".3"/><stop offset="100%" stop-color="${color}" stop-opacity="0"/></linearGradient></defs><polygon points="${P},${H} ${pts.join(' ')} ${W-P},${H}" fill="url(#ag)"/><polyline points="${pts.join(' ')}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round"/></svg>`;
+}
+function candleSVG(data){
+  if(!data.length)return'';
+  const ps=data.flatMap(d=>[d.high,d.low]),min=Math.min(...ps),max=Math.max(...ps),range=max-min||1;
+  const W=300,H=120,P=4,cW=Math.max(2,Math.floor((W-P*2)/data.length)-2);
+  const toY=v=>P+(1-(v-min)/range)*(H-P*2),toX=i=>P+(i+.5)*((W-P*2)/data.length);
+  const c=data.map((d,i)=>{const up=d.close>=d.open,x=toX(i),col=up?'#10b981':'#ef4444';const yH=toY(d.high),yL=toY(d.low),yO=toY(d.open),yC=toY(d.close),bT=Math.min(yO,yC),bH=Math.max(1,Math.abs(yO-yC));return`<line x1="${x}" y1="${yH}" x2="${x}" y2="${yL}" stroke="${col}" stroke-width="1"/><rect x="${x-cW/2}" y="${bT}" width="${cW}" height="${bH}" fill="${col}" rx="1"/>`;}).join('');
+  return`<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:120px" preserveAspectRatio="none">${c}</svg>`;
+}
+
+/* ══════ HEADER ══════ */
+function updateHeader(){
+  const p=document.getElementById('header-price'),ch=document.getElementById('header-change');
+  if(p)p.textContent='$'+S.price.usd.toLocaleString();
+  if(ch){const pos=S.change24h>=0;ch.textContent=(pos?'▲ +':'▼ ')+Math.abs(S.change24h).toFixed(2)+'%';ch.style.color=pos?'#10b981':'#ef4444';}
+  // Recalcular conversor con el precio nuevo, manteniendo el valor BTC actual
+  if(S.price.usd>0){
+    const btc=parseFloat(S.conv_btc)||1;
+    S.conv_btc=btc;
+    S.conv_sats=(btc*1e8).toFixed(0);
+    S.conv_usd=(btc*S.price.usd).toFixed(2);
+    S.conv_eur=(btc*S.price.eur).toFixed(2);
+    // Actualizar DOM si los campos existen
+    setI('btc',S.conv_btc);setI('sats',S.conv_sats);setI('usd',S.conv_usd);setI('eur',S.conv_eur);
+  }
+}
+
+/* ══════ RENDER TABS ══════ */
+function renderTab(tab){
+  const el=document.getElementById('tab-'+tab);if(!el)return;
+  const map={home:renderHome,analysis:renderAnalysis,market:renderMarket,mempool:renderMempool,atm:renderATM,news:renderNews,alerts:renderAlerts};
+  if(map[tab])el.innerHTML=map[tab]();
+  if(tab==='atm'&&!S.atmLoaded)initATM();
+}
+
+/* ══════ HOME ══════ */
+function renderHome(){
+  const pos=S.change24h>=0,pct=S.history.length>1?((S.history[S.history.length-1].price-S.history[0].price)/S.history[0].price*100).toFixed(2):'0.00';
+  const pctColor=parseFloat(pct)>=0?'#10b981':'#ef4444';
+  const upd=S.lastUpdated?S.lastUpdated.toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'}):'—';
+  const chart=S.chartType==='area'?areaSVG(S.history):candleSVG(S.ohlc);
+  return`<div class="space-y">
+  <div class="card">
+    <div style="font-size:15px;font-weight:700;margin-bottom:12px">↔ Conversor</div>
+    <div class="grid-2">
+      <div><div style="font-size:10px;color:var(--text3);margin-bottom:4px;text-transform:uppercase">Bitcoin (BTC)</div><div style="position:relative"><span style="position:absolute;left:10px;top:9px;color:#f97316;font-weight:700">₿</span><input id="inp-btc" type="number" style="padding-left:28px" value="${S.conv_btc||1}" oninput="calcConv('btc',this.value)" placeholder="0"/></div></div>
+      <div><div style="font-size:10px;color:var(--text3);margin-bottom:4px;text-transform:uppercase">Satoshis</div><div style="position:relative"><span style="position:absolute;left:10px;top:9px;color:#eab308;font-weight:700">⚡</span><input id="inp-sats" type="number" style="padding-left:28px" value="${S.conv_sats||100000000}" oninput="calcConv('sats',this.value)" placeholder="0"/></div></div>
+      <div><div style="font-size:10px;color:var(--text3);margin-bottom:4px;text-transform:uppercase">Dólar (USD)</div><div style="position:relative"><span style="position:absolute;left:10px;top:9px;color:#10b981;font-weight:700">$</span><input id="inp-usd" type="number" style="padding-left:24px" value="${S.conv_usd||''}" oninput="calcConv('usd',this.value)" placeholder="0"/></div></div>
+      <div><div style="font-size:10px;color:var(--text3);margin-bottom:4px;text-transform:uppercase">Euro (EUR)</div><div style="position:relative"><span style="position:absolute;left:10px;top:9px;color:#3b82f6;font-weight:700">€</span><input id="inp-eur" type="number" style="padding-left:24px" value="${S.conv_eur||''}" oninput="calcConv('eur',this.value)" placeholder="0"/></div></div>
+    </div>
+    <div style="font-size:10px;color:var(--text3);text-align:center;margin-top:8px">1 BTC ≈ $${fmtN(S.price.usd)} / €${fmtN(S.price.eur)}</div>
+  </div>
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
+      <div><div style="font-size:15px;font-weight:700">📈 Historial</div><span style="font-size:11px;font-weight:600;color:${pctColor}">${parseFloat(pct)>=0?'+':''}${pct}%</span><span style="font-size:10px;color:var(--text3);margin-left:4px">en este periodo</span></div>
+      <div class="chart-type-wrap"><button class="chart-type-btn ${S.chartType==='area'?'active':''}" onclick="setChartType('area')">Área</button><button class="chart-type-btn ${S.chartType==='candle'?'active':''}" onclick="setChartType('candle')">Velas</button></div>
+    </div>
+    <div class="period-wrap">${['1','7','30','90','365'].map(d=>`<button class="period-btn ${S.days===d?'active':''}" onclick="setPeriod('${d}')">${d==='1'?'24h':d==='365'?'1A':d+'D'}</button>`).join('')}</div>
+    ${chart||'<div style="text-align:center;color:var(--text3);padding:20px">Cargando datos...</div>'}
+  </div>
+  <div class="grid-3">
+    <div class="stat-box"><div class="stat-label">Cap. Mercado</div><div class="stat-val" style="color:#3b82f6">${fmtBig(S.marketData?.totalMcap||S.marketCap)}</div></div>
+    <div class="stat-box"><div class="stat-label">24h</div><div class="stat-val" style="color:${pos?'#10b981':'#ef4444'}">${pos?'+':''}${S.change24h.toFixed(2)}%</div></div>
+    <div class="stat-box"><div class="stat-label">Actualizado</div><div class="stat-val" style="font-size:12px;color:var(--text2)">${upd}</div></div>
+  </div>
+  <div style="font-size:10px;color:var(--text3);text-align:center">Precios: CoinGecko · Mempool: mempool.space · No es un consejo financiero.</div>
+</div>`;
+}
+function calcConv(f,raw){
+  const v=parseFloat(raw),ok=!isNaN(v)&&v>=0,pU=S.price.usd,pE=S.price.eur;
+  if(!ok){['btc','sats','usd','eur'].filter(x=>x!==f).forEach(x=>{const e=document.getElementById('inp-'+x);if(e)e.value='';});return;}
+  let btc=S.conv_btc||1,sats=S.conv_sats||1e8,usd=S.conv_usd||0,eur=S.conv_eur||0;
+  if(f==='btc'){btc=v;sats=(v*1e8).toFixed(0);usd=(v*pU).toFixed(2);eur=(v*pE).toFixed(2);}
+  else if(f==='sats'){const b=v/1e8;btc=b.toFixed(8).replace(/\.?0+$/,'');sats=v;usd=(b*pU).toFixed(2);eur=(b*pE).toFixed(2);}
+  else if(f==='usd'&&pU){const b=v/pU;btc=b.toFixed(8);sats=(b*1e8).toFixed(0);usd=v;eur=(b*pE).toFixed(2);}
+  else if(f==='eur'&&pE){const b=v/pE;btc=b.toFixed(8);sats=(b*1e8).toFixed(0);usd=(b*pU).toFixed(2);eur=v;}
+  S.conv_btc=btc;S.conv_sats=sats;S.conv_usd=usd;S.conv_eur=eur;
+  ['btc','sats','usd','eur'].filter(x=>x!==f).forEach(x=>setI(x,S['conv_'+x]));
+}
+function setI(id,val){const e=document.getElementById('inp-'+id);if(e&&document.activeElement!==e)e.value=val;}
+function setChartType(t){S.chartType=t;renderTab('home');}
+function setPeriod(d){S.days=d;Promise.all([fetchPrice(),fetchOHLC()]).then(()=>renderTab('home'));}
+
+/* ══════ ANALYSIS ══════ */
+function renderAnalysis(){
+  const a=analyze();
+  if(!a)return`<div class="card" style="text-align:center;padding:40px;color:var(--text3)">Necesita historial de 30+ días.<br>Cambia el periodo a 30D en Inicio.</div>`;
+  const sigClass=a.signal==='COMPRAR'?'signal-buy':a.signal==='VENDER'?'signal-sell':'signal-neutral';
+  const sigColor=a.signal==='COMPRAR'?'#10b981':a.signal==='VENDER'?'#ef4444':'#eab308';
+  const sigIcon=a.signal==='COMPRAR'?'↑':a.signal==='VENDER'?'↓':'→';
+  const rsiColor=a.lastRSI<30?'#10b981':a.lastRSI>70?'#ef4444':'#eab308';
+  const rsiLabel=a.lastRSI<30?'Sobrevendido':a.lastRSI>70?'Sobrecomprado':'Neutral';
+  const macdBull=a.lMACD>a.lSig,smaBull=a.sma7>a.sma30;
+  const bbPos=a.last>a.bbU?'Sobrecomprado':a.last<a.bbL?'Sobrevendido':'En rango';
+  return`<div class="space-y">
+  <div class="card">
+    <div style="font-size:15px;font-weight:700;margin-bottom:12px">🧠 Análisis Técnico</div>
+    <div class="signal-banner ${sigClass}">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div><div style="font-size:10px;color:var(--text3);text-transform:uppercase;margin-bottom:4px">Señal del mercado</div><div style="font-size:24px;font-weight:800;color:${sigColor}">${a.signal}</div></div>
+        <div style="font-size:40px;font-weight:900;color:${sigColor}">${sigIcon}</div>
+      </div>
+      <div style="margin-top:10px">
+        <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px"><span style="color:#10b981;font-weight:600">Alcista ${a.bullPct}%</span><span style="color:#ef4444;font-weight:600">${a.bearPct}% Bajista</span></div>
+        <div style="display:flex;border-radius:999px;overflow:hidden;height:6px"><div style="width:${a.bullPct}%;background:#10b981"></div><div style="width:${a.bearPct}%;background:#ef4444"></div></div>
+      </div>
+    </div>
+    <div class="grid-2" style="gap:8px">
+      <div class="stat-box"><div class="stat-label">RSI (14)</div><div class="stat-val" style="color:${rsiColor}">${a.lastRSI.toFixed(1)}</div><div style="font-size:9px;color:var(--text3)">${rsiLabel}</div></div>
+      <div class="stat-box"><div class="stat-label">MACD</div><div class="stat-val" style="color:${macdBull?'#10b981':'#ef4444'}">${a.lMACD?.toFixed(0)}</div><div style="font-size:9px;color:var(--text3)">${macdBull?'↑ Alcista':'↓ Bajista'}</div></div>
+      <div class="stat-box"><div class="stat-label">MA7 vs MA30</div><div class="stat-val" style="font-size:11px;color:${smaBull?'#10b981':'#ef4444'}">${smaBull?'Golden Cross':'Death Cross'}</div><div style="font-size:9px;color:var(--text3)">${smaBull?'Alcista':'Bajista'}</div></div>
+      <div class="stat-box"><div class="stat-label">Bollinger</div><div class="stat-val" style="font-size:11px;color:${bbPos==='En rango'?'#3b82f6':'#eab308'}">${bbPos}</div></div>
+    </div>
+  </div>
+  <div class="card">
+    <div style="font-size:14px;font-weight:600;margin-bottom:10px">Soporte &amp; Resistencia</div>
+    <div class="sr-row" style="background:rgba(239,68,68,.06);border-color:rgba(239,68,68,.3)"><span style="font-size:12px;color:var(--text2)">🔴 Resistencia</span><span style="font-size:13px;font-weight:700;color:#ef4444;font-family:monospace">$${fmtN(a.resistance,0)}</span></div>
+    <div class="sr-row" style="background:rgba(249,115,22,.06);border-color:rgba(249,115,22,.3)"><span style="font-size:12px;color:var(--text2)">🟠 Precio actual</span><span style="font-size:13px;font-weight:700;color:#f97316;font-family:monospace">$${fmtN(a.last,0)}</span></div>
+    <div class="sr-row" style="background:rgba(16,185,129,.06);border-color:rgba(16,185,129,.3)"><span style="font-size:12px;color:var(--text2)">🟢 Soporte</span><span style="font-size:13px;font-weight:700;color:#10b981;font-family:monospace">$${fmtN(a.support,0)}</span></div>
+  </div>
+  <div class="card"><div style="font-size:13px;font-weight:600;margin-bottom:6px;color:var(--text2)">RSI (últimos períodos)</div>${miniLine(a.rsiData,'#a855f7',65,[{val:70,color:'#ef4444'},{val:30,color:'#10b981'}])}<div style="font-size:10px;color:var(--text3);margin-top:4px">RSI &lt;30 sobrevendido · RSI &gt;70 sobrecomprado</div></div>
+  <div class="card"><div style="font-size:13px;font-weight:600;margin-bottom:6px;color:var(--text2)">MACD</div>${miniLine(a.macdData,'#3b82f6',65,[])}<div style="font-size:10px;color:var(--text3);margin-top:4px">MACD cruza arriba = alcista · Cruza abajo = bajista</div></div>
+  <div style="font-size:10px;color:var(--text3);text-align:center">⚠️ No garantiza resultados futuros. No es un consejo financiero.</div>
+</div>`;
+}
+
+/* ══════ MARKET ══════ */
+function renderMarket(){
+  if(!S.marketData)return`<div class="card" style="text-align:center;padding:40px;color:var(--text3)"><span class="spin">⏳</span><br><br>Cargando datos de mercado...</div>`;
+  const m=S.marketData,mi=S.miningData,fg=m.fearGreed,dom=m.dominance;
+  const fgColor=fg.value<=25?'#ef4444':fg.value<=45?'#f97316':fg.value<=55?'#eab308':fg.value<=75?'#84cc16':'#10b981';
+  const fgLabel=fg.value<=25?'Miedo extremo':fg.value<=45?'Miedo':fg.value<=55?'Neutral':fg.value<=75?'Codicia':'Codicia extrema';
+  const toRad=d=>(d*Math.PI)/180,r=65,cx=90,cy=88,angle=-90+(fg.value/100)*180;
+  const nx=cx+r*Math.cos(toRad(angle)),ny=cy+r*Math.sin(toRad(angle));
+  const segs=[{c:'#ef4444',s:-90,e:-54},{c:'#f97316',s:-54,e:-18},{c:'#eab308',s:-18,e:18},{c:'#84cc16',s:18,e:54},{c:'#10b981',s:54,e:90}];
+  const arc=(s,e)=>{const x1=cx+r*Math.cos(toRad(s)),y1=cy+r*Math.sin(toRad(s)),x2=cx+r*Math.cos(toRad(e)),y2=cy+r*Math.sin(toRad(e));return`M ${x1} ${y1} A ${r} ${r} 0 0 1 ${x2} ${y2}`;};
+  const others=(100-parseFloat(dom.btc||0)-parseFloat(dom.eth||0)).toFixed(1);
+  return`<div class="space-y">
+  <div class="card">
+    <div style="font-size:15px;font-weight:700;margin-bottom:12px">📊 Miedo &amp; Codicia</div>
+    <div style="display:flex;justify-content:center"><svg viewBox="0 0 180 100" style="width:180px;max-width:100%">${segs.map(s=>`<path d="${arc(s.s,s.e)}" stroke="${s.c}" stroke-width="13" fill="none" stroke-linecap="round" opacity=".4"/>`).join('')}<line x1="${cx}" y1="${cy}" x2="${nx}" y2="${ny}" stroke="${fgColor}" stroke-width="3" stroke-linecap="round"/><circle cx="${cx}" cy="${cy}" r="4" fill="${fgColor}"/><text x="${cx}" y="${cy-14}" text-anchor="middle" fill="${fgColor}" font-size="22" font-weight="800">${fg.value}</text><text x="${cx}" y="${cy-2}" text-anchor="middle" fill="${fgColor}" font-size="9" font-weight="600">${fgLabel}</text></svg></div>
+    <div style="font-size:10px;color:var(--text3);text-align:center;margin-top:4px">Fuente: alternative.me · Actualización diaria</div>
+  </div>
+  <div class="card">
+    <div style="font-size:15px;font-weight:700;margin-bottom:12px">🌍 Dominancia</div>
+    ${[{l:'Bitcoin (BTC)',v:dom.btc,c:'#f97316'},{l:'Ethereum (ETH)',v:dom.eth,c:'#3b82f6'},{l:'Resto',v:others,c:'#64748b'}].map(({l,v,c})=>`<div style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px"><span style="color:var(--text2)">${l}</span><span style="font-weight:700;color:${c}">${v}%</span></div><div class="prog-track"><div class="prog-bar" style="width:${parseFloat(v)||0}%;background:${c}"></div></div></div>`).join('')}
+    <div style="font-size:10px;color:var(--text3)">Cap. total: ${fmtBig(m.totalMcap)}</div>
+  </div>
+  ${mi?`<div class="card"><div style="font-size:15px;font-weight:700;margin-bottom:12px">⛏️ Minería</div><div class="grid-2" style="margin-bottom:12px"><div class="stat-box"><div class="stat-label">Hashrate</div><div class="stat-val" style="color:#10b981">${mi.hashrate}</div><div style="font-size:9px;color:var(--text3)">EH/s</div></div><div class="stat-box"><div class="stat-label">Cambio dificultad</div><div class="stat-val" style="color:${mi.difficultyChange>=0?'#ef4444':'#10b981'}">${mi.difficultyChange>=0?'+':''}${(mi.difficultyChange||0).toFixed(2)}%</div></div></div><div style="font-size:12px;color:var(--text2);margin-bottom:6px;display:flex;justify-content:space-between"><span>Próximo ajuste</span><span style="color:var(--text3)">${mi.remainingBlocks} bloques</span></div><div class="prog-track"><div class="prog-bar" style="width:${mi.progressPercent||0}%;background:#22c55e"></div></div><div style="font-size:10px;color:var(--text3);text-align:right;margin-top:2px">${(mi.progressPercent||0).toFixed(1)}% completado</div></div>`:''}
+</div>`;
+}
+
+/* ══════ MEMPOOL ══════ */
+function renderMempool(){
+  if(!S.mempool)return`<div class="card" style="text-align:center;padding:40px;color:var(--text3)">Cargando Mempool...</div>`;
+  const{fees,mempool,network}=S.mempool,cong=mempool.congestion;
+  const congLabel=cong<20?'🟢 Baja':cong<50?'🟡 Media':cong<80?'🟠 Alta':'🔴 Muy alta';
+  const congColor=cong<20?'#10b981':cong<50?'#eab308':cong<80?'#f97316':'#ef4444';
+  const feeColor=f=>f<=5?'#10b981':f<=30?'#eab308':f<=80?'#f97316':'#ef4444';
+  const selRate=fees[S.feeLevel]||fees.hour,totSats=selRate*S.txSize;
+  const totUsd=S.price.usd>0?((totSats/1e8)*S.price.usd).toFixed(4):'—';
+  const daysHalv=network.blocksToHalving>0?Math.round((network.blocksToHalving*10)/1440):null;
+  const cards=[{l:'Rápido',f:fees.fastest,t:'~10m',ic:'⚡'},{l:'30 min',f:fees.halfHour,t:'~30m',ic:'🟠'},{l:'1 hora',f:fees.hour,t:'~60m',ic:'🕐'},{l:'Eco',f:fees.economy,t:'Horas',ic:'💤'}];
+  return`<div class="space-y">
+  <div class="card">
+    <div style="font-size:15px;font-weight:700;margin-bottom:12px">⛓️ Mempool &amp; Fees</div>
+    <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:6px"><span style="color:var(--text2)">Congestión</span><span style="font-weight:600">${congLabel}</span></div>
+    <div class="cong-track"><div class="cong-bar" style="width:${cong}%;background:${congColor}"></div></div>
+    <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text3);margin-top:4px;margin-bottom:14px"><span>${mempool.txCount.toLocaleString()} tx</span><span>${mempool.vsize} MB</span></div>
+    <div class="grid-4">${cards.map(({l,f,t,ic})=>`<div class="fee-card"><span style="font-size:15px">${ic}</span><span style="font-size:9px;color:var(--text3);text-transform:uppercase">${l}</span><span style="font-size:16px;font-weight:700;font-family:monospace;color:${feeColor(f)}">${f}</span><span style="font-size:9px;color:var(--text3)">s/vB</span><span style="font-size:9px;color:var(--text2)">${t}</span></div>`).join('')}</div>
+  </div>
+  <div class="card">
+    <div style="font-size:15px;font-weight:700;margin-bottom:12px">⚡ Calculadora</div>
+    <div class="grid-2" style="margin-bottom:10px">
+      <div><div style="font-size:10px;color:var(--text3);margin-bottom:4px">Bytes</div><input id="tx-size" type="number" value="${S.txSize}" min="1" oninput="S.txSize=Math.max(1,parseInt(this.value)||250);renderTab('mempool')"/></div>
+      <div><div style="font-size:10px;color:var(--text3);margin-bottom:4px">Prioridad</div><select id="fee-level" onchange="S.feeLevel=this.value;renderTab('mempool')"><option value="fastest" ${S.feeLevel==='fastest'?'selected':''}>⚡ Rápido</option><option value="halfHour" ${S.feeLevel==='halfHour'?'selected':''}>🟠 30 min</option><option value="hour" ${S.feeLevel==='hour'?'selected':''}>🕐 1 hora</option><option value="economy" ${S.feeLevel==='economy'?'selected':''}>💤 Eco</option><option value="minimum" ${S.feeLevel==='minimum'?'selected':''}>🐢 Mínima</option></select></div>
+    </div>
+    <div class="grid-3"><div class="stat-box"><div class="stat-label">sat/vByte</div><div class="stat-val" style="color:#eab308">${selRate}</div></div><div class="stat-box"><div class="stat-label">Sats</div><div class="stat-val" style="color:#f97316;font-size:12px">${totSats.toLocaleString()}</div></div><div class="stat-box"><div class="stat-label">USD</div><div class="stat-val" style="color:#10b981;font-size:12px">$${totUsd}</div></div></div>
+    <div style="font-size:10px;color:var(--text3);text-align:center;margin-top:8px">P2PKH≈250B · SegWit≈140B · Taproot≈110B</div>
+  </div>
+  ${network.height>0?`<div class="grid-2"><div class="stat-box"><div class="stat-label">Bloque actual</div><div class="stat-val" style="font-size:13px">#${network.height.toLocaleString()}</div></div><div class="stat-box"><div class="stat-label">Próximo Halving</div><div class="stat-val" style="color:#f97316">${daysHalv?`~${daysHalv} días`:'—'}</div><div style="font-size:9px;color:var(--text3)">${network.blocksToHalving.toLocaleString()} bloques</div></div></div>`:''}
+</div>`;
+}
+
+/* ══════ ATM ══════ */
+function renderATM(){
+  // Pre-render map container con altura visible
+  const alreadyLoaded=S.atmLoaded;
+  return`<div class="space-y"><div class="card">
+    <div style="font-size:15px;font-weight:700;margin-bottom:12px">🏧 Cajeros Bitcoin cercanos</div>
+    <div id="atm-status" style="text-align:center;padding:20px;${alreadyLoaded?'display:none':''}">
+      <div style="font-size:40px;margin-bottom:12px">📍</div>
+      <div style="font-weight:600;margin-bottom:6px">Encuentra cajeros Bitcoin cerca de ti</div>
+      <div style="font-size:12px;color:var(--text3);margin-bottom:16px">Usaremos tu ubicación para buscar en un radio de ~50 km</div>
+      <button class="btn-orange" onclick="loadATM()">🗺️ Buscar cerca de mí</button>
+    </div>
+    <div id="atm-count" style="font-size:12px;color:#10b981;margin-bottom:8px;font-weight:600;${alreadyLoaded?'':'display:none'}"></div>
+    <div id="map-container" style="height:360px;border-radius:12px;overflow:hidden;${alreadyLoaded?'':'display:none'}"></div>
+    <div id="atm-tip" style="font-size:10px;color:var(--text3);text-align:center;margin-top:6px;${alreadyLoaded?'':'display:none'}">🟠 Cajeros/comercios Bitcoin · 📍 Tu posición · Datos: BTCMap.org</div>
+    ${alreadyLoaded?'<button class="btn-ghost" style="width:100%;margin-top:8px" onclick="reloadATM()">🔄 Actualizar</button>':''}
+  </div></div>`;
+}
+function initATM(){
+  if(!S.atmLoaded) return; // espera a que el usuario pulse el botón
+}
+async function reloadATM(){
+  S.atmLoaded=false;
+  if(S.leafletMap){S.leafletMap.remove();S.leafletMap=null;}
+  renderTab('atm');
+  await loadATM();
+}
+async function loadATM(){
+  const st=document.getElementById('atm-status');
+  if(!st)return;
+  st.innerHTML=`<div style="font-size:13px;color:var(--text3)"><span class="spin">📍</span> Obteniendo tu ubicación...</div>`;
+  try{
+    const pos=await new Promise((res,rej)=>navigator.geolocation.getCurrentPosition(res,rej,{timeout:15000,enableHighAccuracy:false}));
+    const{latitude:lat,longitude:lng}=pos.coords;
+    st.innerHTML=`<div style="font-size:13px;color:var(--text3)"><span class="spin">🔍</span> Buscando cajeros Bitcoin...</div>`;
+
+    // Mostrar contenedor del mapa con altura
+    const mapDiv=document.getElementById('map-container');
+    if(mapDiv){
+      mapDiv.style.display='block';
+      mapDiv.style.height='360px';
+    }
+
+    // Pequeña espera para que el DOM pinte el contenedor antes de Leaflet
+    await new Promise(r=>setTimeout(r,100));
+
+    if(!S.leafletMap&&mapDiv){
+      S.leafletMap=L.map(mapDiv,{zoomControl:true,attributionControl:true}).setView([lat,lng],13);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+        attribution:'© <a href="https://openstreetmap.org">OpenStreetMap</a>',
+        maxZoom:19
+      }).addTo(S.leafletMap);
+    }else if(S.leafletMap){
+      S.leafletMap.setView([lat,lng],13);
+    }
+    S.leafletMap.invalidateSize();
+
+    // Marcador usuario
+    const uIcon=L.divIcon({html:`<div style="background:#f97316;width:16px;height:16px;border-radius:50%;border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,.5)"></div>`,iconSize:[16,16],iconAnchor:[8,8],className:''});
+    L.marker([lat,lng],{icon:uIcon}).addTo(S.leafletMap).bindPopup('<b>📍 Tu ubicación</b>').openPopup();
+
+    // Cajeros via BTCMap
+    let atms=[];
+    try{
+      const delta=0.4;
+      const r=await fetch(`https://api.btcmap.org/v2/elements?lat=${lat-delta}&lon=${lng-delta}&lat2=${lat+delta}&lon2=${lng+delta}`,{signal:AbortSignal.timeout(10000)});
+      if(r.ok){
+        const j=await r.json();
+        atms=(j||[]).filter(e=>{
+          const tags=e.osm_json?.tags||{};
+          return tags['payment:bitcoin']==='yes'||tags['currency:XBT']==='yes'||tags['bitcoin']==='yes'||tags['amenity']==='atm';
+        }).slice(0,50).map(e=>({
+          lat:e.osm_json?.lat||e.osm_json?.center?.lat,
+          lng:e.osm_json?.lon||e.osm_json?.center?.lon,
+          name:e.osm_json?.tags?.name||'Punto Bitcoin',
+          op:e.osm_json?.tags?.operator||'',
+          type:e.osm_json?.tags?.['amenity']==='atm'?'🏧 ATM':'🏪 Comercio'
+        })).filter(e=>e.lat&&e.lng);
+      }
+    }catch(err){console.warn('BTCMap:',err);}
+
+    const aIcon=L.divIcon({html:`<div style="background:#f59e0b;width:13px;height:13px;border-radius:3px;border:2px solid white;box-shadow:0 2px 5px rgba(0,0,0,.4);font-size:8px;display:flex;align-items:center;justify-content:center;color:white;font-weight:700">₿</div>`,iconSize:[13,13],iconAnchor:[6,6],className:''});
+    atms.forEach(a=>{
+      if(S.leafletMap)L.marker([a.lat,a.lng],{icon:aIcon}).addTo(S.leafletMap)
+        .bindPopup(`<b>${a.name}</b><br><small>${a.type}${a.op?' · '+a.op:''}</small>`);
+    });
+
+    setTimeout(()=>S.leafletMap?.invalidateSize(),300);
+
+    // Actualizar UI
+    const cnt=document.getElementById('atm-count');
+    if(cnt){cnt.textContent=atms.length>0?`✅ ${atms.length} cajeros/comercios encontrados`:'ℹ️ No se encontraron cajeros Bitcoin en esta zona';cnt.style.display='block';}
+    const tip=document.getElementById('atm-tip');if(tip)tip.style.display='block';
+    st.style.display='none';
+    S.atmLoaded=true;
+    // Añadir botón actualizar
+    const card=st.closest('.card');
+    if(card&&!card.querySelector('.btn-ghost')){
+      const btn=document.createElement('button');
+      btn.className='btn-ghost';btn.style.cssText='width:100%;margin-top:8px';
+      btn.textContent='🔄 Actualizar';btn.onclick=reloadATM;
+      card.appendChild(btn);
+    }
+  }catch(e){
+    const msg=e.code===1?'Permiso de ubicación denegado. Ve a los ajustes del navegador y activa la ubicación para esta página.':e.name==='TimeoutError'?'Tiempo de espera agotado. Comprueba tu conexión.':'No se pudo cargar el mapa. Inténtalo de nuevo.';
+    if(st)st.innerHTML=`<div style="color:#ef4444;font-size:13px;margin-bottom:14px;line-height:1.5">${msg}</div><button class="btn-orange" onclick="loadATM()">🔄 Reintentar</button>`;
+  }
+}
+
+/* ══════ NEWS ══════ */
+function renderNews(){
+  if(!S.news.length)return`<div class="card" style="text-align:center;padding:40px;color:var(--text3)"><span class="spin">📰</span><br><br>Cargando noticias...</div>`;
+  return`<div class="card"><div style="font-size:15px;font-weight:700;margin-bottom:12px">📰 Noticias Bitcoin</div>${S.news.map(n=>`<a href="${n.url}" target="_blank" rel="noopener noreferrer" class="news-item"><div style="font-size:13px;line-height:1.4;margin-bottom:6px">${n.title}</div><div style="display:flex;gap:10px;font-size:10px"><span style="color:#3b82f6;font-weight:600">${n.source}</span><span style="color:var(--text3)">${timeAgo(n.date.getTime())}</span></div></a>`).join('')}</div>`;
+}
+
+/* ══════ ALERTS ══════ */
+function renderAlerts(){
+  const perm=S.notifPerm;
+  const banner=perm!=='granted'&&perm!=='unsupported'?`<div class="notif-banner"><span style="font-size:18px">🔔</span><div style="flex:1"><div style="font-size:12px;font-weight:600;color:#f97316">Activa las notificaciones</div><div style="font-size:11px;color:var(--text3);margin-top:2px">Para recibir alertas con la app cerrada.</div></div><button class="btn-orange" style="padding:6px 12px;font-size:12px" onclick="activateNotifs()">Activar</button></div>`:perm==='granted'?`<div class="notif-ok"><span>✅</span><div style="font-size:12px;color:#10b981">Notificaciones activas. Recibirás avisos aunque la app esté cerrada.</div></div>`:'';
+  return`<div class="card"><div style="font-size:15px;font-weight:700;margin-bottom:12px">🔔 Alertas de precio</div>${banner}<div class="input-row"><div style="position:relative;flex:1"><span id="curr-sym" style="position:absolute;left:10px;top:9px;color:var(--text3);font-size:13px">$</span><input id="alert-target" type="number" style="padding-left:26px" placeholder="Precio objetivo" onkeydown="if(event.key==='Enter')addAlert()"/></div><select id="alert-curr" style="width:80px" onchange="document.getElementById('curr-sym').textContent=this.value==='eur'?'€':'$'"><option value="usd">USD</option><option value="eur">EUR</option></select><button class="btn-orange" style="padding:8px 14px;flex-shrink:0" onclick="addAlert()">+</button></div><div id="alert-list">${S.alerts.length===0?`<div style="text-align:center;color:var(--text3);font-size:13px;padding:24px">Sin alertas activas.<br>Introduce un precio y pulsa +.</div>`:S.alerts.map(a=>`<div class="alert-item ${a.triggered?'triggered':''}"><div style="display:flex;align-items:center;gap:10px">${a.triggered?'<span style="color:#eab308;font-size:16px">⚠️</span>':`<div style="width:8px;height:8px;border-radius:50%;background:${a.condition==='above'?'#10b981':'#ef4444'}"></div>`}<div><div style="font-size:13px;font-weight:600">${a.condition==='above'?'↑':'↓'} ${a.currency==='usd'?'$':'€'}${a.targetPrice.toLocaleString()}</div><div style="font-size:10px;color:var(--text3)">${a.triggered?'¡DISPARADA!':'Pendiente'}</div></div></div><button onclick="removeAlert('${a.id}')" style="background:none;border:none;color:var(--text3);font-size:18px;padding:4px;cursor:pointer">✕</button></div>`).join('')}</div></div>`;
+}
+async function activateNotifs(){const r=await requestNotifPerm();if(r==='granted')showNotif('✅ SatsFlow','Notificaciones activadas.');renderTab('alerts');}
+function addAlert(){const t=document.getElementById('alert-target'),c=document.getElementById('alert-curr');if(!t||!c)return;const val=parseFloat(t.value);if(isNaN(val)||val<=0)return;const curr=c.value,price=curr==='usd'?S.price.usd:S.price.eur;S.alerts.push({id:Date.now().toString(),targetPrice:val,currency:curr,condition:val>price?'above':'below',triggered:false});saveAlerts();navigator.serviceWorker?.ready.then(reg=>reg.active?.postMessage({type:'CHECK_ALERTS',alerts:S.alerts}));renderTab('alerts');}
+function removeAlert(id){S.alerts=S.alerts.filter(a=>a.id!==id);saveAlerts();renderTab('alerts');}
+function checkAlerts(){if(!S.price.usd)return;let changed=false;S.alerts=S.alerts.map(a=>{if(a.triggered)return a;const p=a.currency==='usd'?S.price.usd:S.price.eur,hit=a.condition==='above'?p>=a.targetPrice:p<=a.targetPrice;if(hit){const sym=a.currency==='usd'?'$':'€';showNotif('⚡ Alerta SatsFlow',`BTC ha ${a.condition==='above'?'subido sobre':'bajado de'} ${sym}${a.targetPrice.toLocaleString()} — $${S.price.usd.toLocaleString()}`);changed=true;return{...a,triggered:true};}return a;});if(changed){saveAlerts();if(S.currentTab==='alerts')renderTab('alerts');}}
+
+/* ══════ INIT ══════ */
+async function init(){
+  S.alerts=await loadAlertsDB();
+  await fetchPrice();
+  renderTab('home');
+  // Carga el resto en segundo plano
+  Promise.all([fetchOHLC(),fetchMempool(),fetchMarket(),fetchMining(),fetchNews()]).then(()=>{renderCurrentTab();});
+  setInterval(async()=>{await fetchPrice();checkAlerts();renderCurrentTab();},60000);
+  setInterval(async()=>{await fetchMempool();if(S.currentTab==='mempool')renderTab('mempool');},30000);
+  setInterval(async()=>{await Promise.all([fetchMarket(),fetchMining()]);if(S.currentTab==='market')renderTab('market');},120000);
+  setInterval(async()=>{await fetchNews();if(S.currentTab==='news')renderTab('news');},300000);
+}
+init();
+</script>
+</body>
+</html>
