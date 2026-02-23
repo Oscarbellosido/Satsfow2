@@ -2,12 +2,12 @@
   "name": "SatsFlow",
   "short_name": "SatsFlow",
   "description": "Conversor de Bitcoin y seguimiento de precios en tiempo real",
-  "start_url": "/satsflow/",
+  "start_url": "/satsfow2/",
   "display": "standalone",
   "background_color": "#0f172a",
   "theme_color": "#f97316",
   "orientation": "portrait-primary",
-  "scope": "/satsflow/",
+  "scope": "/satsfow2/",
   "lang": "es",
   "categories": [
     "finance",
@@ -32,7 +32,7 @@
       "name": "Ver precio BTC",
       "short_name": "Precio",
       "description": "Consultar precio actual de Bitcoin",
-      "url": "/satsflow/",
+      "url": "/satsfow2/",
       "icons": [
         {
           "src": "./icon-96.png",
