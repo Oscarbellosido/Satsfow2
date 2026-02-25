@@ -727,43 +727,32 @@ async function fetchCorr(){
     const days=parseInt(S.corrPeriod)||30;
     const limit=days<=30?35:days<=90?95:370;
 
-    // BTC desde Binance (CORS abierto, fiable)
+    // BTC desde Binance (CORS abierto siempre)
     const btcR=await fetch(`https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=1d&limit=${limit}`);
     const btcJ=await btcR.json();
     const btcPrices=btcJ.map(k=>parseFloat(k[4]));
 
-    // S&P500 y Oro desde stooq.com — CSV público, sin autenticación, CORS abierto
-    // %5Espx = ^SPX (S&P500),  xauusd = Oro en USD
-    const toStooqDate=d=>{const dd=new Date(d);return `${dd.getFullYear()}${String(dd.getMonth()+1).padStart(2,'0')}${String(dd.getDate()).padStart(2,'0')}`;};
-    const from=new Date(Date.now()-limit*24*60*60*1000);
-    const fd=toStooqDate(from);
-    const td=toStooqDate(new Date());
-
-    const parseStooqCSV=text=>{
-      const lines=text.trim().split('\n').slice(1); // skip header
-      return lines.map(l=>{const p=l.split(',');return parseFloat(p[4]);}).filter(v=>!isNaN(v));
-    };
+    // S&P500 y Oro via Yahoo Finance con corsproxy.io
+    const range=days<=30?'1mo':days<=90?'3mo':'1y';
+    const proxy='https://corsproxy.io/?';
+    const spyUrl=`https://query1.finance.yahoo.com/v8/finance/chart/SPY?interval=1d&range=${range}`;
+    const gldUrl=`https://query1.finance.yahoo.com/v8/finance/chart/GLD?interval=1d&range=${range}`;
 
     const[spyR,goldR]=await Promise.all([
-      fetch(`https://stooq.com/q/d/l/?s=%5Espx&d1=${fd}&d2=${td}&i=d`,{signal:AbortSignal.timeout(8000)}),
-      fetch(`https://stooq.com/q/d/l/?s=xauusd&d1=${fd}&d2=${td}&i=d`,{signal:AbortSignal.timeout(8000)})
+      fetch(proxy+encodeURIComponent(spyUrl),{signal:AbortSignal.timeout(12000)}),
+      fetch(proxy+encodeURIComponent(gldUrl),{signal:AbortSignal.timeout(12000)})
     ]);
 
-    const spyText=await spyR.text();
-    const goldText=await goldR.text();
+    const spyJ=await spyR.json();
+    const goldJ=await goldR.json();
 
-    let spyPrices=parseStooqCSV(spyText);
-    let goldPrices=parseStooqCSV(goldText);
+    const spyPrices=(spyJ.chart?.result?.[0]?.indicators?.quote?.[0]?.close||[]).filter(v=>v!=null);
+    const goldPrices=(goldJ.chart?.result?.[0]?.indicators?.quote?.[0]?.close||[]).filter(v=>v!=null);
 
-    // stooq devuelve datos en orden inverso (más reciente primero)
-    spyPrices=spyPrices.reverse();
-    goldPrices=goldPrices.reverse();
-
-    if(spyPrices.length<5||goldPrices.length<5) throw new Error('Datos insuficientes de stooq');
+    if(!spyPrices.length||!goldPrices.length) throw new Error('Sin datos de mercado');
 
     // Normalizar base 100
     const normalize=arr=>{const base=arr[0]||1;return arr.map(v=>(v/base)*100);};
-
     const minLen=Math.min(btcPrices.length,spyPrices.length,goldPrices.length);
     if(minLen<5){S.corrData=null;S.corrError='Datos insuficientes';return;}
 
@@ -771,7 +760,7 @@ async function fetchCorr(){
     const spyN=normalize(spyPrices.slice(-minLen));
     const goldN=normalize(goldPrices.slice(-minLen));
 
-    // Correlación de Pearson
+    // Pearson
     const pearson=(a,b)=>{
       const n=a.length,ma=a.reduce((s,v)=>s+v,0)/n,mb=b.reduce((s,v)=>s+v,0)/n;
       const num=a.reduce((s,v,i)=>s+(v-ma)*(b[i]-mb),0);
@@ -796,7 +785,65 @@ async function fetchCorr(){
   }catch(e){
     console.error('fetchCorr',e);
     S.corrData=null;
-    S.corrError=e.message||'Error al cargar datos';
+    // Intentar fallback con proxy alternativo
+    await fetchCorrFallback();
+  }
+}
+
+async function fetchCorrFallback(){
+  try{
+    const days=parseInt(S.corrPeriod)||30;
+    const limit=days<=30?35:days<=90?95:370;
+    const range=days<=30?'1mo':days<=90?'3mo':'1y';
+
+    // Proxy alternativo: allorigins
+    const proxy='https://api.allorigins.win/raw?url=';
+    const spyUrl=`https://query1.finance.yahoo.com/v8/finance/chart/SPY?interval=1d&range=${range}`;
+    const gldUrl=`https://query1.finance.yahoo.com/v8/finance/chart/GLD?interval=1d&range=${range}`;
+
+    const[btcR,spyR,goldR]=await Promise.all([
+      fetch(`https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=1d&limit=${limit}`),
+      fetch(proxy+encodeURIComponent(spyUrl),{signal:AbortSignal.timeout(12000)}),
+      fetch(proxy+encodeURIComponent(gldUrl),{signal:AbortSignal.timeout(12000)})
+    ]);
+
+    const btcJ=await btcR.json();
+    const spyJ=await spyR.json();
+    const goldJ=await goldR.json();
+
+    const btcPrices=btcJ.map(k=>parseFloat(k[4]));
+    const spyPrices=(spyJ.chart?.result?.[0]?.indicators?.quote?.[0]?.close||[]).filter(v=>v!=null);
+    const goldPrices=(goldJ.chart?.result?.[0]?.indicators?.quote?.[0]?.close||[]).filter(v=>v!=null);
+
+    if(!spyPrices.length||!goldPrices.length) throw new Error('Proxies no disponibles');
+
+    const normalize=arr=>{const base=arr[0]||1;return arr.map(v=>(v/base)*100);};
+    const minLen=Math.min(btcPrices.length,spyPrices.length,goldPrices.length);
+    const btcN=normalize(btcPrices.slice(-minLen));
+    const spyN=normalize(spyPrices.slice(-minLen));
+    const goldN=normalize(goldPrices.slice(-minLen));
+    const pearson=(a,b)=>{
+      const n=a.length,ma=a.reduce((s,v)=>s+v,0)/n,mb=b.reduce((s,v)=>s+v,0)/n;
+      const num=a.reduce((s,v,i)=>s+(v-ma)*(b[i]-mb),0);
+      const da=Math.sqrt(a.reduce((s,v)=>s+(v-ma)**2,0));
+      const db=Math.sqrt(b.reduce((s,v)=>s+(v-mb)**2,0));
+      return(da&&db)?num/(da*db):0;
+    };
+    const w=Math.min(14,minLen);
+    const rollCorr=(a,b)=>a.map((_,i)=>i<w-1?null:pearson(a.slice(i-w+1,i+1),b.slice(i-w+1,i+1)));
+    S.corrData={
+      btc:btcN,spy:spyN,gold:goldN,
+      corrBtcSpy:pearson(btcN,spyN),
+      corrBtcGold:pearson(btcN,goldN),
+      corrSpyGold:pearson(spyN,goldN),
+      rollBtcSpy:rollCorr(btcN,spyN),
+      rollBtcGold:rollCorr(btcN,goldN),
+      len:minLen
+    };
+  }catch(e){
+    console.error('fetchCorrFallback',e);
+    S.corrData=null;
+    S.corrError='No se pudieron cargar datos del S&P500 y Oro. Los proxies CORS están temporalmente no disponibles. Inténtalo más tarde.';
   }
 }
 
