@@ -1,12 +1,12 @@
 {
   "name": "SatsFlow",
   "short_name": "SatsFlow",
-  "description": "Conversor de Bitcoin y seguimiento de precios en tiempo real",
+  "description": "Conversor de Bitcoin en tiempo real, análisis técnico, fees de mempool, cajeros Bitcoin y alertas de precio. Tu tracker Bitcoin completo.",
   "start_url": "/Satsfow2/",
   "display": "standalone",
   "background_color": "#0f172a",
   "theme_color": "#f97316",
-  "orientation": "portrait-primary",
+  "orientation": "portrait",
   "scope": "/Satsfow2/",
   "lang": "es",
   "categories": [
@@ -52,6 +52,29 @@
           "type": "image/png"
         }
       ]
+    }
+  ],
+  "dir": "ltr",
+  "display_override": [
+    "standalone",
+    "minimal-ui"
+  ],
+  "related_applications": [],
+  "prefer_related_applications": false,
+  "screenshots": [
+    {
+      "src": "/Satsfow2/screenshot-1.png",
+      "sizes": "540x960",
+      "type": "image/png",
+      "label": "Conversor y gráfico de precio Bitcoin",
+      "form_factor": "narrow"
+    },
+    {
+      "src": "/Satsfow2/screenshot-2.png",
+      "sizes": "540x960",
+      "type": "image/png",
+      "label": "Análisis técnico y alertas de precio",
+      "form_factor": "narrow"
     }
   ]
 }
