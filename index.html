@@ -546,9 +546,9 @@ function renderAnalysis(){
 function calcRainbow(price){
   const genesis=new Date('2009-01-03').getTime();
   const days=(Date.now()-genesis)/(1000*60*60*24);
-  const lnDays=Math.log(days);
+  const log10Days=Math.log10(days); // IMPORTANTE: log10, no logaritmo natural
   const a=5.84,b=-17.01;
-  const center=Math.pow(10,a*lnDays+b);
+  const center=Math.pow(10,a*log10Days+b);
   const step=0.38;
   const bands=[
     {label:'Zona de venta máxima',color:'#ef4444',mult:Math.pow(10,step*4)},
@@ -627,7 +627,7 @@ function renderMarket(){
   if(rainbow){
     const bandRows=rainbow.bands.map(function(b){
       const isCur=b.label===rainbow.currentBand.label;
-      const priceStr=b.price>=1000?'$'+Math.round(b.price/1000)+'K':'$'+Math.round(b.price);
+      const priceStr='$'+(b.price>=1e9?(b.price/1e9).toFixed(1)+'B':b.price>=1e6?(b.price/1e6).toFixed(1)+'M':b.price>=1000?Math.round(b.price/1000)+'K':Math.round(b.price));
       const nowBadge=isCur?'<span style="font-size:9px;background:'+b.color+';color:white;padding:1px 6px;border-radius:999px;font-weight:700">AHORA</span>':'';
       return '<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:8px;margin-bottom:3px;'
         +'background:'+(isCur?b.color+'22':'transparent')+';border:1px solid '+(isCur?b.color+'66':'transparent')+'">'
