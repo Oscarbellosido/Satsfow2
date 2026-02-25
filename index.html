@@ -112,6 +112,7 @@
     <div id="tab-atm" class="tab-content fade" style="display:none"></div>
     <div id="tab-news" class="tab-content fade" style="display:none"></div>
     <div id="tab-alerts" class="tab-content fade" style="display:none"></div>
+    <div id="tab-corr" class="tab-content fade" style="display:none"></div>
   </div>
   <nav id="tabbar">
     <button class="tab-btn active" data-tab="home" onclick="switchTab('home')"><span class="tab-icon">🏠</span>Inicio</button>
@@ -121,13 +122,14 @@
     <button class="tab-btn" data-tab="atm" onclick="switchTab('atm')"><span class="tab-icon">🏧</span>Cajeros</button>
     <button class="tab-btn" data-tab="news" onclick="switchTab('news')"><span class="tab-icon">📰</span>Noticias</button>
     <button class="tab-btn" data-tab="alerts" onclick="switchTab('alerts')"><span class="tab-icon">🔔</span>Alertas</button>
+    <button class="tab-btn" data-tab="corr" onclick="switchTab('corr')"><span class="tab-icon">📈</span>Correlac.</button>
   </nav>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 /* ══════ STATE ══════ */
-const S={price:{usd:0,eur:0},change24h:0,marketCap:0,history:[],ohlc:[],mempool:null,marketData:null,miningData:null,news:[],alerts:[],days:'30',chartType:'area',dark:localStorage.getItem('sf-theme')!=='light',notifPerm:window.Notification?.permission||'unsupported',atmLoaded:false,leafletMap:null,lastUpdated:null,feeLevel:'hour',txSize:250,currentTab:'home'};
+const S={price:{usd:0,eur:0},change24h:0,marketCap:0,history:[],ohlc:[],mempool:null,marketData:null,miningData:null,news:[],alerts:[],days:'30',chartType:'area',dark:localStorage.getItem('sf-theme')!=='light',notifPerm:window.Notification?.permission||'unsupported',atmLoaded:false,leafletMap:null,lastUpdated:null,feeLevel:'hour',txSize:250,currentTab:'home',corrData:null,corrPeriod:'30'};
 
 /* ══════ THEME ══════ */
 function applyTheme(){
@@ -437,7 +439,7 @@ function updateHeader(){
 /* ══════ RENDER TABS ══════ */
 function renderTab(tab){
   const el=document.getElementById('tab-'+tab);if(!el)return;
-  const map={home:renderHome,analysis:renderAnalysis,market:renderMarket,mempool:renderMempool,atm:renderATM,news:renderNews,alerts:renderAlerts};
+  const map={home:renderHome,analysis:renderAnalysis,market:renderMarket,mempool:renderMempool,atm:renderATM,news:renderNews,alerts:renderAlerts,corr:renderCorr};
   if(map[tab])el.innerHTML=map[tab]();
   if(tab==='atm'&&!S.atmLoaded)initATM();
 }
@@ -716,6 +718,254 @@ async function activateNotifs(){const r=await requestNotifPerm();if(r==='granted
 function addAlert(){const t=document.getElementById('alert-target'),c=document.getElementById('alert-curr');if(!t||!c)return;const val=parseFloat(t.value);if(isNaN(val)||val<=0)return;const curr=c.value,price=curr==='usd'?S.price.usd:S.price.eur;S.alerts.push({id:Date.now().toString(),targetPrice:val,currency:curr,condition:val>price?'above':'below',triggered:false});saveAlerts();navigator.serviceWorker?.ready.then(reg=>reg.active?.postMessage({type:'CHECK_ALERTS',alerts:S.alerts}));renderTab('alerts');}
 function removeAlert(id){S.alerts=S.alerts.filter(a=>a.id!==id);saveAlerts();renderTab('alerts');}
 function checkAlerts(){if(!S.price.usd)return;let changed=false;S.alerts=S.alerts.map(a=>{if(a.triggered)return a;const p=a.currency==='usd'?S.price.usd:S.price.eur,hit=a.condition==='above'?p>=a.targetPrice:p<=a.targetPrice;if(hit){const sym=a.currency==='usd'?'$':'€';showNotif('⚡ Alerta SatsFlow',`BTC ha ${a.condition==='above'?'subido sobre':'bajado de'} ${sym}${a.targetPrice.toLocaleString()} — $${S.price.usd.toLocaleString()}`);changed=true;return{...a,triggered:true};}return a;});if(changed){saveAlerts();if(S.currentTab==='alerts')renderTab('alerts');}}
+
+
+/* ══════ CORRELACIÓN ══════ */
+async function fetchCorr(){
+  try{
+    const days=parseInt(S.corrPeriod)||30;
+    const interval=days<=30?'1d':days<=90?'1d':'1w';
+    const limit=days<=30?30:days<=90?90:52;
+
+    // BTC desde Binance (ya tenemos precio, pero necesitamos serie separada)
+    const[btcR,spyR,goldR]=await Promise.all([
+      fetch(`https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=${interval}&limit=${limit}`),
+      // S&P500 via ETF SPY en Binance no existe — usamos Yahoo Finance proxy
+      fetch(`https://query1.finance.yahoo.com/v8/finance/chart/SPY?interval=${interval==='1w'?'1wk':'1d'}&range=${days<=30?'1mo':days<=90?'3mo':'1y'}`),
+      fetch(`https://query1.finance.yahoo.com/v8/finance/chart/GLD?interval=${interval==='1w'?'1wk':'1d'}&range=${days<=30?'1mo':days<=90?'3mo':'1y'}`)
+    ]);
+
+    const btcJ=await btcR.json();
+    const spyJ=await spyR.json();
+    const goldJ=await goldR.json();
+
+    // Procesar BTC
+    const btcPrices=btcJ.map(k=>parseFloat(k[4]));
+
+    // Procesar SPY
+    const spyResult=spyJ.result?.[0];
+    const spyPrices=(spyResult?.indicators?.quote?.[0]?.close||[]).filter(v=>v!=null);
+    const spyTs=(spyResult?.timestamp||[]);
+
+    // Procesar GLD (Oro ETF)
+    const goldResult=goldJ.result?.[0];
+    const goldPrices=(goldResult?.indicators?.quote?.[0]?.close||[]).filter(v=>v!=null);
+
+    // Normalizar a base 100 (primer valor = 100)
+    const normalize=arr=>{
+      const base=arr[0]||1;
+      return arr.map(v=>(v/base)*100);
+    };
+
+    // Alinear longitudes
+    const minLen=Math.min(btcPrices.length,spyPrices.length,goldPrices.length);
+    if(minLen<5){S.corrData=null;return;}
+
+    const btcN=normalize(btcPrices.slice(-minLen));
+    const spyN=normalize(spyPrices.slice(-minLen));
+    const goldN=normalize(goldPrices.slice(-minLen));
+
+    // Correlación de Pearson
+    const pearson=(a,b)=>{
+      const n=a.length;
+      const ma=a.reduce((s,v)=>s+v,0)/n;
+      const mb=b.reduce((s,v)=>s+v,0)/n;
+      const num=a.reduce((s,v,i)=>s+(v-ma)*(b[i]-mb),0);
+      const da=Math.sqrt(a.reduce((s,v)=>s+(v-ma)**2,0));
+      const db=Math.sqrt(b.reduce((s,v)=>s+(v-mb)**2,0));
+      return(da&&db)?num/(da*db):0;
+    };
+
+    // Correlaciones móviles (últimos 14 puntos)
+    const w=Math.min(14,minLen);
+    const rollCorr=(a,b)=>a.map((_,i)=>i<w-1?null:pearson(a.slice(i-w+1,i+1),b.slice(i-w+1,i+1)));
+
+    S.corrData={
+      btc:btcN, spy:spyN, gold:goldN,
+      corrBtcSpy:pearson(btcN,spyN),
+      corrBtcGold:pearson(btcN,goldN),
+      corrSpyGold:pearson(spyN,goldN),
+      rollBtcSpy:rollCorr(btcN,spyN),
+      rollBtcGold:rollCorr(btcN,goldN),
+      len:minLen
+    };
+  }catch(e){console.error('fetchCorr',e);S.corrData=null;}
+}
+
+function renderCorr(){
+  if(!S.corrData&&S.corrLoading){
+    return`<div class="card" style="text-align:center;padding:40px;color:var(--text3)"><span class="spin">⏳</span><br><br>Cargando datos...</div>`;
+  }
+  if(!S.corrData){
+    return`<div class="space-y">
+      <div class="card" style="text-align:center;padding:30px">
+        <div style="font-size:36px;margin-bottom:12px">📈</div>
+        <div style="font-weight:700;margin-bottom:8px">Correlación BTC vs Mercados</div>
+        <div style="font-size:13px;color:var(--text3);margin-bottom:20px">Compara el rendimiento de Bitcoin con el S&P500 y el Oro</div>
+        <button class="btn-orange" onclick="loadCorr()">Cargar datos</button>
+      </div>
+    </div>`;
+  }
+
+  const d=S.corrData;
+
+  // Función para color e icono de correlación
+  const corrInfo=r=>{
+    const v=parseFloat(r.toFixed(2));
+    if(v>=0.7) return{color:'#ef4444',label:'Alta positiva',icon:'🔴',desc:'BTC se mueve igual que este activo'};
+    if(v>=0.3) return{color:'#f97316',label:'Moderada',icon:'🟠',desc:'Cierta correlación positiva'};
+    if(v>=-0.3) return{color:'#eab308',label:'Baja / Nula',icon:'🟡',desc:'Movimientos independientes'};
+    if(v>=-0.7) return{color:'#84cc16',label:'Inversa moderada',icon:'🟢',desc:'Tienden a moverse en sentidos opuestos'};
+    return{color:'#10b981',label:'Inversa fuerte',icon:'💚',desc:'BTC actúa como cobertura'};
+  };
+
+  const btcSpy=corrInfo(d.corrBtcSpy);
+  const btcGold=corrInfo(d.corrBtcGold);
+
+  // SVG gráfico normalizado base 100
+  const chartSVG=(()=>{
+    const W=300,H=120,P=8;
+    const allVals=[...d.btc,...d.spy,...d.gold];
+    const min=Math.min(...allVals)-2, max=Math.max(...allVals)+2, range=max-min||1;
+    const toX=i=>P+(i/(d.len-1))*(W-P*2);
+    const toY=v=>P+(1-(v-min)/range)*(H-P*2);
+    const line=(arr,color)=>{
+      const pts=arr.map((v,i)=>`${toX(i)},${toY(v)}`).join(' ');
+      return`<polyline points="${pts}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round"/>`;
+    };
+    // Línea base 100
+    const y100=toY(100);
+    return`<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:130px" preserveAspectRatio="none">
+      <line x1="${P}" y1="${y100}" x2="${W-P}" y2="${y100}" stroke="var(--border)" stroke-dasharray="4 3" stroke-width="1"/>
+      ${line(d.gold,'#eab308')}
+      ${line(d.spy,'#3b82f6')}
+      ${line(d.btc,'#f97316')}
+    </svg>`;
+  })();
+
+  // SVG correlación móvil BTC-SPY
+  const rollSVG=(arr,color)=>{
+    const valid=arr.filter(v=>v!=null);
+    if(!valid.length) return '';
+    const W=300,H=80,P=6;
+    const min=-1,max=1,range=2;
+    const toX=i=>P+(i/(arr.length-1))*(W-P*2);
+    const toY=v=>P+(1-(v-min)/range)*(H-P*2);
+    const y0=toY(0);
+    const pts=arr.map((v,i)=>v!=null?`${toX(i)},${toY(v)}`:null).filter(Boolean).join(' ');
+    return`<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:90px" preserveAspectRatio="none">
+      <rect x="${P}" y="${P}" width="${W-P*2}" height="${H-P*2}" fill="var(--bg)" rx="4"/>
+      <line x1="${P}" y1="${y0}" x2="${W-P}" y2="${y0}" stroke="var(--border)" stroke-dasharray="3 2" stroke-width="1"/>
+      <line x1="${P}" y1="${toY(0.7)}" x2="${W-P}" y2="${toY(0.7)}" stroke="#ef4444" stroke-dasharray="2 2" stroke-width="1" opacity=".5"/>
+      <line x1="${P}" y1="${toY(-0.7)}" x2="${W-P}" y2="${toY(-0.7)}" stroke="#10b981" stroke-dasharray="2 2" stroke-width="1" opacity=".5"/>
+      <polyline points="${pts}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round"/>
+    </svg>`;
+  };
+
+  const periods=['30','90','365'];
+
+  return`<div class="space-y">
+  <!-- Header -->
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <div style="font-size:15px;font-weight:700">📈 Correlación de activos</div>
+      <div style="display:flex;gap:4px">
+        ${periods.map(p=>`<button style="padding:4px 8px;border-radius:7px;border:1px solid var(--border);background:${S.corrPeriod===p?'#f97316':'var(--bg2)'};color:${S.corrPeriod===p?'#fff':'var(--text2)'};font-size:11px" onclick="setCorrPeriod('${p}')">${p==='365'?'1A':p+'D'}</button>`).join('')}
+      </div>
+    </div>
+    <!-- Leyenda -->
+    <div style="display:flex;gap:14px;margin-bottom:10px;font-size:11px">
+      <span style="color:#f97316;font-weight:600">● BTC</span>
+      <span style="color:#3b82f6;font-weight:600">● S&P500</span>
+      <span style="color:#eab308;font-weight:600">● Oro</span>
+    </div>
+    <!-- Gráfico normalizado base 100 -->
+    ${chartSVG}
+    <div style="font-size:10px;color:var(--text3);text-align:center;margin-top:4px">Rendimiento normalizado (base 100 = inicio del periodo)</div>
+  </div>
+
+  <!-- Correlaciones -->
+  <div class="card">
+    <div style="font-size:14px;font-weight:700;margin-bottom:12px">Coeficiente de Pearson</div>
+    <!-- BTC vs S&P500 -->
+    <div style="margin-bottom:14px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <div style="font-size:13px;font-weight:600">BTC <span style="color:var(--text3)">vs</span> S&P500</div>
+        <div style="display:flex;align-items:center;gap:6px">
+          <span style="font-size:16px">${btcSpy.icon}</span>
+          <span style="font-size:18px;font-weight:800;color:${btcSpy.color}">${d.corrBtcSpy.toFixed(2)}</span>
+        </div>
+      </div>
+      <div style="background:var(--bg3);border-radius:999px;height:6px;overflow:hidden;margin-bottom:4px">
+        <div style="height:100%;border-radius:999px;background:${btcSpy.color};width:${Math.abs(d.corrBtcSpy)*100}%;margin-left:${d.corrBtcSpy<0?'auto':'0'}"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text3)">
+        <span>-1 inversa</span>
+        <span style="color:${btcSpy.color};font-weight:600">${btcSpy.label}</span>
+        <span>+1 directa</span>
+      </div>
+      <div style="font-size:11px;color:var(--text2);margin-top:4px">💡 ${btcSpy.desc}</div>
+    </div>
+    <!-- BTC vs Oro -->
+    <div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <div style="font-size:13px;font-weight:600">BTC <span style="color:var(--text3)">vs</span> Oro</div>
+        <div style="display:flex;align-items:center;gap:6px">
+          <span style="font-size:16px">${btcGold.icon}</span>
+          <span style="font-size:18px;font-weight:800;color:${btcGold.color}">${d.corrBtcGold.toFixed(2)}</span>
+        </div>
+      </div>
+      <div style="background:var(--bg3);border-radius:999px;height:6px;overflow:hidden;margin-bottom:4px">
+        <div style="height:100%;border-radius:999px;background:${btcGold.color};width:${Math.abs(d.corrBtcGold)*100}%;margin-left:${d.corrBtcGold<0?'auto':'0'}"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text3)">
+        <span>-1 inversa</span>
+        <span style="color:${btcGold.color};font-weight:600">${btcGold.label}</span>
+        <span>+1 directa</span>
+      </div>
+      <div style="font-size:11px;color:var(--text2);margin-top:4px">💡 ${btcGold.desc}</div>
+    </div>
+  </div>
+
+  <!-- Correlación móvil -->
+  <div class="card">
+    <div style="font-size:14px;font-weight:700;margin-bottom:4px">Correlación móvil (14 períodos)</div>
+    <div style="font-size:11px;color:var(--text3);margin-bottom:10px">Evolución de la correlación en el tiempo</div>
+    <div style="font-size:12px;color:var(--text2);margin-bottom:4px;font-weight:600">🔵 BTC vs S&P500</div>
+    ${rollSVG(d.rollBtcSpy,'#3b82f6')}
+    <div style="font-size:12px;color:var(--text2);margin-top:10px;margin-bottom:4px;font-weight:600">🟡 BTC vs Oro</div>
+    ${rollSVG(d.rollBtcGold,'#eab308')}
+    <div style="font-size:10px;color:var(--text3);margin-top:6px">Líneas punteadas: umbral ±0.7 · Zona roja = correlación alta (activo de riesgo) · Zona verde = descorrelación (reserva de valor)</div>
+  </div>
+
+  <!-- Interpretación -->
+  <div class="card" style="background:rgba(249,115,22,.06);border-color:rgba(249,115,22,.3)">
+    <div style="font-size:13px;font-weight:700;margin-bottom:8px">🎓 ¿Cómo interpretar esto?</div>
+    <div style="font-size:12px;color:var(--text2);line-height:1.6">
+      <b style="color:var(--text)">Correlación alta con S&P500 (+0.7 a +1)</b> → Bitcoin se comporta como activo de riesgo. Sube y baja con las bolsas.<br><br>
+      <b style="color:var(--text)">Correlación baja o nula (±0.3)</b> → Bitcoin tiene movimiento propio, independiente del mercado.<br><br>
+      <b style="color:var(--text)">Correlación inversa con S&P500 y positiva con Oro</b> → Bitcoin actúa como reserva de valor, similar al oro.
+    </div>
+  </div>
+
+  <div style="font-size:10px;color:var(--text3);text-align:center">Datos: Binance (BTC) · Yahoo Finance (SPY, GLD) · No es un consejo financiero.</div>
+  <button class="btn-ghost" style="width:100%" onclick="loadCorr()">🔄 Actualizar datos</button>
+</div>`;
+}
+
+async function loadCorr(){
+  S.corrLoading=true;
+  renderTab('corr');
+  await fetchCorr();
+  S.corrLoading=false;
+  renderTab('corr');
+}
+
+function setCorrPeriod(p){
+  S.corrPeriod=p;
+  S.corrData=null;
+  loadCorr();
+}
 
 /* ══════ INIT ══════ */
 async function init(){
