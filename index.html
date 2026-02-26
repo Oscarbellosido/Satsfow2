@@ -113,6 +113,7 @@
     <div id="tab-news" class="tab-content fade" style="display:none"></div>
     <div id="tab-alerts" class="tab-content fade" style="display:none"></div>
     <div id="tab-corr" class="tab-content fade" style="display:none"></div>
+    <div id="tab-global" class="tab-content fade" style="display:none"></div>
   </div>
   <nav id="tabbar">
     <button class="tab-btn active" data-tab="home" onclick="switchTab('home')"><span class="tab-icon">🏠</span>Inicio</button>
@@ -123,13 +124,14 @@
     <button class="tab-btn" data-tab="news" onclick="switchTab('news')"><span class="tab-icon">📰</span>Noticias</button>
     <button class="tab-btn" data-tab="alerts" onclick="switchTab('alerts')"><span class="tab-icon">🔔</span>Alertas</button>
     <button class="tab-btn" data-tab="corr" onclick="switchTab('corr')"><span class="tab-icon">📈</span>Correlac.</button>
+    <button class="tab-btn" data-tab="global" onclick="switchTab('global')"><span class="tab-icon">🌍</span>Global</button>
   </nav>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 /* ══════ STATE ══════ */
-const S={price:{usd:0,eur:0},change24h:0,marketCap:0,history:[],ohlc:[],mempool:null,marketData:null,miningData:null,news:[],alerts:[],days:'30',chartType:'area',dark:localStorage.getItem('sf-theme')!=='light',notifPerm:window.Notification?.permission||'unsupported',atmLoaded:false,leafletMap:null,lastUpdated:null,feeLevel:'hour',txSize:250,currentTab:'home',corrData:null,corrPeriod:'30',dominanceHistory:[],rainbowData:null};
+const S={price:{usd:0,eur:0},change24h:0,marketCap:0,history:[],ohlc:[],mempool:null,marketData:null,miningData:null,news:[],alerts:[],days:'30',chartType:'area',dark:localStorage.getItem('sf-theme')!=='light',notifPerm:window.Notification?.permission||'unsupported',atmLoaded:false,leafletMap:null,lastUpdated:null,feeLevel:'hour',txSize:250,currentTab:'home',corrData:null,corrPeriod:'30',dominanceHistory:[],rainbowData:null,dominanceYearData:null};
 
 /* ══════ THEME ══════ */
 function applyTheme(){
@@ -493,7 +495,7 @@ function updateHeader(){
 /* ══════ RENDER TABS ══════ */
 function renderTab(tab){
   const el=document.getElementById('tab-'+tab);if(!el)return;
-  const map={home:renderHome,analysis:renderAnalysis,market:renderMarket,mempool:renderMempool,atm:renderATM,news:renderNews,alerts:renderAlerts,corr:renderCorr};
+  const map={home:renderHome,analysis:renderAnalysis,market:renderMarket,mempool:renderMempool,atm:renderATM,news:renderNews,alerts:renderAlerts,corr:renderCorr,global:renderGlobal};
   if(map[tab])el.innerHTML=map[tab]();
   if(tab==='atm'&&!S.atmLoaded)initATM();
 }
@@ -1249,6 +1251,262 @@ function setCorrPeriod(p){
   S.corrPeriod=p;
   S.corrData=null;
   loadCorr();
+}
+
+
+/* ══════ GLOBAL TAB ══════ */
+
+// Datos estáticos de adopción Bitcoin por país (actualizado 2024-2025)
+const COUNTRY_DATA=[
+  // Adoptado / Legal
+  {name:'El Salvador',code:'SV',lat:13.7,lng:-88.9,status:'legal',label:'Moneda de curso legal',color:'#10b981'},
+  {name:'República Centroafricana',code:'CF',lat:6.6,lng:20.9,status:'legal',label:'Moneda de curso legal',color:'#10b981'},
+  // ETF aprobados / muy favorable
+  {name:'EE.UU.',code:'US',lat:38,lng:-97,status:'etf',label:'ETF aprobados ✅',color:'#3b82f6'},
+  {name:'Canadá',code:'CA',lat:56,lng:-96,status:'etf',label:'ETF aprobados ✅',color:'#3b82f6'},
+  {name:'Brasil',code:'BR',lat:-10,lng:-55,status:'etf',label:'ETF aprobados ✅',color:'#3b82f6'},
+  {name:'Australia',code:'AU',lat:-25,lng:133,status:'etf',label:'ETF aprobados ✅',color:'#3b82f6'},
+  {name:'Hong Kong',code:'HK',lat:22.3,lng:114.2,status:'etf',label:'ETF aprobados ✅',color:'#3b82f6'},
+  // Regulado / favorable
+  {name:'Alemania',code:'DE',lat:51,lng:10,status:'regulated',label:'Regulado y legal',color:'#84cc16'},
+  {name:'Reino Unido',code:'GB',lat:54,lng:-2,status:'regulated',label:'Regulado y legal',color:'#84cc16'},
+  {name:'Suiza',code:'CH',lat:47,lng:8,status:'regulated',label:'Crypto Valley',color:'#84cc16'},
+  {name:'Portugal',code:'PT',lat:39.5,lng:-8,status:'regulated',label:'Sin impuestos largo plazo',color:'#84cc16'},
+  {name:'Singapur',code:'SG',lat:1.3,lng:103.8,status:'regulated',label:'Hub cripto asiático',color:'#84cc16'},
+  {name:'Japón',code:'JP',lat:36,lng:138,status:'regulated',label:'Regulado desde 2017',color:'#84cc16'},
+  {name:'Suecia',code:'SE',lat:60,lng:18,status:'regulated',label:'Regulado y legal',color:'#84cc16'},
+  {name:'Noruega',code:'NO',lat:65,lng:13,status:'regulated',label:'Regulado y legal',color:'#84cc16'},
+  {name:'España',code:'ES',lat:40,lng:-4,status:'regulated',label:'Regulado, declarar en IRPF',color:'#84cc16'},
+  {name:'Francia',code:'FR',lat:46,lng:2,status:'regulated',label:'Regulado, gravado',color:'#84cc16'},
+  {name:'Países Bajos',code:'NL',lat:52.3,lng:5.3,status:'regulated',label:'Regulado y legal',color:'#84cc16'},
+  {name:'México',code:'MX',lat:23,lng:-102,status:'regulated',label:'Legal pero no moneda oficial',color:'#84cc16'},
+  {name:'Argentina',code:'AR',lat:-34,lng:-64,status:'regulated',label:'Legal, alta adopción',color:'#84cc16'},
+  // Restrictivo / gris
+  {name:'India',code:'IN',lat:20,lng:77,status:'restricted',label:'Legal pero gravado 30%',color:'#eab308'},
+  {name:'Indonesia',code:'ID',lat:-2,lng:118,status:'restricted',label:'No como moneda, sí como activo',color:'#eab308'},
+  {name:'Turquía',code:'TR',lat:39,lng:35,status:'restricted',label:'Prohibido como pago',color:'#eab308'},
+  {name:'Rusia',code:'RU',lat:60,lng:90,status:'restricted',label:'Regulación ambigua',color:'#eab308'},
+  // Prohibido
+  {name:'China',code:'CN',lat:35,lng:105,status:'banned',label:'Completamente prohibido',color:'#ef4444'},
+  {name:'Egipto',code:'EG',lat:26,lng:30,status:'banned',label:'Prohibido por fatwa religiosa',color:'#ef4444'},
+  {name:'Qatar',code:'QA',lat:25.3,lng:51.2,status:'banned',label:'Prohibido',color:'#ef4444'},
+  {name:'Bolivia',code:'BO',lat:-17,lng:-65,status:'banned',label:'Prohibido',color:'#ef4444'},
+  {name:'Bangladesh',code:'BD',lat:23.7,lng:90.4,status:'banned',label:'Prohibido',color:'#ef4444'},
+  {name:'Argelia',code:'DZ',lat:28,lng:3,status:'banned',label:'Prohibido',color:'#ef4444'},
+  {name:'Nepal',code:'NP',lat:28,lng:84,status:'banned',label:'Prohibido',color:'#ef4444'},
+];
+
+// Eventos próximos Bitcoin / Macro
+const EVENTS=[
+  {date:'2025-03-19',title:'Reunión Fed (FOMC)',icon:'🏦',type:'macro',desc:'Decisión de tipos de interés. Impacto directo en activos de riesgo incluyendo BTC.'},
+  {date:'2025-04-30',title:'Reunión Fed (FOMC)',icon:'🏦',type:'macro',desc:'Segunda reunión del año. Mercados atentos a señales de bajada de tipos.'},
+  {date:'2025-03-31',title:'Informe PCE EE.UU.',icon:'📊',type:'macro',desc:'Índice de precios favorito de la Fed. Dato clave para política monetaria.'},
+  {date:'2025-05-01',title:'Halving Litecoin',icon:'⚡',type:'crypto',desc:'Reducción de recompensa por bloque en LTC. Históricamente precede movimientos en BTC.'},
+  {date:'2025-06-18',title:'Reunión Fed (FOMC)',icon:'🏦',type:'macro',desc:'Reunión de verano. Clave si hay recesión o no en EE.UU.'},
+  {date:'2025-07-01',title:'Revisión ETF Ethereum',icon:'📋',type:'crypto',desc:'SEC revisa ampliaciones de ETF Ethereum spot. Puede afectar al mercado cripto.'},
+  {date:'2025-09-17',title:'Reunión Fed (FOMC)',icon:'🏦',type:'macro',desc:'Reunión de otoño. Posible pivot de política monetaria.'},
+  {date:'2025-10-15',title:'Conferencia Bitcoin Amsterdam',icon:'🎪',type:'event',desc:'Evento europeo más importante de Bitcoin. Suele traer anuncios relevantes.'},
+  {date:'2025-11-05',title:'Reunión Fed (FOMC)',icon:'🏦',type:'macro',desc:'Reunión de noviembre. Mercados muy atentos tras verano.'},
+  {date:'2026-04-xx',title:'Halving Bitcoin (estimado)',icon:'₿',type:'btc',desc:'Próximo halving aproximado. El subsidio por bloque pasará de 3.125 a 1.5625 BTC.'},
+];
+
+async function fetchDominanceHistory(){
+  // CoinGecko free — dominancia histórica BTC 1 año
+  try{
+    const r=await fetch('https://api.coingecko.com/api/v3/global/market_cap_chart?days=365',{signal:AbortSignal.timeout(10000)});
+    if(!r.ok)throw new Error('CoinGecko error');
+    const j=await r.json();
+    // market_cap_chart no tiene dominance directo, usamos el endpoint de global
+    // Alternativa: calcular desde market_cap BTC / total
+    const btcCaps=j.market_cap_chart?.market_cap||[];
+    if(btcCaps.length>0){
+      // Necesitamos total market cap — usar Binance para BTC y estimar total
+      // Simplificación: usamos datos de alternative.me o CoinGecko global
+      S.dominanceYearData=btcCaps.map(([ts,val])=>({ts,val}));
+    }
+  }catch(e){
+    // Fallback: usar datos hardcoded de referencia histórica 2024
+    S.dominanceYearData='fallback';
+    console.warn('dominanceHistory fallback',e);
+  }
+}
+
+function renderGlobal(){
+  const today=new Date();
+
+  // ── Próximos eventos ──
+  const upcomingEvents=EVENTS
+    .map(e=>({...e,dateObj:new Date(e.date.replace('xx','01'))}))
+    .filter(e=>e.dateObj>=new Date(today.getTime()-7*24*60*60*1000))
+    .sort((a,b)=>a.dateObj-b.dateObj)
+    .slice(0,8);
+
+  const typeColors={macro:'#3b82f6',crypto:'#f97316',btc:'#f97316',event:'#8b5cf6'};
+  const daysUntil=d=>{
+    const diff=Math.round((new Date(d.date.replace('xx','01'))-today)/(1000*60*60*24));
+    if(diff<0)return'<span style="color:var(--text3)">Pasado</span>';
+    if(diff===0)return'<span style="color:#ef4444;font-weight:700">HOY</span>';
+    if(diff<=7)return'<span style="color:#f97316;font-weight:700">En '+diff+' días</span>';
+    return'<span style="color:var(--text2)">En '+diff+' días</span>';
+  };
+
+  const eventsHTML=upcomingEvents.map(e=>{
+    const tc=typeColors[e.type]||'#94a3b8';
+    return '<div style="display:flex;gap:12px;padding:10px 0;border-bottom:1px solid var(--border)">'
+      +'<div style="font-size:22px;flex-shrink:0">'+e.icon+'</div>'
+      +'<div style="flex:1">'
+      +'<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">'
+      +'<div style="font-size:13px;font-weight:600">'+e.title+'</div>'
+      +daysUntil(e)
+      +'</div>'
+      +'<div style="font-size:10px;color:'+tc+';font-weight:600;margin:2px 0">'+e.date.replace('xx','?')+'</div>'
+      +'<div style="font-size:11px;color:var(--text2);line-height:1.4">'+e.desc+'</div>'
+      +'</div></div>';
+  }).join('');
+
+  // ── Mapa mundial SVG (proyección simplificada) ──
+  // Usamos un mapa SVG world simplificado con puntos sobre países
+  const mapW=340,mapH=180;
+
+  // Convertir lat/lng a coordenadas SVG (proyección equirectangular)
+  const toSVG=(lat,lng)=>{
+    const x=((lng+180)/360)*mapW;
+    const y=((90-lat)/180)*mapH;
+    return{x,y};
+  };
+
+  const legend=[
+    {color:'#10b981',label:'Curso legal'},
+    {color:'#3b82f6',label:'ETF aprobados'},
+    {color:'#84cc16',label:'Regulado'},
+    {color:'#eab308',label:'Restrictivo'},
+    {color:'#ef4444',label:'Prohibido'},
+  ];
+
+  const dots=COUNTRY_DATA.map(country=>{
+    const{x,y}=toSVG(country.lat,country.lng);
+    // Tooltip via title
+    return '<circle cx="'+x.toFixed(1)+'" cy="'+y.toFixed(1)+'" r="5" fill="'+country.color+'" opacity="0.85" stroke="white" stroke-width="0.8">'
+      +'<title>'+country.name+': '+country.label+'</title>'
+      +'</circle>';
+  }).join('');
+
+  const mapSVG='<svg viewBox="0 0 '+mapW+' '+mapH+'" style="width:100%;height:auto;background:#1e293b;border-radius:10px">'
+    // Fondo oceano
+    +'<rect width="'+mapW+'" height="'+mapH+'" fill="#1e293b" rx="10"/>'
+    // Grid de referencia sutil
+    +'<line x1="'+mapW/2+'" y1="0" x2="'+mapW/2+'" y2="'+mapH+'" stroke="#334155" stroke-width="0.5"/>'
+    +'<line x1="0" y1="'+mapH/2+'" x2="'+mapW+'" y2="'+mapH/2+'" stroke="#334155" stroke-width="0.5"/>'
+    // Ecuador y meridiano cero
+    +dots
+    +'</svg>';
+
+  // Lista de países ordenada por status
+  const statusOrder={legal:0,etf:1,regulated:2,restricted:3,banned:4};
+  const countriesByStatus={};
+  COUNTRY_DATA.forEach(c=>{
+    if(!countriesByStatus[c.status])countriesByStatus[c.status]=[];
+    countriesByStatus[c.status].push(c);
+  });
+
+  const statusLabels={legal:'🟢 Curso Legal',etf:'🔵 ETF Aprobados',regulated:'🟡 Regulado',restricted:'🟠 Restrictivo',banned:'🔴 Prohibido'};
+
+  const countryListHTML=Object.entries(statusLabels).map(([status,label])=>{
+    const countries=countriesByStatus[status]||[];
+    if(!countries.length)return'';
+    return '<div style="margin-bottom:14px">'
+      +'<div style="font-size:11px;font-weight:700;margin-bottom:6px;color:var(--text2)">'+label+' ('+countries.length+')</div>'
+      +'<div style="display:flex;flex-wrap:wrap;gap:4px">'
+      +countries.map(c=>'<span style="font-size:11px;background:'+c.color+'22;border:1px solid '+c.color+'55;color:'+c.color+';padding:2px 8px;border-radius:999px">'+c.name+'</span>').join('')
+      +'</div></div>';
+  }).join('');
+
+  // ── Dominancia histórica ──
+  // Datos reales aproximados de dominancia BTC mensual (2020-2025)
+  const domHistory=[
+    {m:'Ene 20',v:66},{m:'Mar 20',v:64},{m:'May 20',v:67},{m:'Jul 20',v:62},
+    {m:'Sep 20',v:58},{m:'Nov 20',v:62},{m:'Ene 21',v:70},{m:'Mar 21',v:60},
+    {m:'May 21',v:42},{m:'Jul 21',v:46},{m:'Sep 21',v:43},{m:'Nov 21',v:42},
+    {m:'Ene 22',v:40},{m:'Mar 22',v:43},{m:'May 22',v:46},{m:'Jul 22',v:42},
+    {m:'Sep 22',v:40},{m:'Nov 22',v:38},{m:'Ene 23',v:42},{m:'Mar 23',v:45},
+    {m:'May 23',v:48},{m:'Jul 23',v:50},{m:'Sep 23',v:49},{m:'Nov 23',v:54},
+    {m:'Ene 24',v:52},{m:'Mar 24',v:54},{m:'May 24',v:56},{m:'Jul 24',v:57},
+    {m:'Sep 24',v:56},{m:'Nov 24',v:61},{m:'Ene 25',v:59},{m:'Feb 25',v:S.marketData?.dominance?.btc?parseFloat(S.marketData.dominance.btc):58},
+  ];
+
+  const dW=320,dH=100,dP=8;
+  const dVals=domHistory.map(d=>d.v);
+  const dMin=Math.min(...dVals)-2,dMax=Math.max(...dVals)+2,dRange=dMax-dMin;
+  const dX=i=>dP+(i/(domHistory.length-1))*(dW-dP*2);
+  const dY=v=>dP+(1-(v-dMin)/dRange)*(dH-dP*2);
+  const dPts=domHistory.map((d,i)=>dX(i)+','+dY(d.v)).join(' ');
+  const lastD=domHistory[domHistory.length-1];
+
+  // Área bajo la curva
+  const areaPath='M '+dX(0)+','+dY(domHistory[0].v)+' '
+    +domHistory.map((d,i)=>dX(i)+','+dY(d.v)).join(' ')
+    +' L '+dX(domHistory.length-1)+','+dH+' L '+dX(0)+','+dH+' Z';
+
+  const domSVG='<svg viewBox="0 0 '+dW+' '+dH+'" style="width:100%;height:110px" preserveAspectRatio="none">'
+    +'<defs><linearGradient id="domGrad" x1="0" y1="0" x2="0" y2="1">'
+    +'<stop offset="0%" stop-color="#f97316" stop-opacity="0.3"/>'
+    +'<stop offset="100%" stop-color="#f97316" stop-opacity="0.02"/>'
+    +'</linearGradient></defs>'
+    +'<path d="'+areaPath+'" fill="url(#domGrad)"/>'
+    // Líneas de referencia 50% y 60%
+    +'<line x1="'+dP+'" y1="'+dY(50)+'" x2="'+(dW-dP)+'" y2="'+dY(50)+'" stroke="#334155" stroke-dasharray="4 3" stroke-width="1"/>'
+    +'<line x1="'+dP+'" y1="'+dY(60)+'" x2="'+(dW-dP)+'" y2="'+dY(60)+'" stroke="#334155" stroke-dasharray="4 3" stroke-width="1"/>'
+    +'<text x="'+(dW-dP+2)+'" y="'+(dY(50)+3)+'" fill="#475569" font-size="7">50%</text>'
+    +'<text x="'+(dW-dP+2)+'" y="'+(dY(60)+3)+'" fill="#475569" font-size="7">60%</text>'
+    // Halvings marcados
+    +'<line x1="'+dX(4)+'" y1="'+dP+'" x2="'+dX(4)+'" y2="'+(dH-dP)+'" stroke="#f97316" stroke-width="1" opacity="0.4"/>'
+    +'<text x="'+dX(4)+'" y="'+(dP+8)+'" fill="#f97316" font-size="6" text-anchor="middle">Halving</text>'
+    +'<polyline points="'+dPts+'" fill="none" stroke="#f97316" stroke-width="2" stroke-linejoin="round"/>'
+    +'<circle cx="'+dX(domHistory.length-1)+'" cy="'+dY(lastD.v)+'" r="3.5" fill="#f97316"/>'
+    +'</svg>';
+
+  // Etiquetas eje X
+  const xLabels=[0,8,16,24,31].map(i=>{
+    const d=domHistory[Math.min(i,domHistory.length-1)];
+    return '<span style="font-size:9px;color:var(--text3)">'+d.m+'</span>';
+  });
+
+  return '<div class="space-y">'
+
+    // PRÓXIMOS EVENTOS
+    +'<div class="card">'
+    +'<div style="font-size:15px;font-weight:700;margin-bottom:4px">📅 Próximos eventos</div>'
+    +'<div style="font-size:11px;color:var(--text3);margin-bottom:12px">Eventos macro y crypto que impactan a Bitcoin</div>'
+    +eventsHTML
+    +'</div>'
+
+    // DOMINANCIA HISTÓRICA
+    +'<div class="card">'
+    +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">'
+    +'<div style="font-size:15px;font-weight:700">🟠 Dominancia BTC histórica</div>'
+    +'<div style="font-size:20px;font-weight:800;color:#f97316">'+(S.marketData?.dominance?.btc||'—')+'%</div>'
+    +'</div>'
+    +'<div style="font-size:11px;color:var(--text3);margin-bottom:10px">2020 – hoy · Con marcadores de halving</div>'
+    +domSVG
+    +'<div style="display:flex;justify-content:space-between;padding:0 '+dP+'px;margin-top:2px">'
+    +xLabels.join('')
+    +'</div>'
+    +'<div style="font-size:10px;color:var(--text3);margin-top:8px">Por encima del 50%: Bitcoin dominante. Por encima del 60%: mercado en acumulación / bear market altcoins.</div>'
+    +'</div>'
+
+    // MAPA MUNDIAL
+    +'<div class="card">'
+    +'<div style="font-size:15px;font-weight:700;margin-bottom:4px">🗺️ Mapa de adopción Bitcoin</div>'
+    +'<div style="font-size:11px;color:var(--text3);margin-bottom:10px">Estado legal por país — toca los puntos para ver detalles</div>'
+    +mapSVG
+    +'<div style="display:flex;flex-wrap:wrap;gap:6px;margin:10px 0">'
+    +legend.map(l=>'<div style="display:flex;align-items:center;gap:4px"><div style="width:8px;height:8px;border-radius:50%;background:'+l.color+'"></div><span style="font-size:10px;color:var(--text2)">'+l.label+'</span></div>').join('')
+    +'</div>'
+    +countryListHTML
+    +'<div style="font-size:10px;color:var(--text3);margin-top:4px">Fuentes: Library of Congress, CoinDesk, Bitcoin.org · Datos 2024-2025</div>'
+    +'</div>'
+
+    +'</div>';
 }
 
 /* ══════ INIT ══════ */
