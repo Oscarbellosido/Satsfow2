@@ -323,61 +323,100 @@ async function fetchMining(){
 }
 
 function isBitcoinNews(title){
-  const t=title.toLowerCase();
-  // DEBE contener al menos una palabra clave de Bitcoin
-  const btcKeywords=['bitcoin','btc','satoshi','sats','lightning','halving','mempool','proof of work','nakamoto','ordinals','taproot','segwit'];
-  const hasBtc=btcKeywords.some(k=>t.includes(k));
-  if(!hasBtc)return false;
-  // Excluir si habla de otra crypto como protagonista sin mencionar Bitcoin
-  const altOnly=['ethereum ','eth ','solana','xrp','ripple','cardano','dogecoin','doge ','shiba','bnb ','polygon','avalanche','polkadot','litecoin','tron ','pepe '];
-  const hasAlt=altOnly.some(k=>t.includes(k));
-  if(hasAlt&&!t.includes('bitcoin')&&!t.includes('btc'))return false;
-  return true;
+  const t=(title||'').toLowerCase();
+  const btcKeywords=['bitcoin','btc','satoshi','sats','lightning','halving','mempool','nakamoto','ordinals','taproot','segwit','cripto','blockchain'];
+  return btcKeywords.some(k=>t.includes(k));
+}
+
+async function tryFetchRSS(url){
+  // Intenta con varios proxies en cascada
+  const proxies=[
+    'https://api.allorigins.win/get?url=',
+    'https://api.allorigins.win/raw?url=',
+    'https://corsproxy.io/?',
+  ];
+  for(const proxy of proxies){
+    try{
+      const r=await fetch(proxy+encodeURIComponent(url),{signal:AbortSignal.timeout(8000)});
+      if(!r.ok)continue;
+      let text='';
+      if(proxy.includes('allorigins.win/get')){
+        const j=await r.json();
+        text=j.contents||'';
+      } else {
+        text=await r.text();
+      }
+      if(text.includes('<item'))return text;
+    }catch(e){continue;}
+  }
+  return '';
+}
+
+function parseRSS(xml,source){
+  const items=xml.match(/<item[\s\S]*?<\/item>/g)||[];
+  const results=[];
+  items.forEach(item=>{
+    const title=(item.match(/<title><!\[CDATA\[([\s\S]*?)\]\]><\/title>/)||item.match(/<title>([^<]*)<\/title>/))?.[1]||'';
+    const link=(item.match(/<link>([^<]*)<\/link>/)||item.match(/<guid[^>]*>(https?[^<]+)<\/guid>/))?.[1]||'';
+    const pubDate=item.match(/<pubDate>([^<]*)<\/pubDate>/)?.[1]||'';
+    const clean=title.replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&#\d+;/g,'').replace(/<[^>]+>/g,'').trim();
+    if(clean&&link)results.push({id:link,title:clean,url:link,source,date:pubDate?new Date(pubDate):new Date()});
+  });
+  return results;
 }
 
 async function fetchNews(){
   const feeds=[
+    // Feeds específicos de Bitcoin en español
     {url:'https://es.cointelegraph.com/tags/bitcoin/rss',source:'CoinTelegraph ES'},
     {url:'https://www.criptonoticias.com/category/bitcoin/feed/',source:'CriptoNoticias'},
+    {url:'https://www.criptonoticias.com/feed/',source:'CriptoNoticias'},
+    {url:'https://es.cointelegraph.com/rss',source:'CoinTelegraph ES'},
     {url:'https://bitcoin.es/feed/',source:'Bitcoin.es'},
   ];
   const seen=new Set();
-  const results=[];
+  let results=[];
   for(const feed of feeds){
-    if(results.length>=15)break;
+    if(results.length>=12)break;
     try{
-      const proxyUrl='https://api.allorigins.win/get?url='+encodeURIComponent(feed.url);
-      const r=await fetch(proxyUrl,{signal:AbortSignal.timeout(8000)});
-      const j=await r.json();
-      const xml=j.contents||'';
-      const items=xml.match(/<item[^>]*>[\s\S]*?<\/item>/g)||[];
-      items.slice(0,10).forEach(item=>{
-        const title=(item.match(/<title><!\[CDATA\[(.*)\]\]><\/title>/)||item.match(/<title>(.*?)<\/title>/))?.[1]||'';
-        const link=(item.match(/<link>(.*?)<\/link>/)||item.match(/<guid[^>]*>(https?[^<]+)<\/guid>/))?.[1]||'#';
-        const pubDate=item.match(/<pubDate>(.*?)<\/pubDate>/)?.[1]||new Date().toUTCString();
-        const cleanTitle=title.replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&#\d+;/g,'').replace(/<[^>]+>/g,'').trim();
-        if(cleanTitle&&link!=='#'&&!seen.has(link)&&isBitcoinNews(cleanTitle)){
-          seen.add(link);
-          results.push({id:link,title:cleanTitle,url:link,source:feed.source,date:new Date(pubDate)});
+      const xml=await tryFetchRSS(feed.url);
+      if(!xml)continue;
+      const items=parseRSS(xml,feed.source);
+      items.forEach(item=>{
+        if(!seen.has(item.id)&&isBitcoinNews(item.title)){
+          seen.add(item.id);
+          results.push(item);
         }
       });
-    }catch(e){console.warn('feed',feed.source,e.message);}
+    }catch(e){console.warn('feed error',feed.source,e);}
   }
-  if(results.length===0){
+  // Fallback rss2json
+  if(results.length<3){
     try{
-      const url='https://api.rss2json.com/v1/api.json?rss_url='+encodeURIComponent('https://es.cointelegraph.com/tags/bitcoin/rss')+'&count=15';
-      const r=await fetch(url,{signal:AbortSignal.timeout(8000)});
-      const j=await r.json();
-      if(j.status==='ok'&&j.items?.length){
-        j.items.forEach(n=>{
-          if(isBitcoinNews(n.title))
-            results.push({id:n.guid||n.link,title:n.title,url:n.link,source:'CoinTelegraph ES',date:new Date(n.pubDate)});
-        });
+      const urls=[
+        'https://es.cointelegraph.com/tags/bitcoin/rss',
+        'https://www.criptonoticias.com/feed/',
+      ];
+      for(const rssUrl of urls){
+        if(results.length>=8)break;
+        const r=await fetch('https://api.rss2json.com/v1/api.json?rss_url='+encodeURIComponent(rssUrl)+'&count=10',{signal:AbortSignal.timeout(8000)});
+        const j=await r.json();
+        if(j.status==='ok'&&j.items?.length){
+          j.items.forEach(n=>{
+            if(n.title&&n.link&&!seen.has(n.link)&&isBitcoinNews(n.title)){
+              seen.add(n.link);
+              results.push({id:n.link,title:n.title,url:n.link,source:j.feed?.title||'Bitcoin News',date:new Date(n.pubDate)});
+            }
+          });
+        }
       }
-    }catch{}
+    }catch(e){console.warn('rss2json fallback',e);}
   }
-  if(results.length>0)S.news=results.sort((a,b)=>b.date-a.date).slice(0,15);
+  results=results.sort((a,b)=>b.date-a.date).slice(0,15);
+  if(results.length>0)S.news=results;
+  else if(S.news.length===0)S.news=[{id:'err',title:'No se pudieron cargar noticias. Inténtalo de nuevo.',url:'#',source:'Error',date:new Date()}];
 }
+
 
 /* ══════ TECHNICAL ANALYSIS ══════ */
 function calcEMA(p,k){const m=2/(k+1),e=[];p.forEach((v,i)=>{e.push(i===0?v:v*m+e[i-1]*(1-m));});return e;}
