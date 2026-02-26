@@ -322,51 +322,61 @@ async function fetchMining(){
   }catch(e){console.error('fetchMining',e);}
 }
 
+function isBitcoinNews(title){
+  const t=title.toLowerCase();
+  // DEBE contener al menos una palabra clave de Bitcoin
+  const btcKeywords=['bitcoin','btc','satoshi','sats','lightning','halving','mempool','proof of work','nakamoto','ordinals','taproot','segwit'];
+  const hasBtc=btcKeywords.some(k=>t.includes(k));
+  if(!hasBtc)return false;
+  // Excluir si habla de otra crypto como protagonista sin mencionar Bitcoin
+  const altOnly=['ethereum ','eth ','solana','xrp','ripple','cardano','dogecoin','doge ','shiba','bnb ','polygon','avalanche','polkadot','litecoin','tron ','pepe '];
+  const hasAlt=altOnly.some(k=>t.includes(k));
+  if(hasAlt&&!t.includes('bitcoin')&&!t.includes('btc'))return false;
+  return true;
+}
+
 async function fetchNews(){
-  // Fuentes RSS en español — probadas una a una con fallback
   const feeds=[
-    // CoinTelegraph España — feed directo
-    {url:'https://es.cointelegraph.com/rss',source:'CoinTelegraph ES'},
-    // Criptonoticias Venezuela/Global español
-    {url:'https://www.criptonoticias.com/feed/',source:'CriptoNoticias'},
-    // ElMundo Economía como fallback español general
-    {url:'https://feeds.elpais.com/mrss-s/pages/ep/site/elpais.com/section/economia/portada',source:'El País Economía'},
+    {url:'https://es.cointelegraph.com/tags/bitcoin/rss',source:'CoinTelegraph ES'},
+    {url:'https://www.criptonoticias.com/category/bitcoin/feed/',source:'CriptoNoticias'},
+    {url:'https://bitcoin.es/feed/',source:'Bitcoin.es'},
   ];
+  const seen=new Set();
   const results=[];
   for(const feed of feeds){
-    if(results.length>=8)break;
+    if(results.length>=15)break;
     try{
-      // Usamos allorigins como proxy CORS para feeds que bloquean
-      const proxyUrl=`https://api.allorigins.win/get?url=${encodeURIComponent(feed.url)}`;
-      const r=await fetch(proxyUrl,{signal:AbortSignal.timeout(6000)});
+      const proxyUrl='https://api.allorigins.win/get?url='+encodeURIComponent(feed.url);
+      const r=await fetch(proxyUrl,{signal:AbortSignal.timeout(8000)});
       const j=await r.json();
       const xml=j.contents||'';
-      // Parsear RSS manualmente
       const items=xml.match(/<item[^>]*>[\s\S]*?<\/item>/g)||[];
-      items.slice(0,6).forEach(item=>{
-        const title=(item.match(/<title><!\[CDATA\[(.*?)\]\]><\/title>/)||item.match(/<title>(.*?)<\/title>/))?.[1]||'Sin título';
+      items.slice(0,10).forEach(item=>{
+        const title=(item.match(/<title><!\[CDATA\[(.*)\]\]><\/title>/)||item.match(/<title>(.*?)<\/title>/))?.[1]||'';
         const link=(item.match(/<link>(.*?)<\/link>/)||item.match(/<guid[^>]*>(https?[^<]+)<\/guid>/))?.[1]||'#';
         const pubDate=item.match(/<pubDate>(.*?)<\/pubDate>/)?.[1]||new Date().toUTCString();
-        const cleanTitle=title.replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&#\d+;/g,'').trim();
-        if(cleanTitle&&link!=='#'){
+        const cleanTitle=title.replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&#\d+;/g,'').replace(/<[^>]+>/g,'').trim();
+        if(cleanTitle&&link!=='#'&&!seen.has(link)&&isBitcoinNews(cleanTitle)){
+          seen.add(link);
           results.push({id:link,title:cleanTitle,url:link,source:feed.source,date:new Date(pubDate)});
         }
       });
     }catch(e){console.warn('feed',feed.source,e.message);}
   }
-  // Fallback: CoinTelegraph ES directo via rss2json si allorigins falló
   if(results.length===0){
     try{
-      const r=await fetch('https://api.rss2json.com/v1/api.json?rss_url=https%3A%2F%2Fes.cointelegraph.com%2Frss&count=12',{signal:AbortSignal.timeout(8000)});
+      const url='https://api.rss2json.com/v1/api.json?rss_url='+encodeURIComponent('https://es.cointelegraph.com/tags/bitcoin/rss')+'&count=15';
+      const r=await fetch(url,{signal:AbortSignal.timeout(8000)});
       const j=await r.json();
       if(j.status==='ok'&&j.items?.length){
-        j.items.slice(0,10).forEach(n=>{
-          results.push({id:n.guid||n.link,title:n.title,url:n.link,source:'CoinTelegraph ES',date:new Date(n.pubDate)});
+        j.items.forEach(n=>{
+          if(isBitcoinNews(n.title))
+            results.push({id:n.guid||n.link,title:n.title,url:n.link,source:'CoinTelegraph ES',date:new Date(n.pubDate)});
         });
       }
     }catch{}
   }
-  S.news=results.sort((a,b)=>b.date-a.date).slice(0,12);
+  if(results.length>0)S.news=results.sort((a,b)=>b.date-a.date).slice(0,15);
 }
 
 /* ══════ TECHNICAL ANALYSIS ══════ */
