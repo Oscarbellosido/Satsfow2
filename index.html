@@ -500,7 +500,9 @@ function renderTab(tab){
 
 /* ══════ HOME ══════ */
 function renderHome(){
-  const pos=S.change24h>=0,pct=S.history.length>1?((S.history[S.history.length-1].price-S.history[0].price)/S.history[0].price*100).toFixed(2):'0.00';
+  const pos=S.change24h>=0;
+  // Si período es 24h usar el dato oficial de Binance para que coincida con el cuadro de abajo
+  const pct=S.days==='1'?S.change24h.toFixed(2):S.history.length>1?((S.history[S.history.length-1].price-S.history[0].price)/S.history[0].price*100).toFixed(2):'0.00';
   const pctColor=parseFloat(pct)>=0?'#10b981':'#ef4444';
   const upd=S.lastUpdated?S.lastUpdated.toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'}):'—';
   const chart=S.chartType==='area'?areaSVG(S.history):candleSVG(S.ohlc);
