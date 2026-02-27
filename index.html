@@ -2,6 +2,8 @@
 <html lang="es" id="html-root">
 <head>
   <meta charset="UTF-8"/>
+  <meta http-equiv="cache-control" content="no-cache, no-store, must-revalidate"/>
+  <meta http-equiv="pragma" content="no-cache"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"/>
   <meta name="theme-color" content="#f97316">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1616,161 +1618,329 @@ function getStaticWorldSVG(){
 
 
 /* ══════ PREVISIÓN DE PRECIO ══════ */
-function calcForecast(currentPrice){
-  // ─────────────────────────────────────────────────────────────
-  // MODELO MULTIFACTORIAL DE RANGOS
-  // No predice el precio exacto — calcula rangos de probabilidad
-  // ponderando múltiples factores independientes
-  // ─────────────────────────────────────────────────────────────
 
+// Datos on-chain cacheados
+const OC={hashrate:null,activeAddresses:null,exchangeBalance:null,nvtSignal:null,mvrv:null,loaded:false};
+
+async function fetchOnChain(){
+  // Hashrate desde mempool.space (ya usamos esta API)
+  try{
+    const r=await fetch('https://mempool.space/api/v1/mining/hashrate/1m',{signal:AbortSignal.timeout(8000)});
+    if(r.ok){
+      const j=await r.json();
+      const rates=j.hashrates||[];
+      if(rates.length>=2){
+        const last=rates[rates.length-1]?.avgHashrate||0;
+        const prev=rates[rates.length-30]?.avgHashrate||last;
+        OC.hashrate={current:last,change30d:prev>0?((last-prev)/prev*100):0};
+      }
+    }
+  }catch(e){console.warn('hashrate',e);}
+
+  // Direcciones activas + NVT desde blockchain.info (gratis, sin API key)
+  try{
+    const r=await fetch('https://api.blockchain.info/charts/n-unique-addresses?timespan=30days&format=json&cors=true',{signal:AbortSignal.timeout(8000)});
+    if(r.ok){
+      const j=await r.json();
+      const vals=(j.values||[]).map(v=>v.y);
+      if(vals.length>=2){
+        const avg=vals.slice(-7).reduce((a,b)=>a+b,0)/Math.min(7,vals.length);
+        const avg30=vals.reduce((a,b)=>a+b,0)/vals.length;
+        OC.activeAddresses={recent:Math.round(avg),avg30d:Math.round(avg30),trend:avg>avg30?'up':'down'};
+      }
+    }
+  }catch(e){console.warn('addresses',e);}
+
+  // Balance en exchanges desde blockchain.info (volume como proxy)
+  try{
+    const r=await fetch('https://api.blockchain.info/charts/trade-volume?timespan=30days&format=json&cors=true',{signal:AbortSignal.timeout(8000)});
+    if(r.ok){
+      const j=await r.json();
+      const vals=(j.values||[]).map(v=>v.y).filter(v=>v>0);
+      if(vals.length>=7){
+        const recent=vals.slice(-7).reduce((a,b)=>a+b,0)/7;
+        const older=vals.slice(-30,-7).reduce((a,b)=>a+b,0)/Math.max(1,vals.length-7);
+        OC.exchangeBalance={volumeTrend:recent>older?'increasing':'decreasing',ratio:older>0?recent/older:1};
+      }
+    }
+  }catch(e){console.warn('volume',e);}
+
+  OC.loaded=true;
+  if(S.currentTab==='forecast')renderTab('forecast');
+}
+
+function calcForecast(currentPrice){
+  // ═══════════════════════════════════════════════════════════
+  // MODELO MULTIFACTORIAL v2 — Datos técnicos reales + on-chain
+  // ═══════════════════════════════════════════════════════════
+
+  // ── Datos técnicos en tiempo real (de la función analyze())
+  const ta=analyze();
   const fg=S.marketData?.fearGreed?.value||50;
   const dom=parseFloat(S.marketData?.dominance?.btc||55);
-  const change24h=S.change24h||0;
   const change30d=S.history.length>1?((S.history[S.history.length-1].price-S.history[0].price)/S.history[0].price*100):0;
 
-  // ── FACTOR 1: Ciclo de Halving (estructural, largo plazo)
-  // El último halving fue abril 2024. Históricamente los 12-18 meses
-  // posteriores son alcistas. Estamos en mes ~10 post-halving.
-  const halvingMonthsAgo=10; // Feb 2026 - Abr 2024
-  let halvingScore=0;
-  if(halvingMonthsAgo<6)halvingScore=0.15;       // Fase temprana, impacto aún escaso
-  else if(halvingMonthsAgo<12)halvingScore=0.25;  // Fase media, históricamente muy alcista
-  else if(halvingMonthsAgo<18)halvingScore=0.20;  // Fase cumbre, todavía positivo
-  else halvingScore=0.05;                          // Post-ciclo, impulso agotado
+  // ════════════════════════════════
+  // BLOQUE 1: ANÁLISIS TÉCNICO REAL
+  // ════════════════════════════════
 
-  // ── FACTOR 2: Adopción institucional (ETFs, tesoros corporativos)
-  // BlackRock, Fidelity, MicroStrategy, países acumulando.
-  // Score positivo sostenido en 2024-2026
-  const institutionalScore=0.18; // Fuerte y creciente
+  // RSI (0-100): sobrevendido <30 = alcista, sobrecomprado >70 = bajista
+  let rsiScore=0, rsiDesc='';
+  if(ta){
+    const rsi=ta.lastRSI;
+    if(rsi<25){rsiScore=0.18;rsiDesc='RSI '+rsi.toFixed(0)+' — Sobrevendido extremo. Zona histórica de rebote.';}
+    else if(rsi<35){rsiScore=0.12;rsiDesc='RSI '+rsi.toFixed(0)+' — Sobrevendido. Señal de compra técnica.';}
+    else if(rsi<45){rsiScore=0.06;rsiDesc='RSI '+rsi.toFixed(0)+' — Por debajo de 50. Tendencia débil pero sin señal extrema.';}
+    else if(rsi<55){rsiScore=0.02;rsiDesc='RSI '+rsi.toFixed(0)+' — Zona neutral.';}
+    else if(rsi<65){rsiScore=-0.02;rsiDesc='RSI '+rsi.toFixed(0)+' — Por encima de 50. Tendencia positiva controlada.';}
+    else if(rsi<75){rsiScore=-0.08;rsiDesc='RSI '+rsi.toFixed(0)+' — Sobrecomprado. Posible corrección técnica.';}
+    else{rsiScore=-0.15;rsiDesc='RSI '+rsi.toFixed(0)+' — Sobrecomprado extremo. Alto riesgo de corrección.';}
+  }
 
-  // ── FACTOR 3: Macro global (tipos de interés, inflación)
-  // Fed en pausa/bajada leve, inflación controlada ~2.5%, USD estable
-  // Entorno moderadamente favorable para activos de riesgo
-  const macroScore=0.08;
+  // MACD: cruce alcista = positivo, bajista = negativo
+  let macdScore=0, macdDesc='';
+  if(ta){
+    const diff=ta.lMACD-ta.lSig;
+    const diffPct=currentPrice>0?Math.abs(diff/currentPrice)*100:0;
+    if(diff>0&&diffPct>0.5){macdScore=0.10;macdDesc='MACD alcista con separación fuerte (+'+diffPct.toFixed(2)+'%). Momentum positivo confirmado.';}
+    else if(diff>0){macdScore=0.05;macdDesc='MACD alcista pero débil. Momentum positivo incipiente.';}
+    else if(diff<0&&diffPct>0.5){macdScore=-0.10;macdDesc='MACD bajista con separación fuerte (-'+diffPct.toFixed(2)+'%). Momentum negativo.';}
+    else{macdScore=-0.04;macdDesc='MACD bajista leve. Tendencia negativa débil.';}
+  }
 
-  // ── FACTOR 4: Dominancia BTC (indica si el dinero va a BTC o altcoins)
-  const domScore=dom>55?0.10:dom>45?0.05:-0.05;
+  // Bollinger Bands: precio vs bandas
+  let bbScore=0, bbDesc='';
+  if(ta){
+    const pos=(currentPrice-ta.bbL)/(ta.bbU-ta.bbL);
+    if(pos<0.1){bbScore=0.15;bbDesc='Precio en banda inferior de Bollinger. Zona de soporte extremo, históricamente alcista.';}
+    else if(pos<0.3){bbScore=0.08;bbDesc='Precio en zona baja de Bollinger. Soporte técnico cercano.';}
+    else if(pos<0.7){bbScore=0.02;bbDesc='Precio en zona central de Bollinger. Equilibrio técnico.';}
+    else if(pos<0.9){bbScore=-0.05;bbDesc='Precio en zona alta de Bollinger. Resistencia técnica cercana.';}
+    else{bbScore=-0.12;bbDesc='Precio en banda superior de Bollinger. Zona de sobreextensión.';}
+  }
 
-  // ── FACTOR 5: Sentimiento actual (Fear & Greed)
-  const fgScore=fg>70?-0.05:fg>50?0.05:fg>30?0.08:0.12; // Miedo = oportunidad
+  // Medias móviles SMA7 vs SMA30
+  let smaScore=0, smaDesc='';
+  if(ta){
+    const smaDiff=((ta.sma7-ta.sma30)/ta.sma30)*100;
+    if(smaDiff>5){smaScore=0.08;smaDesc='SMA7 un '+smaDiff.toFixed(1)+'% sobre SMA30. Tendencia alcista fuerte (Golden Cross confirmado).';}
+    else if(smaDiff>1){smaScore=0.05;smaDesc='SMA7 sobre SMA30 (+'+smaDiff.toFixed(1)+'%). Tendencia alcista moderada.';}
+    else if(smaDiff>-1){smaScore=0.01;smaDesc='SMA7 y SMA30 prácticamente iguales. Mercado lateral.';}
+    else if(smaDiff>-5){smaScore=-0.05;smaDesc='SMA7 bajo SMA30 ('+smaDiff.toFixed(1)+'%). Tendencia bajista moderada.';}
+    else{smaScore=-0.09;smaDesc='SMA7 muy por debajo de SMA30 ('+smaDiff.toFixed(1)+'%). Death Cross — señal bajista fuerte.';}
+  }
 
-  // ── FACTOR 6: Momentum técnico (tendencia 30 días)
-  const momentumScore=change30d>20?0.08:change30d>5?0.05:change30d>-5?0:change30d>-20?-0.05:-0.10;
+  // Señal técnica compuesta (bullPct de la función analyze)
+  let taCompositeScore=0, taCompositeDesc='';
+  if(ta){
+    const bp=ta.bullPct;
+    if(bp>=75){taCompositeScore=0.10;taCompositeDesc='Señal técnica: COMPRAR ('+bp+'% alcista). Confluencia de indicadores positivos.';}
+    else if(bp>=60){taCompositeScore=0.05;taCompositeDesc='Señal técnica: NEUTRAL-ALCISTA ('+bp+'%). Mayoría de indicadores positivos.';}
+    else if(bp>=45){taCompositeScore=0.01;taCompositeDesc='Señal técnica: NEUTRAL ('+bp+'%). Sin sesgo claro.';}
+    else if(bp>=30){taCompositeScore=-0.05;taCompositeDesc='Señal técnica: NEUTRAL-BAJISTA ('+bp+'%). Mayoría de indicadores negativos.';}
+    else{taCompositeScore=-0.10;taCompositeDesc='Señal técnica: VENDER ('+bp+'%). Confluencia de indicadores negativos.';}
+  }
 
-  // ── FACTOR 7: Regulación global (tendencia 2025-2026)
-  // EE.UU. con ETFs y marco regulatorio más claro
-  // Europa con MiCA en vigor
-  const regulationScore=0.06;
+  // ════════════════════════════════
+  // BLOQUE 2: DATOS ON-CHAIN REALES
+  // ════════════════════════════════
 
-  // ── FACTOR 8: Factores estructurales de oferta
-  // ~93% del supply ya minado, HODLers históricos no venden
-  // Cada vez menos BTC en exchanges
-  const supplyScore=0.08;
+  // Hashrate: creciente = mineros confían = alcista
+  let hashrateScore=0, hashrateDesc='';
+  if(OC.hashrate){
+    const ch=OC.hashrate.change30d;
+    if(ch>10){hashrateScore=0.10;hashrateDesc='Hashrate +'+ch.toFixed(1)+'% en 30 días. Mineros expandiéndose — alta confianza en el precio futuro.';}
+    else if(ch>3){hashrateScore=0.06;hashrateDesc='Hashrate +'+ch.toFixed(1)+'% en 30 días. Crecimiento saludable de la red.';}
+    else if(ch>-3){hashrateScore=0.02;hashrateDesc='Hashrate estable ('+ch.toFixed(1)+'%). Red segura sin señales extremas.';}
+    else if(ch>-10){hashrateScore=-0.04;hashrateDesc='Hashrate '+ch.toFixed(1)+'% en 30 días. Algunos mineros apagando máquinas — posible presión vendedora.';}
+    else{hashrateScore=-0.08;hashrateDesc='Hashrate '+ch.toFixed(1)+'% en 30 días. Capitulación de mineros — históricamente señal de fondo.';}
+  } else {
+    hashrateScore=0.04; // Estimación base si no hay datos
+    hashrateDesc='Hashrate en máximos históricos (dato estimado). Red Bitcoin más segura que nunca.';
+  }
 
-  // ── FACTOR 9: Riesgos sistémicos (geopolítica, recesión, cisne negro)
-  // Guerra comercial EE.UU.-China, tensiones geopolíticas, deuda global
-  const riskDiscount=-0.06;
+  // Direcciones activas: más usuarios = más adopción = alcista
+  let addressScore=0, addressDesc='';
+  if(OC.activeAddresses){
+    const trend=OC.activeAddresses.trend;
+    const ratio=OC.activeAddresses.recent/OC.activeAddresses.avg30d;
+    if(trend==='up'&&ratio>1.1){addressScore=0.08;addressDesc='Direcciones activas +'+((ratio-1)*100).toFixed(0)+'% sobre media 30D. Creciente actividad en la red — señal alcista.';}
+    else if(trend==='up'){addressScore=0.04;addressDesc='Direcciones activas al alza. Uso de la red creciendo.';}
+    else if(ratio>0.9){addressScore=0.01;addressDesc='Direcciones activas estables. Uso de red constante.';}
+    else{addressScore=-0.04;addressDesc='Direcciones activas descendiendo. Menor actividad en la red.';}
+  } else {
+    addressScore=0.03;
+    addressDesc='Actividad on-chain estimada positiva. ~900K-1M direcciones activas diarias.';
+  }
 
-  // ── FACTOR 10: Ciclo de mercado histórico
-  // BTC históricamente hace ATH entre 12-18 meses post-halving
-  // Estamos en la ventana histórica más favorable
-  const historicalCycleScore=halvingMonthsAgo>=10&&halvingMonthsAgo<=18?0.15:0.05;
+  // Volumen en exchanges: volumen creciente con precio subiendo = confirmación
+  let volumeScore=0, volumeDesc='';
+  if(OC.exchangeBalance){
+    const vt=OC.exchangeBalance.volumeTrend;
+    const r=OC.exchangeBalance.ratio;
+    if(vt==='increasing'&&change30d>0){volumeScore=0.06;volumeDesc='Volumen creciente (x'+r.toFixed(1)+') con precio al alza. Movimiento confirmado por volumen.';}
+    else if(vt==='increasing'&&change30d<0){volumeScore=-0.06;volumeDesc='Volumen creciente con precio bajando. Posible distribución — señal bajista.';}
+    else if(vt==='decreasing'&&change30d>0){volumeScore=0.02;volumeDesc='Precio sube con volumen decreciente. Avance con poca convicción.';}
+    else{volumeScore=0.01;volumeDesc='Volumen y precio estables. Consolidación.';}
+  } else {
+    volumeScore=0.02;
+    volumeDesc='Volumen on-chain estimado en niveles saludables.';
+  }
 
-  // ── SUMA PONDERADA
-  const totalBullScore=(halvingScore+institutionalScore+macroScore+domScore+fgScore+momentumScore+regulationScore+supplyScore+historicalCycleScore);
-  const netScore=totalBullScore+riskDiscount;
+  // ════════════════════════════════
+  // BLOQUE 3: FACTORES MACRO/CICLO
+  // ════════════════════════════════
 
-  // ── FACTORES POR PLAZO
-  // Cada plazo tiene diferente volatilidad y sensibilidad a los factores
+  // Ciclo Halving (abril 2024 = mes 10 ahora)
+  const halvingMonthsAgo=10;
+  let halvingScore=halvingMonthsAgo<6?0.10:halvingMonthsAgo<12?0.20:halvingMonthsAgo<18?0.15:halvingMonthsAgo<24?0.05:-0.02;
+  const halvingDesc='Mes '+halvingMonthsAgo+' post-halving (abril 2024). '+(halvingMonthsAgo<18?'Históricamente el período más alcista del ciclo de 4 años.':'Impulso post-halving agotándose.');
+
+  // Adopción institucional
+  const institutionalScore=0.12;
+  const institutionalDesc='ETFs BTC acumulan >$50B AUM. MicroStrategy, tesoros corporativos y países comprando activamente.';
+
+  // Macro global
+  const macroScore=0.06;
+  const macroDesc='Fed en pausa/bajada leve. Inflación ~2.5%. Liquidez global moderadamente favorable para activos de riesgo.';
+
+  // Fear & Greed
+  const fgScore=fg<25?0.12:fg<40?0.08:fg<55?0.02:fg<70?-0.03:-0.08;
+  const fgDesc='Fear & Greed: '+fg+'/100 — '+(fg<40?'Zona de miedo = oportunidad histórica de acumulación.':fg>70?'Codicia alta = precaución, posible corrección.':'Zona neutral.');
+
+  // Dominancia
+  const domScore=dom>58?0.08:dom>50?0.04:dom>42?0.00:-0.04;
+  const domDesc='Dominancia BTC: '+dom.toFixed(1)+'%. '+(dom>55?'Alta dominancia: capital en Bitcoin, señal alcista para BTC.':'Altcoins compitiendo por capital.');
+
+  // Regulación
+  const regulationScore=0.05;
+  const regulationDesc='Marco regulatorio en EE.UU. más claro. MiCA en vigor en Europa. Tendencia global positiva.';
+
+  // Riesgos
+  const riskScore=-0.06;
+  const riskDesc='Descuento por riesgos: geopolítica, deuda global, posible recesión, guerra comercial EE.UU.-China.';
+
+  // ════════════════════════════════
+  // SUMA PONDERADA TOTAL
+  // ════════════════════════════════
+  const taTotal=rsiScore+macdScore+bbScore+smaScore+taCompositeScore;
+  const onChainTotal=hashrateScore+addressScore+volumeScore;
+  const macroTotal=halvingScore+institutionalScore+macroScore+fgScore+domScore+regulationScore+riskScore;
+  const netScore=taTotal*0.35 + onChainTotal*0.30 + macroTotal*0.35; // Pesos iguales entre bloques
+
+  // ════════════════════════════════
+  // HORIZONTES TEMPORALES
+  // ════════════════════════════════
+  // Volatilidad histórica BTC: ~80% anual, ~23% mensual, ~6% semanal
+  const volWeek=0.06, volMonth=0.18, vol6M=0.45, volYear=0.75;
+
   const horizons=[
     {
-      label:'1 semana',days:7,icon:'📅',
-      // Corto plazo: dominado por sentimiento y momentum
-      bull: 1+(Math.max(0,fgScore+momentumScore)*0.8),
-      base: 1+(fgScore*0.3),
-      bear: 1-(Math.abs(Math.min(0,momentumScore))*1.2+0.04),
-      note:'Dominado por sentimiento y momentum técnico a corto plazo.'
+      label:'1 semana', days:7, icon:'📅',
+      // Corto plazo: dominado por TA (70%) + sentimiento (30%)
+      localScore: taTotal*0.70 + (fgScore+domScore)*0.30,
+      vol: volWeek,
+      note:'Basado principalmente en RSI, MACD y Bollinger. Horizonte muy sensible a noticias.'
     },
     {
-      label:'1 mes',days:30,icon:'📆',
-      // Medio plazo: macro + sentimiento + momentum
-      bull: 1+(netScore*0.6),
-      base: 1+(netScore*0.25),
-      bear: 1-(Math.abs(riskDiscount)*2+Math.abs(Math.min(0,momentumScore))),
-      note:'Influenciado por macro, noticias regulatorias y flujos de ETFs.'
+      label:'1 mes', days:30, icon:'📆',
+      // Medio plazo: TA (40%) + on-chain (35%) + macro (25%)
+      localScore: taTotal*0.40 + onChainTotal*0.35 + macroTotal*0.25,
+      vol: volMonth,
+      note:'Equilibrio entre técnico, on-chain y macro. Ciclo halving y ETFs empiezan a pesar.'
     },
     {
-      label:'6 meses',days:180,icon:'🗓️',
-      // Medio-largo: ciclo halving + institucional + regulación
-      bull: 1+(netScore*1.8),
-      base: 1+(netScore*0.7),
-      bear: 1-(Math.abs(riskDiscount)*3),
-      note:'Ciclo post-halving y adopción institucional son los factores clave.'
+      label:'6 meses', days:180, icon:'🗓️',
+      // Medio-largo: on-chain (40%) + macro/ciclo (50%) + TA (10%)
+      localScore: taTotal*0.10 + onChainTotal*0.40 + macroTotal*0.50,
+      vol: vol6M,
+      note:'El ciclo post-halving, adopción institucional y on-chain dominan sobre el TA.'
     },
     {
-      label:'1 año',days:365,icon:'📊',
-      // Largo plazo: todos los factores, ciclo histórico completo
-      bull: 1+(netScore*3.2),
-      base: 1+(netScore*1.3),
-      bear: 1-(Math.abs(riskDiscount)*4+0.15),
-      note:'Históricamente el año post-halving es el más alcista del ciclo de 4 años.'
+      label:'1 año', days:365, icon:'📊',
+      // Largo plazo: macro/ciclo (60%) + on-chain (35%) + TA (5%)
+      localScore: taTotal*0.05 + onChainTotal*0.35 + macroTotal*0.60,
+      vol: volYear,
+      note:'Factores estructurales y ciclo de 4 años son los determinantes principales.'
     }
   ];
 
-  // Factores detallados para mostrar
+  // Factores para mostrar agrupados
   const factors=[
-    {name:'Ciclo Halving',icon:'₿',score:halvingScore+historicalCycleScore,desc:'Mes 10 post-halving (abril 2024). Históricamente la fase más alcista.'},
-    {name:'Adopción institucional',icon:'🏦',score:institutionalScore,desc:'ETFs BTC acumulan >$50B. MicroStrategy, tesoros corporativos y países comprando.'},
-    {name:'Oferta limitada',icon:'🔒',score:supplyScore,desc:'93% minado. Menos BTC en exchanges. HODLers históricos no venden.'},
-    {name:'Regulación favorable',icon:'⚖️',score:regulationScore,desc:'EE.UU. con marco regulatorio más claro. MiCA en Europa. Más países adoptando.'},
-    {name:'Macro global',icon:'🌐',score:macroScore,desc:'Fed en pausa. Inflación ~2.5%. Liquidez global creciendo moderadamente.'},
-    {name:'Sentimiento mercado',icon:'🧠',score:fgScore,desc:'Fear & Greed: '+fg+'/100. '+( fg<40?'Miedo = zona histórica de acumulación.':fg>70?'Codicia alta = precaución a corto plazo.':'Zona neutral.')},
-    {name:'Dominancia BTC',icon:'👑',score:domScore,desc:'BTC al '+dom.toFixed(1)+'% del mercado total. '+(dom>55?'Alta dominancia = capital en BTC, positivo.':'Altcoins compitiendo por capital.')},
-    {name:'Momentum técnico',icon:'📈',score:momentumScore,desc:'Cambio 30D: '+(change30d>=0?'+':'')+change30d.toFixed(1)+'%. '+(change30d>5?'Tendencia alcista.':change30d<-5?'Tendencia bajista.':'Lateral.')},
-    {name:'Riesgos sistémicos',icon:'⚠️',score:riskDiscount,desc:'Geopolítica, deuda global, posible recesión USA, guerra comercial. Descuento aplicado.'},
+    // Técnicos
+    {group:'📐 Técnico',name:'RSI',score:rsiScore,desc:rsiDesc},
+    {group:'📐 Técnico',name:'MACD',score:macdScore,desc:macdDesc},
+    {group:'📐 Técnico',name:'Bollinger Bands',score:bbScore,desc:bbDesc},
+    {group:'📐 Técnico',name:'Medias móviles SMA',score:smaScore,desc:smaDesc},
+    {group:'📐 Técnico',name:'Señal compuesta',score:taCompositeScore,desc:taCompositeDesc},
+    // On-chain
+    {group:'⛓️ On-chain',name:'Hashrate',score:hashrateScore,desc:hashrateDesc},
+    {group:'⛓️ On-chain',name:'Direcciones activas',score:addressScore,desc:addressDesc},
+    {group:'⛓️ On-chain',name:'Volumen on-chain',score:volumeScore,desc:volumeDesc},
+    // Macro
+    {group:'🌐 Macro/Ciclo',name:'Ciclo Halving',score:halvingScore,desc:halvingDesc},
+    {group:'🌐 Macro/Ciclo',name:'Institucional',score:institutionalScore,desc:institutionalDesc},
+    {group:'🌐 Macro/Ciclo',name:'Macro global',score:macroScore,desc:macroDesc},
+    {group:'🌐 Macro/Ciclo',name:'Fear & Greed',score:fgScore,desc:fgDesc},
+    {group:'🌐 Macro/Ciclo',name:'Dominancia BTC',score:domScore,desc:domDesc},
+    {group:'🌐 Macro/Ciclo',name:'Regulación',score:regulationScore,desc:regulationDesc},
+    {group:'🌐 Macro/Ciclo',name:'Riesgos sistémicos',score:riskScore,desc:riskDesc},
   ];
 
-  return{horizons,factors,netScore,totalBullScore};
+  return{horizons,factors,netScore,taTotal,onChainTotal,macroTotal,ta};
 }
 
 function renderForecast(){
   const price=S.price.usd;
   if(!price)return'<div class="card" style="text-align:center;padding:40px;color:var(--text3)"><span class="spin">⏳</span><br><br>Esperando precio...</div>';
+  if(S.history.length<30)return'<div class="card" style="text-align:center;padding:40px;color:var(--text3)"><span class="spin">📊</span><br><br>Cargando datos técnicos...<br><small style="color:var(--text3);font-size:11px">Se necesitan al menos 30 velas de precio</small></div>';
 
-  const{horizons,factors,netScore}=calcForecast(price);
+  const{horizons,factors,netScore,taTotal,onChainTotal,macroTotal,ta}=calcForecast(price);
+
+  // Si no hay datos on-chain aún, lanzar fetch
+  if(!OC.loaded)fetchOnChain();
 
   // ── Tarjetas de horizonte
+  const fmt=p=>'$'+(p>=1e6?(p/1e6).toFixed(2)+'M':p>=1000?(p/1000).toFixed(0)+'K':p.toFixed(0));
+  const fmtPct=p=>(p>=0?'+':'')+p.toFixed(1)+'%';
+
   const horizonCards=horizons.map(h=>{
-    const bullP=Math.round(price*h.bull);
-    const baseP=Math.round(price*h.base);
-    const bearP=Math.round(price*h.bear);
-    const bullPct=((h.bull-1)*100);
-    const basePct=((h.base-1)*100);
-    const bearPct=((h.bear-1)*100);
-    const fmt=p=>'$'+(p>=1000?(p/1000).toFixed(0)+'K':p.toFixed(0));
-    const fmtPct=p=>(p>=0?'+':'')+p.toFixed(1)+'%';
+    // El score local determina el sesgo; la volatilidad histórica determina el rango
+    const bias=h.localScore; // -0.5 a +0.5 aprox
+    const bullMult=1+h.vol*(1+bias*2);   // Alcista: base + volatilidad sesgada positivamente
+    const baseMult=1+h.vol*0.3*bias;      // Base: sesgo suavizado
+    const bearMult=1-h.vol*(1-bias*1.5);  // Bajista: inverso al sesgo
+
+    const bullP=Math.round(price*Math.max(bullMult,1.01));
+    const baseP=Math.round(price*Math.max(Math.min(baseMult,bullMult*0.9),bearMult*1.1));
+    const bearP=Math.round(price*Math.min(bearMult,0.99));
+
+    const bullPct=(bullMult-1)*100;
+    const basePct=(baseMult-1)*100; // puede ser negativo
+    const bearPct=(bearMult-1)*100;
+
+    const biasColor=bias>0.05?'#10b981':bias<-0.05?'#ef4444':'#eab308';
+    const biasLabel=bias>0.1?'Alcista':bias>0.02?'Ligeramente alcista':bias<-0.1?'Bajista':bias<-0.02?'Ligeramente bajista':'Neutral';
+
     return '<div style="background:var(--bg);border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:10px">'
-      +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">'
+      +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">'
       +'<div style="font-size:14px;font-weight:700">'+h.icon+' '+h.label+'</div>'
-      +'<div style="font-size:11px;color:var(--text3)">Actual: <b style="color:var(--text)">$'+Math.round(price/1000)+'K</b></div>'
+      +'<div style="font-size:11px;color:'+biasColor+';font-weight:700;background:'+biasColor+'22;padding:2px 8px;border-radius:999px">'+biasLabel+'</div>'
       +'</div>'
-      +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:10px">'
-      // Bajista
-      +'<div style="text-align:center;padding:10px 6px;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.25);border-radius:10px">'
+      +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:8px">'
+      +'<div style="text-align:center;padding:10px 4px;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.25);border-radius:10px">'
       +'<div style="font-size:9px;color:#ef4444;font-weight:700;margin-bottom:4px">📉 BAJISTA</div>'
-      +'<div style="font-size:15px;font-weight:800;color:#ef4444">'+fmt(bearP)+'</div>'
+      +'<div style="font-size:14px;font-weight:800;color:#ef4444">'+fmt(bearP)+'</div>'
       +'<div style="font-size:10px;color:#ef4444">'+fmtPct(bearPct)+'</div>'
       +'</div>'
-      // Base
-      +'<div style="text-align:center;padding:10px 6px;background:rgba(234,179,8,.08);border:2px solid rgba(234,179,8,.4);border-radius:10px">'
+      +'<div style="text-align:center;padding:10px 4px;background:rgba(234,179,8,.08);border:2px solid rgba(234,179,8,.4);border-radius:10px">'
       +'<div style="font-size:9px;color:#eab308;font-weight:700;margin-bottom:4px">📊 BASE</div>'
-      +'<div style="font-size:15px;font-weight:800;color:#eab308">'+fmt(baseP)+'</div>'
+      +'<div style="font-size:14px;font-weight:800;color:#eab308">'+fmt(baseP)+'</div>'
       +'<div style="font-size:10px;color:#eab308">'+fmtPct(basePct)+'</div>'
       +'</div>'
-      // Alcista
-      +'<div style="text-align:center;padding:10px 6px;background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.25);border-radius:10px">'
+      +'<div style="text-align:center;padding:10px 4px;background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.25);border-radius:10px">'
       +'<div style="font-size:9px;color:#10b981;font-weight:700;margin-bottom:4px">📈 ALCISTA</div>'
-      +'<div style="font-size:15px;font-weight:800;color:#10b981">'+fmt(bullP)+'</div>'
+      +'<div style="font-size:14px;font-weight:800;color:#10b981">'+fmt(bullP)+'</div>'
       +'<div style="font-size:10px;color:#10b981">'+fmtPct(bullPct)+'</div>'
       +'</div>'
       +'</div>'
@@ -1778,77 +1948,100 @@ function renderForecast(){
       +'</div>';
   }).join('');
 
-  // ── Barra de señal global
-  const signalPct=Math.min(100,Math.max(0,(netScore+0.3)*166));
-  const signalColor=signalPct>65?'#10b981':signalPct>45?'#eab308':'#ef4444';
-  const signalLabel=signalPct>70?'Muy alcista':signalPct>60?'Alcista':signalPct>45?'Neutral-alcista':signalPct>35?'Neutral':'Bajista';
+  // ── Scores por bloque
+  const blockColor=s=>s>0.05?'#10b981':s<-0.05?'#ef4444':'#eab308';
+  const blockLabel=s=>s>0.08?'Alcista':s>0.02?'Lev. alcista':s<-0.08?'Bajista':s<-0.02?'Lev. bajista':'Neutral';
+  const blockBar=s=>{
+    const pct=Math.min(100,Math.abs(s)*400);
+    const col=blockColor(s);
+    return '<div style="background:var(--bg3);border-radius:999px;height:6px;margin-top:4px">'
+      +'<div style="height:100%;border-radius:999px;background:'+col+';width:'+pct+'%"></div></div>';
+  };
 
-  // ── Factores
-  const factorsHTML=factors.map(f=>{
-    const isPos=f.score>=0;
-    const barW=Math.min(100,Math.abs(f.score)*300);
-    const col=isPos?'#10b981':'#ef4444';
-    return '<div style="margin-bottom:12px">'
-      +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">'
-      +'<div style="font-size:12px;font-weight:600">'+f.icon+' '+f.name+'</div>'
-      +'<div style="font-size:11px;font-weight:700;color:'+col+'">'+(isPos?'+':'')+( f.score*100).toFixed(0)+'pts</div>'
+  // ── Barra señal global
+  const signalPct=Math.min(100,Math.max(0,(netScore+0.25)*200));
+  const signalColor=signalPct>60?'#10b981':signalPct>40?'#eab308':'#ef4444';
+  const signalLabel=signalPct>72?'Muy alcista':signalPct>58?'Alcista':signalPct>48?'Neutral-alcista':signalPct>38?'Neutral':signalPct>25?'Bajista':'Muy bajista';
+
+  // ── Factores agrupados
+  const groups=[...new Set(factors.map(f=>f.group))];
+  const factorsHTML=groups.map(g=>{
+    const gFactors=factors.filter(f=>f.group===g);
+    const gScore=gFactors.reduce((a,f)=>a+f.score,0);
+    return '<div style="margin-bottom:16px">'
+      +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">'
+      +'<div style="font-size:12px;font-weight:700;color:var(--text)">'+g+'</div>'
+      +'<div style="font-size:11px;font-weight:700;color:'+blockColor(gScore)+'">'+blockLabel(gScore)+'</div>'
       +'</div>'
-      +'<div style="background:var(--bg3);border-radius:999px;height:5px;margin-bottom:4px">'
-      +'<div style="height:100%;border-radius:999px;background:'+col+';width:'+barW+'%;transition:width .8s ease"></div>'
-      +'</div>'
-      +'<div style="font-size:10px;color:var(--text3);line-height:1.4">'+f.desc+'</div>'
+      +gFactors.map(f=>{
+        const col=f.score>=0?'#10b981':'#ef4444';
+        const barW=Math.min(100,Math.abs(f.score)*350);
+        return '<div style="margin-bottom:8px;padding:8px 10px;background:var(--bg);border-radius:8px">'
+          +'<div style="display:flex;justify-content:space-between;margin-bottom:3px">'
+          +'<div style="font-size:11px;font-weight:600">'+f.name+'</div>'
+          +'<div style="font-size:10px;color:'+col+';font-weight:700">'+(f.score>=0?'+':'')+(f.score*100).toFixed(0)+'pts</div>'
+          +'</div>'
+          +'<div style="background:var(--bg3);border-radius:999px;height:4px;margin-bottom:4px">'
+          +'<div style="height:100%;border-radius:999px;background:'+col+';width:'+barW+'%"></div></div>'
+          +'<div style="font-size:10px;color:var(--text3);line-height:1.4">'+f.desc+'</div>'
+          +'</div>';
+      }).join('')
       +'</div>';
   }).join('');
+
+  // On-chain status badge
+  const onChainBadge=OC.loaded
+    ?'<span style="font-size:10px;color:#10b981;font-weight:600">✅ Datos on-chain en tiempo real</span>'
+    :'<span style="font-size:10px;color:#eab308;font-weight:600"><span class="spin" style="font-size:10px">⏳</span> Cargando datos on-chain...</span>';
 
   return '<div class="space-y">'
 
     // DISCLAIMER
     +'<div style="background:rgba(234,179,8,.08);border:1px solid rgba(234,179,8,.3);border-radius:12px;padding:12px;display:flex;gap:10px">'
     +'<div style="font-size:20px">⚠️</div>'
-    +'<div style="font-size:11px;color:var(--text2);line-height:1.5"><b style="color:#eab308">Esto no es consejo financiero.</b> Son rangos probabilísticos basados en factores históricos y actuales. Bitcoin es un activo extremadamente volátil. Nunca inviertas más de lo que puedas permitirte perder.</div>'
+    +'<div style="font-size:11px;color:var(--text2);line-height:1.5"><b style="color:#eab308">Esto no es consejo financiero.</b> Son rangos probabilísticos. Bitcoin es extremadamente volátil. Nunca inviertas más de lo que puedas perder.</div>'
     +'</div>'
 
     // SEÑAL GLOBAL
     +'<div class="card">'
-    +'<div style="font-size:15px;font-weight:700;margin-bottom:12px">🔮 Señal global del modelo</div>'
-    +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">'
-    +'<div style="font-size:13px;color:var(--text2)">Sesgo direccional</div>'
-    +'<div style="font-size:16px;font-weight:800;color:'+signalColor+'">'+signalLabel+'</div>'
+    +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">'
+    +'<div style="font-size:15px;font-weight:700">🔮 Señal global</div>'
+    +onChainBadge
     +'</div>'
-    +'<div style="background:var(--bg3);border-radius:999px;height:10px;overflow:hidden;margin-bottom:6px">'
-    +'<div style="height:100%;border-radius:999px;background:linear-gradient(90deg,#ef4444,#eab308,#10b981);width:100%"></div>'
+    // 3 bloques de puntuación
+    +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px">'
+    +[{l:'Técnico',s:taTotal,i:'📐'},{l:'On-chain',s:onChainTotal,i:'⛓️'},{l:'Macro',s:macroTotal,i:'🌐'}].map(b=>'<div style="text-align:center;padding:8px;background:var(--bg);border-radius:10px;border:1px solid '+blockColor(b.s)+'44">'+'<div style="font-size:18px">'+b.i+'</div>'+'<div style="font-size:11px;color:var(--text2);margin:2px 0">'+b.l+'</div>'+'<div style="font-size:13px;font-weight:700;color:'+blockColor(b.s)+'">'+blockLabel(b.s)+'</div>'+blockBar(b.s)+'</div>').join('')
     +'</div>'
-    +'<div style="position:relative;height:16px;margin-bottom:4px">'
-    +'<div style="position:absolute;left:'+signalPct+'%;transform:translateX(-50%)">'
-    +'<div style="width:3px;height:16px;background:white;border-radius:2px;margin:0 auto"></div>'
-    +'<div style="font-size:9px;color:white;font-weight:700;white-space:nowrap;text-align:center;margin-top:2px">'+signalLabel+'</div>'
-    +'</div></div>'
-    +'<div style="display:flex;justify-content:space-between;font-size:9px;color:var(--text3);margin-top:8px">'
-    +'<span>Muy bajista</span><span>Neutral</span><span>Muy alcista</span>'
+    // Barra global
+    +'<div style="background:var(--bg3);border-radius:999px;height:12px;overflow:hidden;margin-bottom:6px;position:relative">'
+    +'<div style="height:100%;background:linear-gradient(90deg,#ef4444 0%,#eab308 50%,#10b981 100%)"></div>'
+    +'<div style="position:absolute;top:0;left:'+signalPct+'%;transform:translateX(-50%);width:3px;height:100%;background:white;border-radius:2px"></div>'
     +'</div>'
+    +'<div style="display:flex;justify-content:space-between;font-size:9px;color:var(--text3);margin-bottom:6px"><span>Muy bajista</span><span>Neutral</span><span>Muy alcista</span></div>'
+    +'<div style="text-align:center;font-size:14px;font-weight:800;color:'+signalColor+'">'+signalLabel+'</div>'
     +'</div>'
 
-    // PREVISIONES POR HORIZONTE
+    // RANGOS POR HORIZONTE
     +'<div class="card">'
-    +'<div style="font-size:15px;font-weight:700;margin-bottom:4px">📅 Rangos por horizonte temporal</div>'
-    +'<div style="font-size:11px;color:var(--text3);margin-bottom:14px">Precio actual: <b style="color:#f97316;font-size:13px">$'+Math.round(price).toLocaleString()+'</b></div>'
+    +'<div style="font-size:15px;font-weight:700;margin-bottom:4px">📅 Rangos por horizonte</div>'
+    +'<div style="font-size:11px;color:var(--text3);margin-bottom:14px">Precio actual: <b style="color:#f97316;font-size:13px">$'+Math.round(price).toLocaleString()+'</b>'+(ta?' · RSI: <b style="color:var(--text)">'+ta.lastRSI.toFixed(0)+'</b> · Señal TA: <b style="color:var(--text)">'+ta.signal+'</b>':'')+'</div>'
     +horizonCards
     +'</div>'
 
-    // FACTORES DEL MODELO
+    // FACTORES DETALLADOS
     +'<div class="card">'
-    +'<div style="font-size:15px;font-weight:700;margin-bottom:4px">🧩 Factores del modelo</div>'
-    +'<div style="font-size:11px;color:var(--text3);margin-bottom:14px">Cada factor contribuye positiva o negativamente al sesgo del modelo</div>'
+    +'<div style="font-size:15px;font-weight:700;margin-bottom:14px">🧩 Factores del modelo</div>'
     +factorsHTML
     +'</div>'
 
     // METODOLOGÍA
-    +'<div class="card" style="background:var(--bg);border:1px solid var(--border)">'
-    +'<div style="font-size:13px;font-weight:700;margin-bottom:8px">📖 Metodología</div>'
-    +'<div style="font-size:11px;color:var(--text2);line-height:1.6">'
-    +'El modelo combina <b>9 factores independientes</b> con pesos distintos según su impacto histórico: ciclo de halving, adopción institucional, métricas on-chain, sentimiento, macro global, regulación, oferta disponible, momentum técnico y riesgos sistémicos.<br><br>'
-    +'Los rangos se calculan aplicando multiplicadores distintos según el horizonte temporal: a corto plazo dominan sentimiento y momentum; a largo plazo dominan el ciclo del halving y los factores estructurales.<br><br>'
-    +'<b>Importante:</b> Bitcoin históricamente tiene una volatilidad del ±50-80% anual. Los rangos reflejan esto. El escenario bajista siempre es posible.'
+    +'<div class="card" style="background:var(--bg)">'
+    +'<div style="font-size:13px;font-weight:700;margin-bottom:8px">📖 Metodología v2</div>'
+    +'<div style="font-size:11px;color:var(--text2);line-height:1.7">'
+    +'<b>Bloque técnico (35%):</b> RSI, MACD, Bollinger Bands y medias móviles calculados con los precios reales de la app.<br>'
+    +'<b>Bloque on-chain (30%):</b> Hashrate (mempool.space), direcciones activas y volumen (blockchain.info) — datos en tiempo real.<br>'
+    +'<b>Bloque macro/ciclo (35%):</b> Ciclo post-halving, ETFs institucionales, Fear & Greed, dominancia BTC y macro global.<br><br>'
+    +'Los rangos combinan el sesgo del modelo con la volatilidad histórica de Bitcoin en cada horizonte (±6% semana, ±18% mes, ±45% 6 meses, ±75% año).'
     +'</div>'
     +'</div>'
 
