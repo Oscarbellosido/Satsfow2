@@ -1905,43 +1905,94 @@ function renderForecast(){
   const fmtPct=p=>(p>=0?'+':'')+p.toFixed(1)+'%';
 
   const horizonCards=horizons.map(h=>{
-    // El score local determina el sesgo; la volatilidad histórica determina el rango
-    const bias=h.localScore; // -0.5 a +0.5 aprox
-    const bullMult=1+h.vol*(1+bias*2);   // Alcista: base + volatilidad sesgada positivamente
-    const baseMult=1+h.vol*0.3*bias;      // Base: sesgo suavizado
-    const bearMult=1-h.vol*(1-bias*1.5);  // Bajista: inverso al sesgo
+    const bias=h.localScore;
+    const bullMult=1+h.vol*(1+bias*2);
+    const baseMult=1+h.vol*0.3*bias;
+    const bearMult=1-h.vol*(1-bias*1.5);
 
     const bullP=Math.round(price*Math.max(bullMult,1.01));
     const baseP=Math.round(price*Math.max(Math.min(baseMult,bullMult*0.9),bearMult*1.1));
     const bearP=Math.round(price*Math.min(bearMult,0.99));
 
     const bullPct=(bullMult-1)*100;
-    const basePct=(baseMult-1)*100; // puede ser negativo
+    const basePct=(baseMult-1)*100;
     const bearPct=(bearMult-1)*100;
 
     const biasColor=bias>0.05?'#10b981':bias<-0.05?'#ef4444':'#eab308';
-    const biasLabel=bias>0.1?'Alcista':bias>0.02?'Ligeramente alcista':bias<-0.1?'Bajista':bias<-0.02?'Ligeramente bajista':'Neutral';
+    const biasLabel=bias>0.1?'Alcista':bias>0.02?'Lev. alcista':bias<-0.1?'Bajista':bias<-0.02?'Lev. bajista':'Neutral';
+
+    // ── Probabilidades estimadas basadas en el sesgo del modelo
+    // Se distribuyen 100 puntos entre los 3 escenarios según el bias
+    // bias=-0.3 → bear:55 base:30 bull:15
+    // bias=0    → bear:25 base:45 bull:30
+    // bias=+0.3 → bear:15 base:30 bull:55
+    const rawBull=Math.max(5, Math.round(30 + bias*80));
+    const rawBear=Math.max(5, Math.round(25 - bias*65));
+    const rawBase=Math.max(5, 100-rawBull-rawBear);
+    const total=rawBull+rawBear+rawBase;
+    const pBull=Math.round(rawBull/total*100);
+    const pBear=Math.round(rawBear/total*100);
+    const pBase=100-pBull-pBear;
+
+    // Escenario más probable
+    const mostLikely=pBull>=pBear&&pBull>=pBase?'bull':pBase>=pBear?'base':'bear';
+
+    const cardBorder=(s)=>s===mostLikely?'2px solid':'1px solid';
+    const cardBg=(s)=>s==='bull'?'rgba(16,185,129,.08)':s==='base'?'rgba(234,179,8,.08)':'rgba(239,68,68,.08)';
+    const cardBorderColor=(s)=>s===mostLikely?(s==='bull'?'#10b981':s==='base'?'#eab308':'#ef4444'):(s==='bull'?'rgba(16,185,129,.25)':s==='base'?'rgba(234,179,8,.3)':'rgba(239,68,68,.25)');
+
+    const probBar=(pct,col)=>'<div style="background:rgba(255,255,255,.08);border-radius:999px;height:4px;margin:4px 2px 0">'
+      +'<div style="height:100%;border-radius:999px;background:'+col+';width:'+pct+'%"></div></div>';
+
+    const mostLikelyLabel=mostLikely==='bull'?'📈 Alcista':mostLikely==='base'?'📊 Base':'📉 Bajista';
+    const mostLikelyColor=mostLikely==='bull'?'#10b981':mostLikely==='base'?'#eab308':'#ef4444';
+    const mostLikelyP=mostLikely==='bull'?pBull:mostLikely==='base'?pBase:pBear;
 
     return '<div style="background:var(--bg);border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:10px">'
+      // Cabecera
       +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">'
       +'<div style="font-size:14px;font-weight:700">'+h.icon+' '+h.label+'</div>'
       +'<div style="font-size:11px;color:'+biasColor+';font-weight:700;background:'+biasColor+'22;padding:2px 8px;border-radius:999px">'+biasLabel+'</div>'
       +'</div>'
+      // Más probable destacado
+      +'<div style="background:'+mostLikelyColor+'18;border:1.5px solid '+mostLikelyColor+'55;border-radius:10px;padding:8px 12px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center">'
+      +'<div>'
+      +'<div style="font-size:9px;color:'+mostLikelyColor+';font-weight:700;letter-spacing:.5px;margin-bottom:2px">⭐ MÁS PROBABLE (estimado)</div>'
+      +'<div style="font-size:13px;font-weight:800;color:'+mostLikelyColor+'">'+mostLikelyLabel+'</div>'
+      +'</div>'
+      +'<div style="text-align:right">'
+      +'<div style="font-size:22px;font-weight:900;color:'+mostLikelyColor+'">'+mostLikelyP+'%</div>'
+      +'<div style="font-size:9px;color:var(--text3)">prob. estimada</div>'
+      +'</div>'
+      +'</div>'
+      // 3 escenarios
       +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:8px">'
-      +'<div style="text-align:center;padding:10px 4px;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.25);border-radius:10px">'
+      // Bajista
+      +'<div style="text-align:center;padding:10px 4px;background:'+cardBg('bear')+';border:'+cardBorder('bear')+' '+cardBorderColor('bear')+';border-radius:10px">'
+      +(mostLikely==='bear'?'<div style="font-size:8px;color:#ef4444;font-weight:800;margin-bottom:2px">⭐ MÁS PROBABLE</div>':'')
       +'<div style="font-size:9px;color:#ef4444;font-weight:700;margin-bottom:4px">📉 BAJISTA</div>'
       +'<div style="font-size:14px;font-weight:800;color:#ef4444">'+fmt(bearP)+'</div>'
       +'<div style="font-size:10px;color:#ef4444">'+fmtPct(bearPct)+'</div>'
+      +probBar(pBear,'#ef4444')
+      +'<div style="font-size:10px;color:#ef4444;font-weight:700;margin-top:3px">'+pBear+'%</div>'
       +'</div>'
-      +'<div style="text-align:center;padding:10px 4px;background:rgba(234,179,8,.08);border:2px solid rgba(234,179,8,.4);border-radius:10px">'
+      // Base
+      +'<div style="text-align:center;padding:10px 4px;background:'+cardBg('base')+';border:'+cardBorder('base')+' '+cardBorderColor('base')+';border-radius:10px">'
+      +(mostLikely==='base'?'<div style="font-size:8px;color:#eab308;font-weight:800;margin-bottom:2px">⭐ MÁS PROBABLE</div>':'')
       +'<div style="font-size:9px;color:#eab308;font-weight:700;margin-bottom:4px">📊 BASE</div>'
       +'<div style="font-size:14px;font-weight:800;color:#eab308">'+fmt(baseP)+'</div>'
       +'<div style="font-size:10px;color:#eab308">'+fmtPct(basePct)+'</div>'
+      +probBar(pBase,'#eab308')
+      +'<div style="font-size:10px;color:#eab308;font-weight:700;margin-top:3px">'+pBase+'%</div>'
       +'</div>'
-      +'<div style="text-align:center;padding:10px 4px;background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.25);border-radius:10px">'
+      // Alcista
+      +'<div style="text-align:center;padding:10px 4px;background:'+cardBg('bull')+';border:'+cardBorder('bull')+' '+cardBorderColor('bull')+';border-radius:10px">'
+      +(mostLikely==='bull'?'<div style="font-size:8px;color:#10b981;font-weight:800;margin-bottom:2px">⭐ MÁS PROBABLE</div>':'')
       +'<div style="font-size:9px;color:#10b981;font-weight:700;margin-bottom:4px">📈 ALCISTA</div>'
       +'<div style="font-size:14px;font-weight:800;color:#10b981">'+fmt(bullP)+'</div>'
       +'<div style="font-size:10px;color:#10b981">'+fmtPct(bullPct)+'</div>'
+      +probBar(pBull,'#10b981')
+      +'<div style="font-size:10px;color:#10b981;font-weight:700;margin-top:3px">'+pBull+'%</div>'
       +'</div>'
       +'</div>'
       +'<div style="font-size:10px;color:var(--text3);line-height:1.4">'+h.note+'</div>'
