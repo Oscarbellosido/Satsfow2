@@ -152,7 +152,27 @@ const T={
     notifRequired:'Activa las notificaciones primero',
     buy:'COMPRAR',sell:'VENDER',neutral:'NEUTRAL',
     morningMsg:(p,ch,fg,sig)=>`BTC $${p.toLocaleString()} (${ch>=0?'+':''}${ch.toFixed(1)}%) · Fear&Greed: ${fg}/100 · Señal: ${sig}`,
-    morningDetail:(dom,ch)=>`Dominancia BTC: ${dom.toFixed(1)}% · ${ch>=0?'📈':'📉'} ${Math.abs(ch).toFixed(1)}% hoy`
+    morningDetail:(dom,ch)=>`Dominancia BTC: ${dom.toFixed(1)}% · ${ch>=0?'📈':'📉'} ${Math.abs(ch).toFixed(1)}% hoy`,
+    // Home
+    converter:'↔ Conversor',price24h:'Precio 24h',high:'Máx',low:'Mín',
+    lastUpdate:'Última actualización',period:'Período',
+    // Alerts
+    alertsTitle:'Alertas de precio',noAlerts:'Sin alertas activas.\nIntroduce un precio y pulsa +.',
+    triggered:t().triggered,pending:t().pending,
+    // Market
+    fearGreedIndex:'Índice Fear & Greed',extreme_fear:'Miedo extremo',fear:'Miedo',
+    neutral2:'Neutral',greed:'Codicia',extreme_greed:'Codicia extrema',
+    // Analysis
+    technicalSignal:'Señal técnica',support:'Soporte',resistance:'Resistencia',
+    // Mempool
+    recommendedFees:'Comisiones recomendadas',fast:'Rápido',medium:'Medio',slow:'Lento',
+    // News
+    latestNews:'Últimas noticias',
+    // Forecast
+    globalSignal:'Señal global',horizons:'Rangos por horizonte temporal',
+    currentPrice:'Precio actual',mostLikely:'MÁS PROBABLE (estimado)',
+    bearish2:'BAJISTA',base:'BASE',bullish2:'ALCISTA',
+    disclaimer:'Esto no es consejo financiero. Son rangos probabilísticos. Bitcoin es extremadamente volátil.'
   },
   ca:{
     home:'Inici',analysis:'Anàlisi',market:'Mercat',mempool:'Mempool',
@@ -167,7 +187,27 @@ const T={
     notifRequired:'Activa les notificacions primer',
     buy:'COMPRAR',sell:'VENDRE',neutral:'NEUTRAL',
     morningMsg:(p,ch,fg,sig)=>`BTC $${p.toLocaleString()} (${ch>=0?'+':''}${ch.toFixed(1)}%) · Por&Cobdícia: ${fg}/100 · Senyal: ${sig}`,
-    morningDetail:(dom,ch)=>`Dominància BTC: ${dom.toFixed(1)}% · ${ch>=0?'📈':'📉'} ${Math.abs(ch).toFixed(1)}% avui`
+    morningDetail:(dom,ch)=>`Dominància BTC: ${dom.toFixed(1)}% · ${ch>=0?'📈':'📉'} ${Math.abs(ch).toFixed(1)}% avui`,
+    // Home
+    converter:'↔ Conversor',price24h:'Preu 24h',high:'Màx',low:'Mín',
+    lastUpdate:'Darrera actualització',period:'Període',
+    // Alerts
+    alertsTitle:'Alertes de preu',noAlerts:'Sense alertes actives.\nIntrodueix un preu i prem +.',
+    triggered:'DISPARADA!',pending:'Pendent',
+    // Market
+    fearGreedIndex:'Índex Por & Cobdícia',extreme_fear:'Por extrema',fear:'Por',
+    neutral2:'Neutral',greed:'Cobdícia',extreme_greed:'Cobdícia extrema',
+    // Analysis  
+    technicalSignal:'Senyal tècnica',support:'Suport',resistance:'Resistència',
+    // Mempool
+    recommendedFees:'Comissions recomanades',fast:'Ràpid',medium:'Mig',slow:'Lent',
+    // News
+    latestNews:'Últimes notícies',
+    // Forecast
+    globalSignal:'Senyal global',horizons:'Rangs per horitzó temporal',
+    currentPrice:'Preu actual',mostLikely:'MÉS PROBABLE (estimat)',
+    bearish2:'BAIXISTA',base:'BASE',bullish2:'ALCISTA',
+    disclaimer:'Això no és un consell financer. Són rangs probabilístics. El Bitcoin és extremadament volàtil.'
   }
 };
 const t=()=>T[S.lang]||T.es;
@@ -595,7 +635,7 @@ function renderHome(){
   const chart=S.chartType==='area'?areaSVG(S.history):candleSVG(S.ohlc);
   return`<div class="space-y">
   <div class="card">
-    <div style="font-size:15px;font-weight:700;margin-bottom:12px">↔ Conversor</div>
+    <div style="font-size:15px;font-weight:700;margin-bottom:12px">${t().converter}</div>
     <div class="grid-2">
       <div><div style="font-size:10px;color:var(--text3);margin-bottom:4px;text-transform:uppercase">Bitcoin (BTC)</div><div style="position:relative"><span style="position:absolute;left:10px;top:9px;color:#f97316;font-weight:700">₿</span><input id="inp-btc" type="number" style="padding-left:28px" value="${S.conv_btc||1}" oninput="calcConv('btc',this.value)" placeholder="0"/></div></div>
       <div><div style="font-size:10px;color:var(--text3);margin-bottom:4px;text-transform:uppercase">Satoshis</div><div style="position:relative"><span style="position:absolute;left:10px;top:9px;color:#eab308;font-weight:700">⚡</span><input id="inp-sats" type="number" style="padding-left:28px" value="${S.conv_sats||100000000}" oninput="calcConv('sats',this.value)" placeholder="0"/></div></div>
@@ -999,7 +1039,7 @@ function renderAlerts(){
   try{settingsHTML=renderSettings();}catch(e){console.warn('renderSettings:',e);settingsHTML='';}
   const perm=S.notifPerm;
   const banner=perm!=='granted'&&perm!=='unsupported'?`<div class="notif-banner"><span style="font-size:18px">🔔</span><div style="flex:1"><div style="font-size:12px;font-weight:600;color:#f97316">Activa las notificaciones</div><div style="font-size:11px;color:var(--text3);margin-top:2px">Para recibir alertas con la app cerrada.</div></div><button class="btn-orange" style="padding:6px 12px;font-size:12px" onclick="activateNotifs()">Activar</button></div>`:perm==='granted'?`<div class="notif-ok"><span>✅</span><div style="font-size:12px;color:#10b981">Notificaciones activas. Recibirás avisos aunque la app esté cerrada.</div></div>`:'';
-  return`<div class="space-y">${settingsHTML}<div class="card"><div style="font-size:15px;font-weight:700;margin-bottom:12px">🔔 ${t().alerts} de precio</div>${banner}<div class="input-row"><div style="position:relative;flex:1"><span id="curr-sym" style="position:absolute;left:10px;top:9px;color:var(--text3);font-size:13px">$</span><input id="alert-target" type="number" style="padding-left:26px" placeholder="Precio objetivo" onkeydown="if(event.key==='Enter')addAlert()"/></div><select id="alert-curr" style="width:80px" onchange="document.getElementById('curr-sym').textContent=this.value==='eur'?'€':'$'"><option value="usd">USD</option><option value="eur">EUR</option></select><button class="btn-orange" style="padding:8px 14px;flex-shrink:0" onclick="addAlert()">+</button></div><div id="alert-list">${S.alerts.length===0?`<div style="text-align:center;color:var(--text3);font-size:13px;padding:24px">Sin alertas activas.<br>Introduce un precio y pulsa +.</div>`:S.alerts.map(a=>`<div class="alert-item ${a.triggered?'triggered':''}"><div style="display:flex;align-items:center;gap:10px">${a.triggered?'<span style="color:#eab308;font-size:16px">⚠️</span>':`<div style="width:8px;height:8px;border-radius:50%;background:${a.condition==='above'?'#10b981':'#ef4444'}"></div>`}<div><div style="font-size:13px;font-weight:600">${a.condition==='above'?'↑':'↓'} ${a.currency==='usd'?'$':'€'}${a.targetPrice.toLocaleString()}</div><div style="font-size:10px;color:var(--text3)">${a.triggered?'¡DISPARADA!':'Pendiente'}</div></div></div><button onclick="removeAlert('${a.id}')" style="background:none;border:none;color:var(--text3);font-size:18px;padding:4px;cursor:pointer">✕</button></div>`).join('')}</div></div></div>`;
+  return`<div class="space-y">${settingsHTML}<div class="card"><div style="font-size:15px;font-weight:700;margin-bottom:12px">🔔 ${t().alertsTitle}</div>${banner}<div class="input-row"><div style="position:relative;flex:1"><span id="curr-sym" style="position:absolute;left:10px;top:9px;color:var(--text3);font-size:13px">$</span><input id="alert-target" type="number" style="padding-left:26px" placeholder="${t().price} objetivo" onkeydown="if(event.key==='Enter')addAlert()"/></div><select id="alert-curr" style="width:80px" onchange="document.getElementById('curr-sym').textContent=this.value==='eur'?'€':'$'"><option value="usd">USD</option><option value="eur">EUR</option></select><button class="btn-orange" style="padding:8px 14px;flex-shrink:0" onclick="addAlert()">+</button></div><div id="alert-list">${S.alerts.length===0?`<div style="text-align:center;color:var(--text3);font-size:13px;padding:24px">${t().noAlerts.replace("\\n","<br>")}</div>`:S.alerts.map(a=>`<div class="alert-item ${a.triggered?'triggered':''}"><div style="display:flex;align-items:center;gap:10px">${a.triggered?'<span style="color:#eab308;font-size:16px">⚠️</span>':`<div style="width:8px;height:8px;border-radius:50%;background:${a.condition==='above'?'#10b981':'#ef4444'}"></div>`}<div><div style="font-size:13px;font-weight:600">${a.condition==='above'?'↑':'↓'} ${a.currency==='usd'?'$':'€'}${a.targetPrice.toLocaleString()}</div><div style="font-size:10px;color:var(--text3)">${a.triggered?t().triggered:t().pending}</div></div></div><button onclick="removeAlert('${a.id}')" style="background:none;border:none;color:var(--text3);font-size:18px;padding:4px;cursor:pointer">✕</button></div>`).join('')}</div></div></div>`;
 }
 async function activateNotifs(){const r=await requestNotifPerm();if(r==='granted')showNotif('✅ SatsFlow','Notificaciones activadas.');renderTab('alerts');}
 function addAlert(){const t=document.getElementById('alert-target'),c=document.getElementById('alert-curr');if(!t||!c)return;const val=parseFloat(t.value);if(isNaN(val)||val<=0)return;const curr=c.value,price=curr==='usd'?S.price.usd:S.price.eur;S.alerts.push({id:Date.now().toString(),targetPrice:val,currency:curr,condition:val>price?'above':'below',triggered:false});saveAlerts();navigator.serviceWorker?.ready.then(reg=>reg.active?.postMessage({type:'CHECK_ALERTS',alerts:S.alerts}));renderTab('alerts');}
@@ -1890,7 +1930,7 @@ function renderForecast(){
       +'</div>'
       +'<div style="background:'+mostLikelyColor+'18;border:1.5px solid '+mostLikelyColor+'55;border-radius:10px;padding:8px 12px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center">'
       +'<div>'
-      +'<div style="font-size:9px;color:'+mostLikelyColor+';font-weight:700;letter-spacing:.5px;margin-bottom:2px">⭐ MÁS PROBABLE (estimado)</div>'
+      +'<div style="font-size:9px;color:'+mostLikelyColor+';font-weight:700;letter-spacing:.5px;margin-bottom:2px">⭐ '+t().mostLikely+'</div>'
       +'<div style="font-size:13px;font-weight:800;color:'+mostLikelyColor+'">'+mostLikelyLabel+'</div>'
       +'</div>'
       +'<div style="text-align:right">'
@@ -1900,24 +1940,24 @@ function renderForecast(){
       +'</div>'
       +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:8px">'
       +'<div style="text-align:center;padding:10px 4px;background:'+cardBg('bear')+';border:'+cardBorder('bear')+' '+cardBorderColor('bear')+';border-radius:10px">'
-      +(mostLikely==='bear'?'<div style="font-size:8px;color:#ef4444;font-weight:800;margin-bottom:2px">⭐ MÁS PROBABLE</div>':'')
-      +'<div style="font-size:9px;color:#ef4444;font-weight:700;margin-bottom:4px">📉 BAJISTA</div>'
+      +(mostLikely==='bear'?'<div style="font-size:8px;color:#ef4444;font-weight:800;margin-bottom:2px">⭐ '+t().mostLikely.split(' ')[0]+'</div>':'')
+      +'<div style="font-size:9px;color:#ef4444;font-weight:700;margin-bottom:4px">📉 '+t().bearish2+'</div>'
       +'<div style="font-size:14px;font-weight:800;color:#ef4444">'+fmt(bearP)+'</div>'
       +'<div style="font-size:10px;color:#ef4444">'+fmtPct(bearPct)+'</div>'
       +probBar(pBear,'#ef4444')
       +'<div style="font-size:10px;color:#ef4444;font-weight:700;margin-top:3px">'+pBear+'%</div>'
       +'</div>'
       +'<div style="text-align:center;padding:10px 4px;background:'+cardBg('base')+';border:'+cardBorder('base')+' '+cardBorderColor('base')+';border-radius:10px">'
-      +(mostLikely==='base'?'<div style="font-size:8px;color:#eab308;font-weight:800;margin-bottom:2px">⭐ MÁS PROBABLE</div>':'')
-      +'<div style="font-size:9px;color:#eab308;font-weight:700;margin-bottom:4px">📊 BASE</div>'
+      +(mostLikely==='base'?'<div style="font-size:8px;color:#eab308;font-weight:800;margin-bottom:2px">⭐ '+t().mostLikely.split(' ')[0]+'</div>':'')
+      +'<div style="font-size:9px;color:#eab308;font-weight:700;margin-bottom:4px">📊 '+t().base+'</div>'
       +'<div style="font-size:14px;font-weight:800;color:#eab308">'+fmt(baseP)+'</div>'
       +'<div style="font-size:10px;color:#eab308">'+fmtPct(basePct)+'</div>'
       +probBar(pBase,'#eab308')
       +'<div style="font-size:10px;color:#eab308;font-weight:700;margin-top:3px">'+pBase+'%</div>'
       +'</div>'
       +'<div style="text-align:center;padding:10px 4px;background:'+cardBg('bull')+';border:'+cardBorder('bull')+' '+cardBorderColor('bull')+';border-radius:10px">'
-      +(mostLikely==='bull'?'<div style="font-size:8px;color:#10b981;font-weight:800;margin-bottom:2px">⭐ MÁS PROBABLE</div>':'')
-      +'<div style="font-size:9px;color:#10b981;font-weight:700;margin-bottom:4px">📈 ALCISTA</div>'
+      +(mostLikely==='bull'?'<div style="font-size:8px;color:#10b981;font-weight:800;margin-bottom:2px">⭐ '+t().mostLikely.split(' ')[0]+'</div>':'')
+      +'<div style="font-size:9px;color:#10b981;font-weight:700;margin-bottom:4px">📈 '+t().bullish2+'</div>'
       +'<div style="font-size:14px;font-weight:800;color:#10b981">'+fmt(bullP)+'</div>'
       +'<div style="font-size:10px;color:#10b981">'+fmtPct(bullPct)+'</div>'
       +probBar(pBull,'#10b981')
@@ -1968,11 +2008,11 @@ function renderForecast(){
   return '<div class="space-y">'
     +'<div style="background:rgba(234,179,8,.08);border:1px solid rgba(234,179,8,.3);border-radius:12px;padding:12px;display:flex;gap:10px">'
     +'<div style="font-size:20px">⚠️</div>'
-    +'<div style="font-size:11px;color:var(--text2);line-height:1.5"><b style="color:#eab308">Esto no es consejo financiero.</b> Son rangos probabilísticos. Bitcoin es extremadamente volátil. Nunca inviertas más de lo que puedas perder.</div>'
+    +'<div style="font-size:11px;color:var(--text2);line-height:1.5"><b style="color:#eab308">${t().disclaimer.replace("Esto no es consejo financiero.","<b style=\"color:#eab308\">"+t().disclaimer.split(".")[0]+".</b>").replace(t().disclaimer.split(".")[0]+".","<b style=\"color:#eab308\">"+t().disclaimer.split(".")[0]+".</b>")} Nunca inviertas más de lo que puedas perder.</div>'
     +'</div>'
     +'<div class="card">'
     +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">'
-    +'<div style="font-size:15px;font-weight:700">🔮 Señal global</div>'
+    +'<div style="font-size:15px;font-weight:700">🔮 ${t().globalSignal}</div>'
     +onChainBadge
     +'</div>'
     +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px">'
