@@ -1915,6 +1915,58 @@ async function init(){
   setInterval(async()=>{await Promise.all([fetchMarket(),fetchMining()]);if(S.currentTab==='market')renderTab('market');},120000);
   setInterval(async()=>{await fetchNews();if(S.currentTab==='news')renderTab('news');},300000);
 }
+
+/* ══════ WAKE-UP DETECTION ══════ */
+// Detecta cuando la app lleva mucho tiempo inactiva y se reactiva
+// Soluciona la pantalla en blanco al abrir la app por la mañana
+let _lastActiveTime = Date.now();
+let _appVisible = true;
+
+// Registrar actividad
+function _touchActivity() { _lastActiveTime = Date.now(); }
+document.addEventListener('touchstart', _touchActivity, {passive:true});
+document.addEventListener('click', _touchActivity, {passive:true});
+
+// Cuando la app vuelve al primer plano
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) {
+    _appVisible = false;
+    return;
+  }
+  // App vuelve a ser visible
+  const inactiveMs = Date.now() - _lastActiveTime;
+  const inactiveHours = inactiveMs / 3600000;
+  _appVisible = true;
+  _lastActiveTime = Date.now();
+
+  if (inactiveHours > 1) {
+    // Más de 1 hora inactiva → recargar para evitar pantalla en blanco
+    console.log('[SatsFlow] Inactiva', inactiveHours.toFixed(1), 'h — recargando...');
+    window.location.reload();
+    return;
+  }
+
+  // Menos de 1 hora → solo refrescar precio si la app está cargada
+  if (typeof renderCurrentTab === 'function' && typeof S !== 'undefined' && S.price?.usd > 0) {
+    fetchPrice().then(() => renderCurrentTab()).catch(() => {});
+  }
+});
+
+// Detectar "salto de tiempo" (el móvil estuvo en suspensión profunda)
+// El setInterval se retrasa si el CPU estaba dormido
+let _lastHeartbeat = Date.now();
+setInterval(() => {
+  const now = Date.now();
+  const gap = now - _lastHeartbeat;
+  // Si han pasado más de 5 minutos reales entre ticks de 30s → el móvil estuvo dormido
+  if (gap > 300000) {
+    console.log('[SatsFlow] Detectado sleep de', (gap/60000).toFixed(1), 'min — recargando...');
+    window.location.reload();
+    return;
+  }
+  _lastHeartbeat = now;
+}, 30000);
+
 init();
 </script>
 </body>
