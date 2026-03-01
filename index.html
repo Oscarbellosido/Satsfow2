@@ -1671,6 +1671,36 @@ async function fetchOnChain(){
       }
     }
   }catch(e){console.warn('volume',e);}
+  // ── M2 Global (proxy via FRED usando allorigins como CORS proxy)
+  // Usamos M2 de EE.UU. de FRED como indicador de liquidez global
+  try{
+    const fredUrl='https://fred.stlouisfed.org/graph/fredgraph.csv?id=M2SL';
+    const proxy='https://api.allorigins.win/raw?url=';
+    const r=await fetch(proxy+encodeURIComponent(fredUrl),{signal:AbortSignal.timeout(10000)});
+    if(r.ok){
+      const txt=await r.text();
+      const rows=txt.trim().split('\n').slice(1) // skip header
+        .map(row=>row.split(','))
+        .filter(row=>row.length===2&&row[1]&&row[1]!=='.')
+        .map(row=>({date:row[0].trim(),val:parseFloat(row[1])}))
+        .filter(row=>!isNaN(row.val));
+      if(rows.length>=13){
+        const last=rows[rows.length-1].val;
+        const prev3m=rows[rows.length-4]?.val||last;
+        const prev12m=rows[rows.length-13]?.val||last;
+        const change3m=(last-prev3m)/prev3m*100;
+        const change12m=(last-prev12m)/prev12m*100;
+        OC.m2={
+          current:last, // en miles de millones USD
+          change3m,
+          change12m,
+          trend:change3m>0.5?'expanding':change3m<-0.5?'contracting':'flat',
+          date:rows[rows.length-1].date
+        };
+      }
+    }
+  }catch(e){console.warn('M2:',e);}
+
   OC.loaded=true;
   if(S.currentTab==='forecast')renderTab('forecast');
 }
@@ -1869,9 +1899,36 @@ function calcForecast(currentPrice){
   const regulationDesc='Marco regulatorio en EE.UU. más claro. MiCA en vigor en Europa. Tendencia global positiva.';
   const riskScore=-0.06;
   const riskDesc='Descuento por riesgos: geopolítica, deuda global, posible recesión, guerra comercial EE.UU.-China.';
+  // ── M2 / Liquidez global
+  let m2Score=0, m2Desc='';
+  if(OC.m2){
+    const{change3m,change12m,trend,current,date}=OC.m2;
+    const currentT=current>=1000?(current/1000).toFixed(1)+'T':(current).toFixed(0)+'B';
+    if(trend==='expanding'&&change12m>5){
+      m2Score=0.12;
+      m2Desc='M2 EE.UU. $'+currentT+' — Expansión fuerte (+'+change12m.toFixed(1)+'% anual). Históricamente correlaciona con rally de BTC con 3-6 meses de retardo.';
+    }else if(trend==='expanding'&&change12m>2){
+      m2Score=0.07;
+      m2Desc='M2 EE.UU. $'+currentT+' — Expansión moderada (+'+change12m.toFixed(1)+'% anual, +'+change3m.toFixed(1)+'% trimestral). Liquidez favorable para Bitcoin.';
+    }else if(trend==='flat'){
+      m2Score=0.02;
+      m2Desc='M2 EE.UU. $'+currentT+' — Estancada ('+change12m.toFixed(1)+'% anual). Sin impulso adicional de liquidez. Efecto neutro sobre BTC.';
+    }else if(trend==='contracting'&&change12m>-2){
+      m2Score=-0.04;
+      m2Desc='M2 EE.UU. $'+currentT+' — Contracción leve ('+change12m.toFixed(1)+'% anual). Menos liquidez en el sistema, viento en contra para BTC.';
+    }else{
+      m2Score=-0.10;
+      m2Desc='M2 EE.UU. $'+currentT+' — Contracción significativa ('+change12m.toFixed(1)+'% anual). Históricamente precede correcciones en activos de riesgo incluyendo BTC.';
+    }
+    m2Desc+=' (datos: '+date+')';
+  }else{
+    m2Score=0.03;
+    m2Desc='M2 / Liquidez global: cargando datos de la Reserva Federal (FRED)...';
+  }
+
   const taTotal=rsiScore+macdScore+bbScore+smaScore+taCompositeScore+stochRsiScore+obvScore+adxScore;
   const onChainTotal=hashrateScore+addressScore+volumeScore+oiScore+frScore+netflowScore;
-  const macroTotal=halvingScore+institutionalScore+macroScore+fgScore+domScore+regulationScore+riskScore+corrScore;
+  const macroTotal=halvingScore+institutionalScore+macroScore+fgScore+domScore+regulationScore+riskScore+corrScore+m2Score;
   const netScore=taTotal*0.35 + onChainTotal*0.30 + macroTotal*0.35;
   const volWeek=0.06, volMonth=0.18, vol6M=0.45, volYear=0.75;
   const horizons=[
@@ -1923,6 +1980,7 @@ function calcForecast(currentPrice){
     {group:'🌐 Macro/Ciclo',name:'Regulación',score:regulationScore,desc:regulationDesc},
     {group:'🌐 Macro/Ciclo',name:'Correlación S&P/Oro',score:corrScore,desc:corrDesc},
     {group:'🌐 Macro/Ciclo',name:'Riesgos sistémicos',score:riskScore,desc:riskDesc},
+    {group:'🌐 Macro/Ciclo',name:'M2 / Liquidez global',score:m2Score,desc:m2Desc},
   ];
   return{horizons,factors,netScore,taTotal,onChainTotal,macroTotal,ta};
 }
@@ -2059,7 +2117,7 @@ function renderForecast(){
     +[
       {l:'Técnico',s:taTotal,i:'📐',tip:'RSI, Stoch RSI, MACD, OBV, ADX, Bollinger y SMA calculados con precio real.'},
       {l:'On-chain',s:onChainTotal,i:'⛓️',tip:'Hashrate, direcciones activas, volumen, netflow, Open Interest y Funding Rate.'},
-      {l:'Macro',s:macroTotal,i:'🌐',tip:'Ciclo halving, ETFs, Fear & Greed, dominancia, correlación S&P500/Oro y política monetaria.'}
+      {l:'Macro',s:macroTotal,i:'🌐',tip:'Ciclo halving, ETFs, Fear & Greed, dominancia, correlación S&P500/Oro, M2/liquidez global y política monetaria.'}
     ].map(b=>'<div style="padding:10px 8px;background:var(--bg);border-radius:10px;border:1px solid '+blockColor(b.s)+'44">'
       +'<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">'
       +'<span style="font-size:18px">'+b.i+'</span>'
@@ -2113,8 +2171,8 @@ function renderForecast(){
     +'<div style="font-size:11px;color:var(--text2);line-height:1.7">'
     +'<b>📐 Técnico (35%):</b> RSI, Stochastic RSI, MACD, OBV, ADX, Bollinger Bands y SMA7/SMA30 — todos calculados con el precio real de la app.<br>'
     +'<b>⛓️ On-chain & Futuros (30%):</b> Hashrate (mempool.space), direcciones activas y volumen (blockchain.info), Exchange Netflow, Open Interest y Funding Rate (Binance Futures).<br>'
-    +'<b>🌐 Macro/Ciclo (35%):</b> Ciclo post-halving, ETFs institucionales, Fear & Greed, dominancia BTC, correlación S&P500/Oro y política monetaria global.<br><br>'
-    +'Total: <b>22 factores independientes</b>. Los rangos usan la volatilidad histórica de BTC por horizonte (±6% semana, ±18% mes, ±45% 6M, ±75% año).'
+    +'<b>🌐 Macro/Ciclo (35%):</b> Ciclo post-halving, ETFs institucionales, Fear & Greed, dominancia BTC, correlación S&P500/Oro, <b>M2/liquidez global (FRED)</b> y política monetaria.<br><br>'
+    +'Total: <b>23 factores independientes</b>. Los rangos usan la volatilidad histórica de BTC por horizonte (±6% semana, ±18% mes, ±45% 6M, ±75% año).'
     +'</div>'
     +'</div>'
     +'</div>';
