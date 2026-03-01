@@ -61,7 +61,7 @@
     .signal-sell{background:rgba(239,68,68,.08);border-color:rgba(239,68,68,.3)}
     .signal-neutral{background:rgba(234,179,8,.08);border-color:rgba(234,179,8,.3)}
     .sr-row{display:flex;justify-content:space-between;align-items:center;padding:8px 12px;border-radius:10px;border:1px solid;margin-bottom:6px}
-    #map-container{height:360px;border-radius:12px;overflow:hidden;margin-top:10px}
+    #map-container{height:360px;border-radius:12px;margin-top:10px;position:relative;z-index:0}
     .prog-track{background:var(--bg3);border-radius:999px;height:6px;overflow:hidden;margin:4px 0}
     .prog-bar{height:100%;border-radius:999px;transition:width 1s ease}
     .period-wrap{display:flex;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:3px;gap:2px;overflow-x:auto;margin-bottom:10px}
@@ -83,7 +83,9 @@
     /* Leaflet dark mode */
     #html-root.dark-mode .leaflet-tile-pane{filter:brightness(.6) invert(1) contrast(3) hue-rotate(200deg) saturate(.3) brightness(.7)}
     #html-root.dark-mode .leaflet-container{background:#1e293b}
-    .leaflet-container{border-radius:0!important}.leaflet-pane,.leaflet-map-pane{z-index:auto!important}
+    .leaflet-container{border-radius:0!important}
+    .leaflet-tile-pane{will-change:transform}
+    #map-container .leaflet-container{position:absolute!important;top:0;left:0;right:0;bottom:0}
     .leaflet-popup-content-wrapper{background:var(--card-bg);color:var(--text);border:1px solid var(--border);border-radius:10px}
     .leaflet-popup-tip{background:var(--card-bg)}
   </style>
@@ -325,8 +327,8 @@ function switchTab(tab){
   el.classList.remove('fade');void el.offsetWidth;el.classList.add('fade');
   renderTab(tab);
   if(tab==='atm'&&S.leafletMap){
-    setTimeout(()=>{S.leafletMap.invalidateSize({animate:false});},100);
-    setTimeout(()=>{S.leafletMap.invalidateSize({animate:false});},400);
+    const _inv=()=>{if(S.leafletMap)S.leafletMap.invalidateSize({animate:false,pan:false});};
+    setTimeout(_inv,50);setTimeout(_inv,200);setTimeout(_inv,500);
   }
 }
 function renderCurrentTab(){renderTab(S.currentTab);}
@@ -934,7 +936,9 @@ function renderATM(){
       <button class="btn-orange" onclick="loadATM()">🗺️ Buscar cerca de mí</button>
     </div>
     <div id="atm-count" style="font-size:12px;color:#10b981;margin-bottom:8px;font-weight:600;${alreadyLoaded?'':'display:none'}"></div>
-    <div id="map-container" style="height:360px;border-radius:12px;overflow:hidden;position:relative;${alreadyLoaded?'':'display:none'}"></div>
+    <div id="map-wrapper" style="height:360px;border-radius:12px;position:relative;${alreadyLoaded?'':'display:none'};clip-path:inset(0 round 12px)">
+      <div id="map-container" style="position:absolute;inset:0;"></div>
+    </div>
     <div id="atm-tip" style="font-size:10px;color:var(--text3);text-align:center;margin-top:6px;${alreadyLoaded?'':'display:none'}">🟠 Cajeros/comercios Bitcoin · 📍 Tu posición · Datos: BTCMap.org</div>
     ${alreadyLoaded?'<button class="btn-ghost" style="width:100%;margin-top:8px" onclick="reloadATM()">🔄 Actualizar</button>':''}
   </div></div>`;
@@ -961,11 +965,12 @@ async function loadATM(){
     if(S.leafletMap){S.leafletMap.remove();S.leafletMap=null;}
 
     // Mostrar contenedor ANTES de crear el mapa
+    const mapWrapper=document.getElementById('map-wrapper');
     const mapDiv=document.getElementById('map-container');
-    if(!mapDiv)return;
-    mapDiv.style.display='block';
-    mapDiv.style.height='360px';
+    if(!mapDiv||!mapWrapper)return;
+    mapWrapper.style.display='block';
     mapDiv.style.width='100%';
+    mapDiv.style.height='100%';
     mapDiv.innerHTML=''; // limpiar cualquier mapa zombie
 
     // Esperar dos frames para que el DOM pinte el contenedor con sus dimensiones reales
