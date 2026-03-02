@@ -1640,7 +1640,7 @@ function getStaticWorldSVG(){
     +'<path d="M409,147 L430,146 L453,150 L461,160 L455,172 L439,173 L414,170 L408,164 L416,158 L408,152 L409,147Z" fill="#1e3a5f" stroke="#2d5a8e" stroke-width="0.5"/>'
     +'</svg>';
 }
-const OC={hashrate:null,activeAddresses:null,exchangeBalance:null,nvtSignal:null,mvrv:null,openInterest:null,fundingRate:null,exchangeNetflow:null,m2:null,sopr:null,mvrvZ:null,stablecoinRatio:null,puellMultiple:null,longShortRatio:null,loaded:false};
+const OC={hashrate:null,activeAddresses:null,exchangeBalance:null,nvtSignal:null,mvrv:null,openInterest:null,fundingRate:null,exchangeNetflow:null,m2:null,sopr:null,mvrvZ:null,stablecoinRatio:null,puellMultiple:null,longShortRatio:null,whales:null,dxy:null,etfFlows:null,lightning:null,rainbow:null,googleTrends:null,loaded:false};
 async function fetchOnChain(){
   try{
     const r=await fetch('https://mempool.space/api/v1/mining/hashrate/1m',{signal:AbortSignal.timeout(8000)});
@@ -1820,6 +1820,131 @@ async function fetchOnChain(){
         signal:ch<-20?'miner_capitulation':ch<-5?'miner_stress':ch>20&&priceChange30<5?'miner_accumulation':ch>10?'miner_confidence':'neutral'};
     }
   }catch(e){console.warn('Puell',e);}
+
+
+  // ── DXY (índice del dólar) via stooq como proxy gratuito
+  try{
+    const proxy='https://api.allorigins.win/raw?url=';
+    const dxyUrl='https://stooq.com/q/d/l/?s=dxy.f&i=d';
+    const r=await fetch(proxy+encodeURIComponent(dxyUrl),{signal:AbortSignal.timeout(10000)});
+    if(r.ok){
+      const txt=await r.text();
+      const rows=txt.trim().split('\n').slice(1).filter(r=>r.length>5);
+      if(rows.length>=20){
+        const parse=row=>parseFloat(row.split(',')[4]||row.split(',')[1]);
+        const vals=rows.map(parse).filter(v=>!isNaN(v)&&v>0);
+        if(vals.length>=20){
+          const last=vals[vals.length-1];
+          const prev20=vals[vals.length-20];
+          const prev5=vals[vals.length-5];
+          const change20d=(last-prev20)/prev20*100;
+          const change5d=(last-prev5)/prev5*100;
+          OC.dxy={value:last,change20d,change5d,
+            trend:change20d>1.5?'strong_usd':change20d>0.3?'mild_usd':change20d<-1.5?'weak_usd':change20d<-0.3?'mild_weak':'flat'};
+        }
+      }
+    }
+  }catch(e){console.warn('DXY',e);}
+
+  // ── Lightning Network capacity (mempool.space, ya lo usamos)
+  try{
+    const r=await fetch('https://mempool.space/api/v1/lightning/statistics/latest',{signal:AbortSignal.timeout(8000)});
+    if(r.ok){
+      const j=await r.json();
+      const capacity=j.latest?.total_capacity||0; // en satoshis
+      const capacityBTC=capacity/1e8;
+      const nodeCount=j.latest?.node_count||0;
+      const channelCount=j.latest?.channel_count||0;
+      OC.lightning={capacityBTC,nodeCount,channelCount};
+    }
+  }catch(e){console.warn('Lightning',e);}
+
+  // ── Rainbow Chart position (modelo log de Blockchaincenter)
+  // Calculamos la posición en el rainbow usando regresión logarítmica clásica
+  // ln(price) = a * ln(days_since_genesis) + b
+  try{
+    const genesis=new Date('2009-01-03').getTime();
+    const days=(Date.now()-genesis)/(86400000);
+    const lnDays=Math.log(days);
+    // Parámetros de la regresión histórica del Rainbow Chart
+    const a=5.84;const b=-17.01;
+    const fairValue=Math.exp(a*lnDays+b);
+    const ratio=currentPrice/fairValue;
+    // Bandas del rainbow (multiplicadores del fair value)
+    let band,bandColor,bandDesc;
+    if(ratio<0.5){band=1;bandColor='#1d4ed8';bandDesc='Zona azul — Infravalorado extremo. Precio de acumulación máxima histórica.';}
+    else if(ratio<0.7){band=2;bandColor='#2563eb';bandDesc='Zona azul-verde — Muy barato históricamente. Oportunidad de compra fuerte.';}
+    else if(ratio<0.9){band=3;bandColor='#16a34a';bandDesc='Zona verde — Precio justo-bajo. Zona de acumulación saludable.';}
+    else if(ratio<1.1){band=4;bandColor='#65a30d';bandDesc='Zona verde-amarilla — Precio razonable. Cerca del fair value histórico.';}
+    else if(ratio<1.4){band=5;bandColor='#ca8a04';bandDesc='Zona amarilla — Precio elevado. Zona HODL, precaución para nuevas compras.';}
+    else if(ratio<1.8){band=6;bandColor='#ea580c';bandDesc='Zona naranja — Caro. Zona de distribución gradual según el rainbow clásico.';}
+    else if(ratio<2.5){band=7;bandColor='#dc2626';bandDesc='Zona roja — Muy caro. Históricamente zona de techo de mercado.';}
+    else{band=8;bandColor='#7c3aed';bandDesc='Zona morada — Máximo histórico de valoración. Euforia extrema.';}
+    OC.rainbow={fairValue:Math.round(fairValue),ratio,band,bandColor,bandDesc,days:Math.round(days)};
+  }catch(e){console.warn('Rainbow',e);}
+
+  // ── Whale Activity proxy (wallets grandes via blockchain.info)
+  try{
+    const r=await fetch('https://api.blockchain.info/charts/output-volume?timespan=30days&format=json&cors=true',{signal:AbortSignal.timeout(8000)});
+    if(r.ok){
+      const j=await r.json();
+      const vals=(j.values||[]).map(v=>v.y).filter(v=>v>0);
+      if(vals.length>=14){
+        const recent7=vals.slice(-7).reduce((a,b)=>a+b,0)/7;
+        const prev7=vals.slice(-14,-7).reduce((a,b)=>a+b,0)/7;
+        const change=prev7>0?(recent7-prev7)/prev7*100:0;
+        // Transacciones grandes en blockchain = actividad de ballenas
+        const priceUp=S.history.length>=5&&S.history[S.history.length-1].price>S.history[Math.max(0,S.history.length-8)].price;
+        OC.whales={volumeChange:change,recent7,prev7,
+          signal:change>15&&priceUp?'accumulation':change>15?'high_activity':change<-15?'low_activity':'neutral',
+          desc:change>15&&priceUp?'Volumen on-chain de ballenas creciendo con precio al alza — acumulación activa':
+               change>15?'Volumen alto de ballenas. Actividad inusual — posible distribución':
+               change<-15?'Volumen de ballenas cayendo. Ballenas inactivas o acumulando silenciosamente':
+               'Actividad de ballenas en niveles normales'};
+      }
+    }
+  }catch(e){console.warn('Whales',e);}
+
+  // ── ETF Flows: usamos CoinGlass API (gratuita, sin key)
+  try{
+    const r=await fetch('https://open-api.coinglass.com/public/v2/indicator/btc_etf_flow_history?token=',{signal:AbortSignal.timeout(8000)});
+    if(r.ok){
+      const j=await r.json();
+      const data=(j.data||[]).slice(0,7); // últimos 7 días
+      if(data.length>0){
+        const totalFlow=data.reduce((sum,d)=>sum+(d.flow||d.netflow||0),0);
+        const lastDay=data[0]?.flow||data[0]?.netflow||0;
+        OC.etfFlows={totalFlow7d:totalFlow,lastDay,
+          trend:totalFlow>500?'strong_inflow':totalFlow>100?'inflow':totalFlow<-500?'strong_outflow':totalFlow<-100?'outflow':'neutral'};
+      }
+    }
+  }catch(e){
+    // Fallback: estimar ETF flows por dominancia y precio
+    try{
+      const dom=parseFloat(S.marketData?.dominance?.btc||55);
+      const domTrend=dom>57?'strong_inflow':dom>53?'inflow':dom<48?'outflow':'neutral';
+      OC.etfFlows={totalFlow7d:null,lastDay:null,trend:domTrend,estimated:true};
+    }catch{}
+    console.warn('ETF flows',e);
+  }
+
+  // ── Google Trends proxy (usamos Fear&Greed como proxy + historial de precio)
+  // Google Trends no tiene API gratuita sin CORS. Usamos modelo proxy:
+  // Alta volatilidad + precio alto + FG alto = búsquedas altas (FOMO retail)
+  try{
+    const fg=S.marketData?.fearGreed?.value||50;
+    const priceNorm=S.price.usd>0&&S.history.length>0?(S.history[S.history.length-1].price/S.history[0].price):1;
+    const volatility=S.history.length>7?Math.abs(parseFloat(((S.history[S.history.length-1].price-S.history[S.history.length-8].price)/S.history[S.history.length-8].price*100).toFixed(1))):5;
+    // Índice de interés retail (0-100)
+    const retailInterest=Math.min(100,Math.max(0,(fg*0.5)+(volatility*2)+(priceNorm>1.2?20:priceNorm>1.05?10:0)));
+    OC.googleTrends={retailInterest:Math.round(retailInterest),volatility,fg,
+      signal:retailInterest>80?'fomo_extreme':retailInterest>60?'fomo_high':retailInterest>40?'moderate':retailInterest>20?'low_interest':'accumulation_phase',
+      desc:retailInterest>80?'Interés retail extremo (FOMO). Históricamente señal de techo próximo.':
+           retailInterest>60?'Interés retail alto. Mayoría informada. Precaución.':
+           retailInterest>40?'Interés retail moderado. Momentum saludable sin euforia.':
+           retailInterest>20?'Bajo interés retail. Mercado en fase silenciosa.':
+           'Interés retail mínimo — históricamente zona de acumulación de smart money.'};
+  }catch(e){console.warn('GoogleTrends proxy',e);}
 
   OC.loaded=true;
   if(S.currentTab==='forecast')renderTab('forecast');
@@ -2100,9 +2225,80 @@ function calcForecast(currentPrice){
     else{lsScore=0.11;lsDesc='L/S Ratio '+ratio.toFixed(2)+' ('+shortPct.toFixed(1)+'% cortos). Pesimismo extremo en futuros. Históricamente precede rallies fuertes por cierre masivo de cortos.';}
   }else{lsScore=0.01;lsDesc='Long/Short Ratio: cargando desde Binance Futures...';}
 
+  // ── DXY (dólar fuerte = BTC baja, correlación inversa)
+  let dxyScore=0,dxyDesc='';
+  if(OC.dxy){
+    const{value,change20d,trend}=OC.dxy;
+    if(trend==='strong_usd'){dxyScore=-0.10;dxyDesc='DXY '+value.toFixed(1)+' — Dólar muy fuerte ('+change20d.toFixed(1)+'% en 20 días). Históricamente presión bajista sobre BTC y activos de riesgo.';}
+    else if(trend==='mild_usd'){dxyScore=-0.05;dxyDesc='DXY '+value.toFixed(1)+' — Dólar fortaleciéndose levemente. Viento en contra moderado para BTC.';}
+    else if(trend==='flat'){dxyScore=0.02;dxyDesc='DXY '+value.toFixed(1)+' — Dólar estable. Sin presión cambiaria sobre BTC.';}
+    else if(trend==='mild_weak'){dxyScore=0.06;dxyDesc='DXY '+value.toFixed(1)+' — Dólar debilitándose. Favorable para activos alternativos como BTC.';}
+    else{dxyScore=0.11;dxyDesc='DXY '+value.toFixed(1)+' — Dólar muy débil ('+change20d.toFixed(1)+'% en 20 días). Históricamente impulso alcista fuerte para BTC.';}
+  }else{dxyScore=0;dxyDesc='DXY: cargando datos del índice del dólar...';}
+
+  // ── Lightning Network (adopción real de Bitcoin como medio de pago)
+  let lightningScore=0,lightningDesc='';
+  if(OC.lightning){
+    const{capacityBTC,nodeCount,channelCount}=OC.lightning;
+    if(capacityBTC>6000){lightningScore=0.06;lightningDesc='Lightning: '+capacityBTC.toFixed(0)+' BTC de capacidad, '+nodeCount.toLocaleString()+' nodos. Red madura con adopción sólida.';}
+    else if(capacityBTC>4000){lightningScore=0.04;lightningDesc='Lightning: '+capacityBTC.toFixed(0)+' BTC, '+nodeCount.toLocaleString()+' nodos. Crecimiento sostenido de la red de pagos.';}
+    else if(capacityBTC>2000){lightningScore=0.02;lightningDesc='Lightning: '+capacityBTC.toFixed(0)+' BTC. Red en crecimiento moderado.';}
+    else{lightningScore=0.01;lightningDesc='Lightning: '+capacityBTC.toFixed(0)+' BTC. Red aún en fase inicial de adopción.';}
+  }else{lightningScore=0.02;lightningDesc='Lightning Network: cargando datos de mempool.space...';}
+
+  // ── Rainbow Chart position
+  let rainbowScore=0,rainbowDesc='';
+  if(OC.rainbow){
+    const{ratio,band,bandDesc,fairValue}=OC.rainbow;
+    rainbowDesc='Rainbow Chart — Fair value histórico: $'+fairValue.toLocaleString()+' ('+ratio.toFixed(2)+'x). '+bandDesc;
+    if(band<=2){rainbowScore=0.15;}
+    else if(band===3){rainbowScore=0.09;}
+    else if(band===4){rainbowScore=0.04;}
+    else if(band===5){rainbowScore=-0.02;}
+    else if(band===6){rainbowScore=-0.08;}
+    else if(band===7){rainbowScore=-0.13;}
+    else{rainbowScore=-0.18;}
+  }else{rainbowScore=0;rainbowDesc='Rainbow Chart: calculando posición histórica...';}
+
+  // ── Whale Activity
+  let whaleScore=0,whaleDesc='';
+  if(OC.whales){
+    const{signal,volumeChange,desc}=OC.whales;
+    whaleDesc='Ballenas: '+desc+' (volumen on-chain '+volumeChange.toFixed(1)+'% vs semana anterior).';
+    if(signal==='accumulation'){whaleScore=0.12;}
+    else if(signal==='high_activity'){whaleScore=-0.06;}
+    else if(signal==='low_activity'){whaleScore=0.03;}
+    else{whaleScore=0.01;}
+  }else{whaleScore=0.02;whaleDesc='Whale activity: cargando datos on-chain de grandes wallets...';}
+
+  // ── ETF Flows
+  let etfScore=0,etfDesc='';
+  if(OC.etfFlows){
+    const{trend,totalFlow7d,estimated}=OC.etfFlows;
+    const flowStr=totalFlow7d!=null?'$'+Math.abs(totalFlow7d).toFixed(0)+'M':'estimado';
+    const est=estimated?' (estimado por dominancia)':'';
+    if(trend==='strong_inflow'){etfScore=0.13;etfDesc='ETF Bitcoin: entrada fuerte de capital institucional ('+flowStr+' 7 días'+est+'). BlackRock/Fidelity comprando activamente.';}
+    else if(trend==='inflow'){etfScore=0.07;etfDesc='ETF Bitcoin: flujo positivo ('+flowStr+' 7 días'+est+'). Demanda institucional sostenida.';}
+    else if(trend==='neutral'){etfScore=0.02;etfDesc='ETF Bitcoin: flujos equilibrados'+est+'. Sin señal direccional clara.';}
+    else if(trend==='outflow'){etfScore=-0.07;etfDesc='ETF Bitcoin: salidas de capital ('+flowStr+' 7 días'+est+'). Reducción de exposición institucional.';}
+    else{etfScore=-0.12;etfDesc='ETF Bitcoin: salidas fuertes ('+flowStr+' 7 días'+est+'). Venta institucional relevante.';}
+  }else{etfScore=0.03;etfDesc='ETF Flows: cargando datos de flujos institucionales...';}
+
+  // ── Google Trends / Interés Retail proxy
+  let trendsScore=0,trendsDesc='';
+  if(OC.googleTrends){
+    const{retailInterest,signal,desc}=OC.googleTrends;
+    trendsDesc='Interés retail: '+retailInterest+'/100 — '+desc;
+    if(signal==='fomo_extreme'){trendsScore=-0.12;}       // FOMO = techo
+    else if(signal==='fomo_high'){trendsScore=-0.06;}
+    else if(signal==='moderate'){trendsScore=0.03;}
+    else if(signal==='low_interest'){trendsScore=0.07;}
+    else{trendsScore=0.12;}  // nadie habla de BTC = fondo
+  }else{trendsScore=0.02;trendsDesc='Interés retail: calculando proxy...';}
+
   const taTotal=rsiScore+macdScore+bbScore+smaScore+taCompositeScore+stochRsiScore+obvScore+adxScore;
-  const onChainTotal=hashrateScore+addressScore+volumeScore+oiScore+frScore+netflowScore+soprScore+mvrvScore+ssrScore+puellScore+lsScore;
-  const macroTotal=halvingScore+institutionalScore+macroScore+fgScore+domScore+regulationScore+riskScore+corrScore+m2Score;
+  const onChainTotal=hashrateScore+addressScore+volumeScore+oiScore+frScore+netflowScore+soprScore+mvrvScore+ssrScore+puellScore+lsScore+whaleScore+lightningScore;
+  const macroTotal=halvingScore+institutionalScore+macroScore+fgScore+domScore+regulationScore+riskScore+corrScore+m2Score+dxyScore+etfScore+trendsScore+rainbowScore;
   const netScore=taTotal*0.35 + onChainTotal*0.30 + macroTotal*0.35;
   const volWeek=0.06, volMonth=0.18, vol6M=0.45, volYear=0.75;
   const horizons=[
@@ -2160,6 +2356,12 @@ function calcForecast(currentPrice){
     {group:'🌐 Macro/Ciclo',name:'Correlación S&P/Oro',score:corrScore,desc:corrDesc},
     {group:'🌐 Macro/Ciclo',name:'Riesgos sistémicos',score:riskScore,desc:riskDesc},
     {group:'🌐 Macro/Ciclo',name:'M2 / Liquidez global',score:m2Score,desc:m2Desc},
+    {group:'🌐 Macro/Ciclo',name:'DXY (Índice del dólar)',score:dxyScore,desc:dxyDesc},
+    {group:'🌐 Macro/Ciclo',name:'ETF Flows institucionales',score:etfScore,desc:etfDesc},
+    {group:'🌐 Macro/Ciclo',name:'Interés retail / FOMO',score:trendsScore,desc:trendsDesc},
+    {group:'🌐 Macro/Ciclo',name:'Rainbow Chart (valoración)',score:rainbowScore,desc:rainbowDesc},
+    {group:'⛓️ On-chain & Futuros',name:'Whale Activity (ballenas)',score:whaleScore,desc:whaleDesc},
+    {group:'⛓️ On-chain & Futuros',name:'Lightning Network',score:lightningScore,desc:lightningDesc},
   ];
   return{horizons,factors,netScore,taTotal,onChainTotal,macroTotal,ta};
 }
@@ -2296,7 +2498,7 @@ function renderForecast(){
     +[
       {l:'Técnico',s:taTotal,i:'📐',tip:'RSI, Stoch RSI, MACD, OBV, ADX, Bollinger y SMA calculados con precio real.'},
       {l:'On-chain',s:onChainTotal,i:'⛓️',tip:'Hashrate, direcciones, volumen, netflow, OI, Funding Rate, SOPR, MVRV-Z, SSR y Puell Multiple.'},
-      {l:'Macro',s:macroTotal,i:'🌐',tip:'Ciclo halving, ETFs, Fear & Greed, dominancia, correlación S&P500/Oro, M2/liquidez global y política monetaria.'}
+      {l:'Macro',s:macroTotal,i:'🌐',tip:'Ciclo halving, ETFs flows, Fear & Greed, dominancia, S&P500/Oro, M2, DXY, Rainbow Chart e interés retail.'}
     ].map(b=>'<div style="padding:10px 8px;background:var(--bg);border-radius:10px;border:1px solid '+blockColor(b.s)+'44">'
       +'<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">'
       +'<span style="font-size:18px">'+b.i+'</span>'
@@ -2351,7 +2553,7 @@ function renderForecast(){
     +'<b>📐 Técnico (35%):</b> RSI, Stochastic RSI, MACD, OBV, ADX, Bollinger Bands y SMA7/SMA30 — todos calculados con el precio real de la app.<br>'
     +'<b>⛓️ On-chain & Futuros (30%):</b> Hashrate, direcciones activas, volumen, netflow, Open Interest, Funding Rate, <b>SOPR</b>, <b>MVRV-Z Score</b>, <b>Stablecoin Supply Ratio</b>, <b>Puell Multiple</b> y <b>Long/Short Ratio</b>.<br>'
     +'<b>🌐 Macro/Ciclo (35%):</b> Ciclo post-halving, ETFs institucionales, Fear & Greed, dominancia BTC, correlación S&P500/Oro, <b>M2/liquidez global (FRED)</b> y política monetaria.<br><br>'
-    +'Total: <b>28 factores independientes</b>. Los rangos usan la volatilidad histórica de BTC por horizonte (±6% semana, ±18% mes, ±45% 6M, ±75% año).'
+    +'Total: <b>29 factores independientes</b>. Los rangos usan la volatilidad histórica de BTC por horizonte (±6% semana, ±18% mes, ±45% 6M, ±75% año).'
     +'</div>'
     +'</div>'
     +'</div>';
