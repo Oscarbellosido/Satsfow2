@@ -629,6 +629,11 @@ function updateHeader(){
 function renderTab(tab){
   const el=document.getElementById('tab-'+tab);if(!el)return;
   const map={home:renderHome,analysis:renderAnalysis,market:renderMarket,mempool:renderMempool,atm:renderATM,news:renderNews,alerts:renderAlerts,corr:renderCorr,global:renderGlobal,forecast:renderForecast};
+  // El tab ATM no se re-renderiza si el mapa ya está activo — evita destruir Leaflet
+  if(tab==='atm'&&S.leafletMap){
+    // Solo actualizar el contador si está visible, no tocar el DOM del mapa
+    return;
+  }
   if(map[tab])el.innerHTML=map[tab]();
   if(tab==='atm'&&!S.atmLoaded)initATM();
 }
@@ -949,7 +954,9 @@ function initATM(){
 async function reloadATM(){
   S.atmLoaded=false;
   if(S.leafletMap){S.leafletMap.remove();S.leafletMap=null;}
-  renderTab('atm');
+  // Forzar re-render completo del tab
+  const el=document.getElementById('tab-atm');
+  if(el){const map={atm:renderATM};el.innerHTML=map.atm();}
   await loadATM();
 }
 async function loadATM(){
