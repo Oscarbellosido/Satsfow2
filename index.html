@@ -335,9 +335,194 @@ function renderCurrentTab(){renderTab(S.currentTab);}
 const fmtN=(v,d=2)=>isNaN(v)?'—':Number(v).toLocaleString('en-US',{maximumFractionDigits:d});
 const fmtBig=v=>{if(!v)return'—';if(v>=1e12)return`$${(v/1e12).toFixed(2)}T`;if(v>=1e9)return`$${(v/1e9).toFixed(1)}B`;return`$${v.toLocaleString()}`;};
 const timeAgo=d=>{const s=Math.floor((Date.now()-d)/1000);if(s<60)return s+'s';if(s<3600)return Math.floor(s/60)+'m';if(s<86400)return Math.floor(s/3600)+'h';return Math.floor(s/86400)+'d';};
-function openDB(){return new Promise((res,rej)=>{const r=indexedDB.open('satsflow',1);r.onupgradeneeded=e=>{if(!e.target.result.objectStoreNames.contains('alerts'))e.target.result.createObjectStore('alerts',{keyPath:'id'});};r.onsuccess=e=>res(e.target.result);r.onerror=rej;});}
+function openDB(){return new Promise((res,rej)=>{const r=indexedDB.open('satsflow',2);r.onupgradeneeded=e=>{const db=e.target.result;if(!db.objectStoreNames.contains('alerts'))db.createObjectStore('alerts',{keyPath:'id'});if(!db.objectStoreNames.contains('predictions'))db.createObjectStore('predictions',{keyPath:'date'});};r.onsuccess=e=>res(e.target.result);r.onerror=rej;});}
 async function saveAlerts(){try{const db=await openDB();const tx=db.transaction('alerts','readwrite');const s=tx.objectStore('alerts');s.clear();S.alerts.forEach(a=>s.put(a));}catch{}}
 async function loadAlertsDB(){try{const db=await openDB();const tx=db.transaction('alerts','readonly');return new Promise(res=>{const q=tx.objectStore('alerts').getAll();q.onsuccess=()=>res(q.result||[]);q.onerror=()=>res([]);});}catch{return[];}}
+
+/* ══════ HISTORIAL DE PREDICCIONES ══════ */
+async function savePrediction(snap){
+  try{const db=await openDB();const tx=db.transaction('predictions','readwrite');tx.objectStore('predictions').put(snap);}catch(e){console.warn('savePrediction:',e);}
+}
+async function loadPredictions(){
+  try{const db=await openDB();const tx=db.transaction('predictions','readonly');return new Promise(res=>{const q=tx.objectStore('predictions').getAll();q.onsuccess=()=>res((q.result||[]).sort((a,b)=>b.ts-a.ts));q.onerror=()=>res([]);});}catch{return[];}
+}
+async function deletePrediction(date){
+  try{const db=await openDB();const tx=db.transaction('predictions','readwrite');tx.objectStore('predictions').delete(date);}catch{}
+}
+
+function buildSnapshot(){
+  // Genera un snapshot de la predicción actual
+  if(!S.price.usd||S.price.usd===0)return null;
+  try{
+    const{horizons,netScore,taTotal,onChainTotal,macroTotal}=calcForecast(S.price.usd);
+    const week=horizons.find(h=>h.label==='1 semana');
+    const month=horizons.find(h=>h.label==='1 mes');
+    if(!week)return null;
+    const now=new Date();
+    const dateKey=now.toISOString().slice(0,10); // YYYY-MM-DD
+    return{
+      date:dateKey,
+      ts:now.getTime(),
+      price:Math.round(S.price.usd),
+      priceEur:Math.round(S.price.eur||0),
+      netScore:parseFloat(netScore.toFixed(4)),
+      taTotal:parseFloat(taTotal.toFixed(4)),
+      onChainTotal:parseFloat(onChainTotal.toFixed(4)),
+      macroTotal:parseFloat(macroTotal.toFixed(4)),
+      week:{
+        bear:Math.round(week.bear),
+        base:Math.round(week.base),
+        bull:Math.round(week.bull),
+        mostLikely:week.mostLikely,
+        signal:week.signal
+      },
+      month:month?{
+        bear:Math.round(month.bear),
+        base:Math.round(month.base),
+        bull:Math.round(month.bull),
+        mostLikely:month.mostLikely,
+        signal:month.signal
+      }:null,
+      fg:S.marketData?.fearGreed?.value||null,
+      dom:parseFloat(S.marketData?.dominance?.btc||0)||null,
+      manual:false
+    };
+  }catch(e){console.warn('buildSnapshot:',e);return null;}
+}
+
+async function saveSnapshotIfNeeded(manual=false){
+  const snap=buildSnapshot();
+  if(!snap)return;
+  if(manual){
+    snap.manual=true;
+    snap.date=snap.date+'_m'+Date.now(); // evitar sobreescribir el auto del mismo día
+    await savePrediction(snap);
+    if(S.currentTab==='forecast')renderTab('forecast');
+    showNotif('📸 SatsFlow','Predicción guardada: BTC $'+snap.price.toLocaleString());
+    return;
+  }
+  // Auto: solo guardar si no existe ya una entrada de hoy
+  try{
+    const db=await openDB();
+    const tx=db.transaction('predictions','readonly');
+    const existing=await new Promise(res=>{const q=tx.objectStore('predictions').get(snap.date);q.onsuccess=()=>res(q.result);q.onerror=()=>res(null);});
+    if(!existing){
+      await savePrediction(snap);
+      console.log('[SatsFlow] Snapshot diario guardado:',snap.date,'BTC $'+snap.price.toLocaleString());
+      if(S.currentTab==='forecast')renderTab('forecast');
+    }
+  }catch(e){console.warn('autoSnapshot:',e);}
+}
+
+// Scheduler diario a las 9:00
+function scheduleDailySnapshot(){
+  function msUntil9(){
+    const now=new Date();
+    const next=new Date(now);
+    next.setHours(9,0,0,0);
+    if(next<=now)next.setDate(next.getDate()+1);
+    return next.getTime()-now.getTime();
+  }
+  setTimeout(async()=>{
+    await saveSnapshotIfNeeded(false);
+    setInterval(()=>saveSnapshotIfNeeded(false),86400000); // cada 24h
+  },msUntil9());
+  // También intentar al arrancar (por si perdió el tick de las 9:00)
+  const now=new Date();
+  if(now.getHours()>=9){
+    setTimeout(()=>saveSnapshotIfNeeded(false),5000); // 5s después de cargar datos
+  }
+}
+
+function outcomeIcon(snap,realPrice){
+  if(!realPrice||!snap.week)return '';
+  const{bear,bull,base,mostLikely}=snap.week;
+  if(realPrice>=bear&&realPrice<=bull){
+    // Dentro del rango total
+    const scenario=realPrice<(bear+base)/2?'📉 Bajista':realPrice<(base+bull)/2?'📊 Base':'📈 Alcista';
+    return'<span style="color:#10b981;font-weight:700">✅ Dentro del rango</span> <span style="font-size:10px;color:var(--text3)">('+scenario+')</span>';
+  }else if(realPrice<bear){
+    const pct=((bear-realPrice)/bear*100).toFixed(1);
+    return'<span style="color:#ef4444;font-weight:700">❌ Por debajo</span> <span style="font-size:10px;color:var(--text3)">('+pct+'% bajo el bear)</span>';
+  }else{
+    const pct=((realPrice-bull)/bull*100).toFixed(1);
+    return'<span style="color:#f97316;font-weight:700">🚀 Por encima</span> <span style="font-size:10px;color:var(--text3)">('+pct+'% sobre el bull)</span>';
+  }
+}
+
+async function renderPredictionHistory(){
+  const preds=await loadPredictions();
+  if(preds.length===0){
+    return'<div class="card"><div style="font-size:15px;font-weight:700;margin-bottom:10px">📜 Historial de predicciones</div>'
+      +'<div style="text-align:center;padding:20px;color:var(--text3);font-size:13px">Sin predicciones guardadas aún.<br>Se guardará automáticamente a las 9:00 cada día.</div></div>';
+  }
+  const now=Date.now();
+  const dayMs=86400000;
+  // Calcular aciertos
+  let hits=0,total=0;
+  const rows=preds.map(snap=>{
+    const age=now-snap.ts;
+    const ageDays=age/dayMs;
+    const dateStr=new Date(snap.ts).toLocaleDateString('es-ES',{day:'2-digit',month:'short',year:'2-digit'});
+    const timeStr=new Date(snap.ts).toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'});
+    const isManual=snap.manual||snap.date.includes('_m');
+    const badge=isManual
+      ?'<span style="font-size:9px;padding:1px 5px;border-radius:4px;background:rgba(99,102,241,.15);color:#818cf8">manual</span>'
+      :'<span style="font-size:9px;padding:1px 5px;border-radius:4px;background:rgba(16,185,129,.12);color:#10b981">auto</span>';
+
+    // Resultado: ¿ya pasó la semana?
+    let outcomeHTML='';
+    if(ageDays>=7){
+      const outcome=outcomeIcon(snap,S.price.usd);
+      outcomeHTML='<div style="margin-top:6px;font-size:11px">'+outcome+'</div>';
+      if(outcome.includes('✅'))hits++;
+      total++;
+    }else{
+      const daysLeft=Math.ceil(7-ageDays);
+      outcomeHTML='<div style="margin-top:6px;font-size:10px;color:var(--text3)">⏳ Resultado en ~'+daysLeft+' día'+(daysLeft===1?'':'s')+'</div>';
+    }
+
+    const scoreColor=snap.netScore>0.05?'#10b981':snap.netScore<-0.05?'#ef4444':'#eab308';
+    const w=snap.week;
+    return'<div style="padding:12px;border-radius:10px;background:var(--bg);border:1px solid var(--border);margin-bottom:8px">'
+      +'<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">'
+      +'<div>'
+      +'<div style="font-size:12px;font-weight:700;color:var(--text)">'+dateStr+' <span style="font-size:10px;color:var(--text3)">'+timeStr+'</span> '+badge+'</div>'
+      +'<div style="font-size:13px;font-weight:800;color:#f97316;margin-top:2px">$'+snap.price.toLocaleString()+'</div>'
+      +'</div>'
+      +'<div style="text-align:right">'
+      +'<div style="font-size:10px;color:var(--text3)">Score</div>'
+      +'<div style="font-size:14px;font-weight:800;color:'+scoreColor+'">'+((snap.netScore||0)>=0?'+':'')+((snap.netScore||0)*100).toFixed(1)+'</div>'
+      +'</div>'
+      +'</div>'
+      +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;font-size:10px;margin-bottom:4px">'
+      +'<div style="background:rgba(239,68,68,.08);border-radius:6px;padding:4px;text-align:center"><div style="color:var(--text3)">📉 Bear</div><div style="font-weight:700;color:#ef4444">$'+(w?.bear||0).toLocaleString()+'</div></div>'
+      +'<div style="background:rgba(234,179,8,.08);border-radius:6px;padding:4px;text-align:center"><div style="color:var(--text3)">📊 Base</div><div style="font-weight:700;color:#eab308">$'+(w?.base||0).toLocaleString()+'</div></div>'
+      +'<div style="background:rgba(16,185,129,.08);border-radius:6px;padding:4px;text-align:center"><div style="color:var(--text3)">📈 Bull</div><div style="font-weight:700;color:#10b981">$'+(w?.bull||0).toLocaleString()+'</div></div>'
+      +'</div>'
+      +outcomeHTML
+      +'<div style="display:flex;justify-content:flex-end;margin-top:6px">'
++'<button data-date="'+snap.date+'" onclick="deletePrediction(this.dataset.date).then(()=>renderTab(&quot;forecast&quot;))" style="background:none;border:none;color:var(--text3);font-size:11px;cursor:pointer;padding:0">🗑 borrar</button>'
+      +'</div>'
+      +'</div>';
+  });
+
+  const accuracy=total>0?Math.round(hits/total*100):null;
+  const accuracyBadge=accuracy!==null
+    ?'<div style="font-size:12px;font-weight:700;color:'+(accuracy>=60?'#10b981':accuracy>=40?'#eab308':'#ef4444')+'">'+accuracy+'% acierto ('+hits+'/'+total+')</div>'
+    :'<div style="font-size:11px;color:var(--text3)">Acierto calculado tras 7 días</div>';
+
+  return'<div class="card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">'
+    +'<div style="font-size:15px;font-weight:700">📜 Historial de predicciones</div>'
+    +'<div style="text-align:right">'+accuracyBadge+'</div>'
+    +'</div>'
+    +'<div style="margin-bottom:10px;display:flex;gap:8px">'
+    +'<button class="btn-orange" style="font-size:12px;padding:7px 12px" onclick="saveSnapshotIfNeeded(true)">📸 Guardar ahora</button>'
+    +'<div style="font-size:10px;color:var(--text3);align-self:center">Auto: 9:00 cada día</div>'
+    +'</div>'
+    +rows.join('')
+    +'</div>';
+}
 if('serviceWorker' in navigator){
   window.addEventListener('load',async()=>{
     try{
@@ -2556,7 +2741,16 @@ function renderForecast(){
     +'Total: <b>29 factores independientes</b>. Los rangos usan la volatilidad histórica de BTC por horizonte (±6% semana, ±18% mes, ±45% 6M, ±75% año).'
     +'</div>'
     +'</div>'
-    +'</div>';
+    +'</div>'
+    +'<div id="pred-history-container"><div class="card"><div style="text-align:center;padding:16px;color:var(--text3);font-size:12px"><span class="spin">⏳</span> Cargando historial...</div></div></div>';
+  // Inyectar historial async sin bloquear el render principal
+  setTimeout(async()=>{
+    try{
+      const histHTML=await renderPredictionHistory();
+      const el=document.getElementById('pred-history-container');
+      if(el)el.innerHTML=histHTML;
+    }catch(e){console.warn('historial:',e);}
+  },100);
 }
 async function init(){
   try{
@@ -2574,6 +2768,8 @@ async function init(){
     setInterval(async()=>{try{await fetchMempool();if(S.currentTab==='mempool')renderTab('mempool');}catch{}},30000);
     setInterval(async()=>{try{await Promise.all([fetchMarket(),fetchMining()]);if(S.currentTab==='market')renderTab('market');}catch{}},120000);
     setInterval(async()=>{try{await fetchNews();if(S.currentTab==='news')renderTab('news');}catch{}},300000);
+    // Snapshot diario de predicciones
+    try{scheduleDailySnapshot();}catch(e){console.warn('scheduleDailySnapshot:',e);}
   }catch(e){
     console.error('INIT FATAL:',e);
     try{
