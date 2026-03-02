@@ -1640,7 +1640,7 @@ function getStaticWorldSVG(){
     +'<path d="M409,147 L430,146 L453,150 L461,160 L455,172 L439,173 L414,170 L408,164 L416,158 L408,152 L409,147Z" fill="#1e3a5f" stroke="#2d5a8e" stroke-width="0.5"/>'
     +'</svg>';
 }
-const OC={hashrate:null,activeAddresses:null,exchangeBalance:null,nvtSignal:null,mvrv:null,loaded:false};
+const OC={hashrate:null,activeAddresses:null,exchangeBalance:null,nvtSignal:null,mvrv:null,openInterest:null,fundingRate:null,exchangeNetflow:null,m2:null,sopr:null,mvrvZ:null,stablecoinRatio:null,puellMultiple:null,longShortRatio:null,loaded:false};
 async function fetchOnChain(){
   try{
     const r=await fetch('https://mempool.space/api/v1/mining/hashrate/1m',{signal:AbortSignal.timeout(8000)});
@@ -1707,6 +1707,119 @@ async function fetchOnChain(){
       }
     }
   }catch(e){console.warn('M2:',e);}
+
+  // ── Open Interest + Funding Rate (Binance Futures)
+  try{
+    const[oiRes,frRes]=await Promise.all([
+      fetch('https://fapi.binance.com/fapi/v1/openInterest?symbol=BTCUSDT',{signal:AbortSignal.timeout(8000)}),
+      fetch('https://fapi.binance.com/fapi/v1/premiumIndex?symbol=BTCUSDT',{signal:AbortSignal.timeout(8000)})
+    ]);
+    if(oiRes.ok){const oj=await oiRes.json();const oiVal=parseFloat(oj.openInterest||0);OC.openInterest={value:oiVal,usd:oiVal*(S.price.usd||0),prev:OC.openInterest?.value||oiVal};}
+    if(frRes.ok){const fj=await frRes.json();const fr=parseFloat(fj.lastFundingRate||0)*100;OC.fundingRate={value:fr,signal:fr>0.05?'long_heavy':fr<-0.05?'short_heavy':'neutral'};}
+  }catch(e){console.warn('OI/FR',e);}
+
+  // ── Exchange Netflow (blockchain.info)
+  try{
+    const r=await fetch('https://api.blockchain.info/charts/exchange-volume?timespan=30days&format=json&cors=true',{signal:AbortSignal.timeout(8000)});
+    if(r.ok){
+      const j=await r.json();
+      const vals=(j.values||[]).map(v=>v.y).filter(v=>v>0);
+      if(vals.length>=14){
+        const r7=vals.slice(-7).reduce((a,b)=>a+b,0)/7;
+        const p7=vals.slice(-14,-7).reduce((a,b)=>a+b,0)/7;
+        const trend=p7>0?(r7-p7)/p7*100:0;
+        OC.exchangeNetflow={recent7:r7,prev7:p7,trend,direction:trend>5?'inflow':trend<-5?'outflow':'neutral'};
+      }
+    }
+  }catch(e){console.warn('netflow',e);}
+
+  // ── Long/Short Ratio (Binance Futures)
+  try{
+    const r=await fetch('https://fapi.binance.com/futures/data/globalLongShortAccountRatio?symbol=BTCUSDT&period=1h&limit=1',{signal:AbortSignal.timeout(8000)});
+    if(r.ok){
+      const j=await r.json();
+      const item=Array.isArray(j)?j[0]:j;
+      if(item){
+        const ls=parseFloat(item.longShortRatio||1);
+        const lp=parseFloat(item.longAccount||0.5)*100;
+        const sp=parseFloat(item.shortAccount||0.5)*100;
+        OC.longShortRatio={ratio:ls,longPct:lp,shortPct:sp,
+          signal:ls>1.8?'extreme_long':ls>1.3?'long_biased':ls<0.6?'extreme_short':ls<0.8?'short_biased':'neutral'};
+      }
+    }
+  }catch(e){console.warn('L/S ratio',e);}
+
+  // ── SOPR aproximado via blockchain.info (profit/loss output ratio)
+  // Usamos el ratio de transacciones rentables como proxy del SOPR real
+  try{
+    const[profR,lossR]=await Promise.all([
+      fetch('https://api.blockchain.info/charts/output-volume?timespan=30days&format=json&cors=true',{signal:AbortSignal.timeout(8000)}),
+      fetch('https://api.blockchain.info/charts/estimated-transaction-volume-usd?timespan=30days&format=json&cors=true',{signal:AbortSignal.timeout(8000)})
+    ]);
+    if(profR.ok&&lossR.ok){
+      const pj=await profR.json(); const lj=await lossR.json();
+      const pVals=(pj.values||[]).map(v=>v.y).filter(v=>v>0);
+      const lVals=(lj.values||[]).map(v=>v.y).filter(v=>v>0);
+      if(pVals.length>=14&&lVals.length>=14){
+        // SOPR proxy: ratio volumen output / volumen USD transaccionado
+        // Si > 1 = se mueve más valor del que se transacciona = holders en profit
+        const pRecent=pVals.slice(-7).reduce((a,b)=>a+b,0)/7;
+        const lRecent=lVals.slice(-7).reduce((a,b)=>a+b,0)/7;
+        const soprProxy=lRecent>0?pRecent/lRecent:1;
+        const prevP=pVals.slice(-14,-7).reduce((a,b)=>a+b,0)/7;
+        const prevL=lVals.slice(-14,-7).reduce((a,b)=>a+b,0)/7;
+        const soprPrev=prevL>0?prevP/prevL:1;
+        OC.sopr={value:soprProxy,prev:soprPrev,
+          trend:soprProxy>soprPrev?'rising':'falling',
+          signal:soprProxy<0.98?'accumulation':soprProxy>1.05?'distribution':soprProxy>1.0?'profit_taking':'near_breakeven'};
+      }
+    }
+  }catch(e){console.warn('SOPR',e);}
+
+  // ── MVRV-Z Score proxy (usando precio vs media histórica de S.history)
+  // MVRV real requiere datos de Glassnode (de pago). Usamos una aproximación:
+  // Z-score del precio actual respecto a su media y desviación histórica disponible
+  try{
+    if(S.history.length>=20){
+      const prices=S.history.map(h=>h.price);
+      const mean=prices.reduce((a,b)=>a+b,0)/prices.length;
+      const std=Math.sqrt(prices.reduce((a,b)=>a+(b-mean)**2,0)/prices.length);
+      const zScore=std>0?(S.price.usd-mean)/std:0;
+      // Normalizar: z>2 sobrecomprado, z<-2 sobrevendido (similar a MVRV-Z)
+      OC.mvrvZ={value:zScore,mean,std,
+        signal:zScore>2.5?'extreme_overvalued':zScore>1.5?'overvalued':zScore<-2?'extreme_undervalued':zScore<-1?'undervalued':'fair_value'};
+    }
+  }catch(e){console.warn('MVRV-Z',e);}
+
+  // ── Stablecoin Supply Ratio (SSR) via CoinGecko
+  // SSR = Market Cap BTC / Market Cap stablecoins. Bajo SSR = mucho poder de compra disponible
+  try{
+    const r=await fetch('https://api.coingecko.com/api/v3/simple/price?ids=tether,usd-coin,dai,binance-usd&vs_currencies=usd&include_market_cap=true',{signal:AbortSignal.timeout(10000)});
+    if(r.ok){
+      const j=await r.json();
+      const stableMcap=(j.tether?.usd_market_cap||0)+(j['usd-coin']?.usd_market_cap||0)+(j.dai?.usd_market_cap||0)+(j['binance-usd']?.usd_market_cap||0);
+      const btcMcap=S.price.usd*19800000; // aprox supply circulante
+      const ssr=stableMcap>0?btcMcap/stableMcap:0;
+      OC.stablecoinRatio={ssr,stableMcapB:stableMcap/1e9,
+        signal:ssr<3?'high_buying_power':ssr<6?'moderate_buying_power':ssr<10?'neutral':'low_buying_power'};
+    }
+  }catch(e){console.warn('SSR',e);}
+
+  // ── Puell Multiple proxy (ingresos mineros vs media histórica)
+  // Puell real = emisión diaria USD / media 365d emisión USD
+  // Usamos hashrate como proxy de la rentabilidad minera
+  try{
+    if(OC.hashrate){
+      const hr=OC.hashrate.current;
+      const ch=OC.hashrate.change30d;
+      // Si el hashrate crece mucho más que el precio, los mineros están acumulando (señal alcista)
+      // Si el hashrate cae, hay capitulación minera (señal de suelo)
+      const priceChange30=S.history.length>1?((S.history[S.history.length-1].price-S.history[0].price)/S.history[0].price*100):0;
+      const puellProxy=ch-priceChange30; // diferencial hashrate vs precio
+      OC.puellMultiple={hashChange:ch,priceChange30,differential:puellProxy,
+        signal:ch<-20?'miner_capitulation':ch<-5?'miner_stress':ch>20&&priceChange30<5?'miner_accumulation':ch>10?'miner_confidence':'neutral'};
+    }
+  }catch(e){console.warn('Puell',e);}
 
   OC.loaded=true;
   if(S.currentTab==='forecast')renderTab('forecast');
@@ -1933,8 +2046,62 @@ function calcForecast(currentPrice){
     m2Desc='M2 / Liquidez global: cargando datos de la Reserva Federal (FRED)...';
   }
 
+  // ── SOPR
+  let soprScore=0, soprDesc='';
+  if(OC.sopr){
+    const{value,signal,trend}=OC.sopr;
+    if(signal==='accumulation'){soprScore=0.13;soprDesc='SOPR '+value.toFixed(3)+' — Por debajo de 1. Los holders están vendiendo con pérdidas. Históricamente marca zonas de suelo y acumulación óptima.';}
+    else if(signal==='near_breakeven'&&trend==='rising'){soprScore=0.07;soprDesc='SOPR '+value.toFixed(3)+' — Cerca de 1 y subiendo. Mercado saliendo de zona de pérdidas. Señal alcista temprana.';}
+    else if(signal==='near_breakeven'){soprScore=0.02;soprDesc='SOPR '+value.toFixed(3)+' — En punto de equilibrio. Holders ni ganando ni perdiendo. Zona de indecisión.';}
+    else if(signal==='profit_taking'&&trend==='rising'){soprScore=0.04;soprDesc='SOPR '+value.toFixed(3)+' — Holders en beneficios, tendencia alcista. Mercado sano pero vigilar posible toma de beneficios.';}
+    else{soprScore=-0.08;soprDesc='SOPR '+value.toFixed(3)+' — Zona de distribución alta. Holders vendiendo con grandes ganancias. Históricamente precede correcciones.';}
+  }else{soprScore=0.02;soprDesc='SOPR: calculando desde datos blockchain...';}
+
+  // ── MVRV-Z Score proxy
+  let mvrvScore=0, mvrvDesc='';
+  if(OC.mvrvZ){
+    const{value:z,signal}=OC.mvrvZ;
+    if(signal==='extreme_undervalued'){mvrvScore=0.15;mvrvDesc='MVRV-Z Score '+z.toFixed(2)+' — Precio muy por debajo de la media histórica. Zona históricamente de compra máxima (similar a suelos de 2018 y 2022).';}
+    else if(signal==='undervalued'){mvrvScore=0.09;mvrvDesc='MVRV-Z Score '+z.toFixed(2)+' — Infravalorado respecto al historial. Buena zona de acumulación con riesgo asimétrico favorable.';}
+    else if(signal==='fair_value'){mvrvScore=0.03;mvrvDesc='MVRV-Z Score '+z.toFixed(2)+' — Precio en zona de valor justo. Ni sobrecomprado ni sobrevendido. Neutral.';}
+    else if(signal==='overvalued'){mvrvScore=-0.06;mvrvDesc='MVRV-Z Score '+z.toFixed(2)+' — Por encima de la media histórica. Mercado caliente, reducir exposición gradualmente.';}
+    else{mvrvScore=-0.13;mvrvDesc='MVRV-Z Score '+z.toFixed(2)+' — Zona de euforia extrema. Históricamente los ciclos terminan aquí. Alto riesgo de corrección fuerte.';}
+  }else{mvrvScore=0.02;mvrvDesc='MVRV-Z: calculando con historial de precio disponible...';}
+
+  // ── Stablecoin Supply Ratio (SSR)
+  let ssrScore=0, ssrDesc='';
+  if(OC.stablecoinRatio){
+    const{ssr,stableMcapB,signal}=OC.stablecoinRatio;
+    if(signal==='high_buying_power'){ssrScore=0.10;ssrDesc='SSR '+ssr.toFixed(1)+' — $'+stableMcapB.toFixed(0)+'B en stablecoins vs BTC market cap. Ratio bajo = mucho capital listo para entrar en BTC. Señal alcista estructural.';}
+    else if(signal==='moderate_buying_power'){ssrScore=0.05;ssrDesc='SSR '+ssr.toFixed(1)+' — Buena cantidad de stablecoins disponibles. Poder de compra moderado. Señal positiva.';}
+    else if(signal==='neutral'){ssrScore=0.01;ssrDesc='SSR '+ssr.toFixed(1)+' — Equilibrio entre stablecoins y market cap BTC. Sin señal clara de acumulación masiva.';}
+    else{ssrScore=-0.04;ssrDesc='SSR '+ssr.toFixed(1)+' — Pocas stablecoins relativo al market cap. Menos pólvora seca para nuevas compras. Presión limitada al alza.';}
+  }else{ssrScore=0.02;ssrDesc='SSR: cargando datos de stablecoins (USDT, USDC, DAI)...';}
+
+  // ── Puell Multiple proxy
+  let puellScore=0, puellDesc='';
+  if(OC.puellMultiple){
+    const{signal,hashChange,priceChange30,differential}=OC.puellMultiple;
+    if(signal==='miner_capitulation'){puellScore=0.14;puellDesc='Puell proxy: capitulación minera (hashrate '+hashChange.toFixed(1)+'%). Los mineros venden a pérdidas. Históricamente uno de los mejores momentos de compra de todo el ciclo.';}
+    else if(signal==='miner_stress'){puellScore=0.07;puellDesc='Puell proxy: estrés minero (hashrate '+hashChange.toFixed(1)+'%). Presión vendedora de mineros. Suele preceder suelos.';}
+    else if(signal==='miner_accumulation'){puellScore=0.08;puellDesc='Puell proxy: mineros acumulando (hashrate +'+hashChange.toFixed(1)+'% vs precio '+priceChange30.toFixed(1)+'%). Invierten en más máquinas → confían en precio futuro.';}
+    else if(signal==='miner_confidence'){puellScore=0.05;puellDesc='Puell proxy: mineros en zona cómoda (hashrate +'+hashChange.toFixed(1)+'%). Sin presión de venta forzada. Señal positiva.';}
+    else{puellScore=0.02;puellDesc='Puell proxy: rentabilidad minera neutral. Sin señal extrema en ninguna dirección.';}
+  }else{puellScore=0.02;puellDesc='Puell Multiple: calculando con datos de hashrate...';}
+
+  // ── Long/Short Ratio
+  let lsScore=0, lsDesc='';
+  if(OC.longShortRatio){
+    const{ratio,longPct,shortPct,signal}=OC.longShortRatio;
+    if(signal==='extreme_long'){lsScore=-0.10;lsDesc='L/S Ratio '+ratio.toFixed(2)+' ('+longPct.toFixed(1)+'% largos). Demasiados optimistas apalancados. Mercado susceptible a short squeeze y liquidaciones en cascada. Señal contraria bajista.';}
+    else if(signal==='long_biased'){lsScore=-0.04;lsDesc='L/S Ratio '+ratio.toFixed(2)+' — Mayoría larga. Sesgo alcista en futuros. Cierta precaución ante posibles liquidaciones.';}
+    else if(signal==='neutral'){lsScore=0.03;lsDesc='L/S Ratio '+ratio.toFixed(2)+' ('+longPct.toFixed(1)+'% largos / '+shortPct.toFixed(1)+'% cortos). Equilibrio saludable. Sin exceso de apalancamiento en ninguna dirección.';}
+    else if(signal==='short_biased'){lsScore=0.06;lsDesc='L/S Ratio '+ratio.toFixed(2)+' — Mayoría corta. Mercado pesimista apalancado. Señal contraria alcista: posible short squeeze.';}
+    else{lsScore=0.11;lsDesc='L/S Ratio '+ratio.toFixed(2)+' ('+shortPct.toFixed(1)+'% cortos). Pesimismo extremo en futuros. Históricamente precede rallies fuertes por cierre masivo de cortos.';}
+  }else{lsScore=0.01;lsDesc='Long/Short Ratio: cargando desde Binance Futures...';}
+
   const taTotal=rsiScore+macdScore+bbScore+smaScore+taCompositeScore+stochRsiScore+obvScore+adxScore;
-  const onChainTotal=hashrateScore+addressScore+volumeScore+oiScore+frScore+netflowScore;
+  const onChainTotal=hashrateScore+addressScore+volumeScore+oiScore+frScore+netflowScore+soprScore+mvrvScore+ssrScore+puellScore+lsScore;
   const macroTotal=halvingScore+institutionalScore+macroScore+fgScore+domScore+regulationScore+riskScore+corrScore+m2Score;
   const netScore=taTotal*0.35 + onChainTotal*0.30 + macroTotal*0.35;
   const volWeek=0.06, volMonth=0.18, vol6M=0.45, volYear=0.75;
@@ -1979,6 +2146,11 @@ function calcForecast(currentPrice){
     {group:'⛓️ On-chain & Futuros',name:'Exchange Netflow',score:netflowScore,desc:netflowDesc},
     {group:'⛓️ On-chain & Futuros',name:'Open Interest',score:oiScore,desc:oiDesc},
     {group:'⛓️ On-chain & Futuros',name:'Funding Rate',score:frScore,desc:frDesc},
+    {group:'⛓️ On-chain & Futuros',name:'SOPR',score:soprScore,desc:soprDesc},
+    {group:'⛓️ On-chain & Futuros',name:'MVRV-Z Score',score:mvrvScore,desc:mvrvDesc},
+    {group:'⛓️ On-chain & Futuros',name:'Stablecoin Supply Ratio',score:ssrScore,desc:ssrDesc},
+    {group:'⛓️ On-chain & Futuros',name:'Puell Multiple',score:puellScore,desc:puellDesc},
+    {group:'⛓️ On-chain & Futuros',name:'Long/Short Ratio',score:lsScore,desc:lsDesc},
     {group:'🌐 Macro/Ciclo',name:'Ciclo Halving',score:halvingScore,desc:halvingDesc},
     {group:'🌐 Macro/Ciclo',name:'Institucional',score:institutionalScore,desc:institutionalDesc},
     {group:'🌐 Macro/Ciclo',name:'Macro global',score:macroScore,desc:macroDesc},
@@ -2123,7 +2295,7 @@ function renderForecast(){
     +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px">'
     +[
       {l:'Técnico',s:taTotal,i:'📐',tip:'RSI, Stoch RSI, MACD, OBV, ADX, Bollinger y SMA calculados con precio real.'},
-      {l:'On-chain',s:onChainTotal,i:'⛓️',tip:'Hashrate, direcciones activas, volumen, netflow, Open Interest y Funding Rate.'},
+      {l:'On-chain',s:onChainTotal,i:'⛓️',tip:'Hashrate, direcciones, volumen, netflow, OI, Funding Rate, SOPR, MVRV-Z, SSR y Puell Multiple.'},
       {l:'Macro',s:macroTotal,i:'🌐',tip:'Ciclo halving, ETFs, Fear & Greed, dominancia, correlación S&P500/Oro, M2/liquidez global y política monetaria.'}
     ].map(b=>'<div style="padding:10px 8px;background:var(--bg);border-radius:10px;border:1px solid '+blockColor(b.s)+'44">'
       +'<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">'
@@ -2177,9 +2349,9 @@ function renderForecast(){
     +'<div style="font-size:13px;font-weight:700;margin-bottom:8px">📖 Metodología v2</div>'
     +'<div style="font-size:11px;color:var(--text2);line-height:1.7">'
     +'<b>📐 Técnico (35%):</b> RSI, Stochastic RSI, MACD, OBV, ADX, Bollinger Bands y SMA7/SMA30 — todos calculados con el precio real de la app.<br>'
-    +'<b>⛓️ On-chain & Futuros (30%):</b> Hashrate (mempool.space), direcciones activas y volumen (blockchain.info), Exchange Netflow, Open Interest y Funding Rate (Binance Futures).<br>'
+    +'<b>⛓️ On-chain & Futuros (30%):</b> Hashrate, direcciones activas, volumen, netflow, Open Interest, Funding Rate, <b>SOPR</b>, <b>MVRV-Z Score</b>, <b>Stablecoin Supply Ratio</b>, <b>Puell Multiple</b> y <b>Long/Short Ratio</b>.<br>'
     +'<b>🌐 Macro/Ciclo (35%):</b> Ciclo post-halving, ETFs institucionales, Fear & Greed, dominancia BTC, correlación S&P500/Oro, <b>M2/liquidez global (FRED)</b> y política monetaria.<br><br>'
-    +'Total: <b>23 factores independientes</b>. Los rangos usan la volatilidad histórica de BTC por horizonte (±6% semana, ±18% mes, ±45% 6M, ±75% año).'
+    +'Total: <b>28 factores independientes</b>. Los rangos usan la volatilidad histórica de BTC por horizonte (±6% semana, ±18% mes, ±45% 6M, ±75% año).'
     +'</div>'
     +'</div>'
     +'</div>';
