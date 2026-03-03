@@ -137,7 +137,7 @@
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-const S={price:{usd:0,eur:0},change24h:0,marketCap:0,history:[],ohlc:[],mempool:null,marketData:null,miningData:null,news:[],alerts:[],days:'30',chartType:'area',dark:localStorage.getItem('sf-theme')!=='light',notifPerm:window.Notification?.permission||'unsupported',atmLoaded:false,leafletMap:null,lastUpdated:null,feeLevel:'hour',txSize:250,currentTab:'home',corrData:null,corrPeriod:'30',dominanceHistory:[],rainbowData:null,dominanceYearData:null,lang:localStorage.getItem('sf-lang')||'es',morningAlert:JSON.parse(localStorage.getItem('sf-morning')||'null')};
+const S={price:{usd:0,eur:0},change24h:0,marketCap:0,history:[],ohlc:[],mempool:null,marketData:null,miningData:null,news:[],alerts:[],days:'30',chartType:'area',dark:localStorage.getItem('sf-theme')!=='light',notifPerm:window.Notification?.permission||'unsupported',atmLoaded:false,leafletMap:null,lastUpdated:null,feeLevel:'hour',txSize:250,currentTab:'home',corrData:null,corrPeriod:'30',dominanceHistory:[],rainbowData:null,dominanceYearData:null,historyTA:[],lang:localStorage.getItem('sf-lang')||'es',morningAlert:JSON.parse(localStorage.getItem('sf-morning')||'null')};
 
 /* ══════ TRADUCCIONS / TRADUCCIONES ══════ */
 const T={
@@ -594,7 +594,7 @@ function playAlertSound(){
 const MEM='https://mempool.space/api';
 async function fetchPrice(){
   try{
-    const[tickerR,klineR,eurR]=await Promise.all([
+    const[tickerR,klineR,eurR,klinesTA_R]=await Promise.all([
       fetch('https://api.binance.com/api/v3/ticker/24hr?symbol=BTCUSDT'),
       fetch(`https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=${S.days==='1'?'1h':S.days==='7'?'4h':S.days==='30'?'1d':S.days==='90'?'3d':'1w'}&limit=${S.days==='1'?'24':S.days==='7'?'42':S.days==='90'?'30':'52'}`),
       fetch('https://api.binance.com/api/v3/ticker/price?symbol=BTCEUR'),
@@ -602,6 +602,7 @@ async function fetchPrice(){
     const ticker=await tickerR.json();
     const klines=await klineR.json();
     const eur=await eurR.json();
+    const klinesTA=klinesTA_R?await klinesTA_R.json().catch(()=>[]):[];
     S.price={usd:parseFloat(ticker.lastPrice),eur:parseFloat(eur.price)};
     S.change24h=parseFloat(ticker.priceChangePercent)||0;
     S.marketCap=0;
@@ -618,6 +619,10 @@ async function fetchPrice(){
       date:new Date(k[0]).toLocaleDateString('es-ES',{month:'numeric',day:'numeric'}),
       open:parseFloat(k[1]),high:parseFloat(k[2]),low:parseFloat(k[3]),close:parseFloat(k[4])
     }));
+    // Historial de 60 velas diarias para análisis técnico (independiente del período del gráfico)
+    if(Array.isArray(klinesTA)&&klinesTA.length>=30){
+      S.historyTA=klinesTA.map(k=>({price:parseFloat(k[4]),time:k[0],vol:parseFloat(k[5])}));
+    }
     S.lastUpdated=new Date();
     updateHeader();
   }catch(e){console.error('fetchPrice',e);}
@@ -772,8 +777,10 @@ async function fetchNews(){
 function calcEMA(p,k){const m=2/(k+1),e=[];p.forEach((v,i)=>{e.push(i===0?v:v*m+e[i-1]*(1-m));});return e;}
 function calcRSI(p,k=14){const r=new Array(k).fill(null);let g=0,l=0;for(let i=1;i<=k;i++){const d=p[i]-p[i-1];d>0?g+=d:l+=Math.abs(d);}let ag=g/k,al=l/k;for(let i=k;i<p.length;i++){const d=p[i]-p[i-1];ag=(ag*(k-1)+(d>0?d:0))/k;al=(al*(k-1)+(d<0?Math.abs(d):0))/k;r.push(100-(100/(1+(al===0?100:ag/al))));}return r;}
 function analyze(){
-  const prices=S.history.map(h=>h.price);
-  if(prices.length<30)return null;
+  // Usar historial de 60 velas diarias si está disponible — siempre suficiente para TA
+  const src=S.historyTA&&S.historyTA.length>=30?S.historyTA:S.history;
+  const prices=src.map(h=>h.price);
+  if(prices.length<14)return null;
   const last=prices[prices.length-1];
   const rsiArr=calcRSI(prices),lastRSI=rsiArr[rsiArr.length-1];
   const e12=calcEMA(prices,12),e26=calcEMA(prices,26);
