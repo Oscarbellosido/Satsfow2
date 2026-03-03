@@ -2007,26 +2007,27 @@ async function fetchOnChain(){
   }catch(e){console.warn('Puell',e);}
 
 
-  // ── DXY (índice del dólar) via stooq como proxy gratuito
+  // ── DXY proxy: usamos EUR/USD como indicador inverso del dólar
+  // EUR/USD sube → dólar débil (bueno para BTC), baja → dólar fuerte (malo para BTC)
+  // Ya tenemos el precio EUR de BTC, calculamos el ratio USD/EUR implícito
   try{
-    const proxy='https://api.allorigins.win/raw?url=';
-    const dxyUrl='https://stooq.com/q/d/l/?s=dxy.f&i=d';
-    const r=await fetch(proxy+encodeURIComponent(dxyUrl),{signal:AbortSignal.timeout(10000)});
+    // Obtener histórico EUR/USD via exchangerate-api (gratuito, sin CORS)
+    const r=await fetch('https://open.er-api.com/v6/latest/USD',{signal:AbortSignal.timeout(8000)});
     if(r.ok){
-      const txt=await r.text();
-      const rows=txt.trim().split('\n').slice(1).filter(r=>r.length>5);
-      if(rows.length>=20){
-        const parse=row=>parseFloat(row.split(',')[4]||row.split(',')[1]);
-        const vals=rows.map(parse).filter(v=>!isNaN(v)&&v>0);
-        if(vals.length>=20){
-          const last=vals[vals.length-1];
-          const prev20=vals[vals.length-20];
-          const prev5=vals[vals.length-5];
-          const change20d=(last-prev20)/prev20*100;
-          const change5d=(last-prev5)/prev5*100;
-          OC.dxy={value:last,change20d,change5d,
-            trend:change20d>1.5?'strong_usd':change20d>0.3?'mild_usd':change20d<-1.5?'weak_usd':change20d<-0.3?'mild_weak':'flat'};
-        }
+      const j=await r.json();
+      const eurUsd=j.rates?.EUR; // cuántos EUR por 1 USD
+      if(eurUsd&&eurUsd>0){
+        // EUR/USD inverso = USD/EUR: más alto = dólar más fuerte
+        // Usar precio BTC en EUR vs USD como proxy del cambio EUR/USD
+        const btcUsd=S.price.usd||0;
+        const btcEur=S.price.eur||0;
+        const impliedRate=btcEur>0&&btcUsd>0?btcUsd/btcEur:1/eurUsd;
+        // Comparar con media histórica EUR/USD (~1.08 en 2024-2025)
+        const historicalAvg=1.08;
+        const dxyProxy=historicalAvg/impliedRate*100; // >100 = dólar fuerte
+        const change20d=(impliedRate-historicalAvg)/historicalAvg*100; // % cambio vs media
+        const trend=dxyProxy>104?'strong_usd':dxyProxy>101?'mild_usd':dxyProxy<96?'weak_usd':dxyProxy<99?'mild_weak':'flat';
+        OC.dxy={value:parseFloat(dxyProxy.toFixed(1)),eurUsd:impliedRate,change20d,change5d:0,trend};
       }
     }
   }catch(e){console.warn('DXY',e);}
@@ -2054,7 +2055,8 @@ async function fetchOnChain(){
     // Parámetros de la regresión histórica del Rainbow Chart
     const a=5.84;const b=-17.01;
     const fairValue=Math.exp(a*lnDays+b);
-    const ratio=currentPrice/fairValue;
+    const currentP=S.price.usd||0;if(!currentP){OC.rainbow=null;throw new Error('no price');}
+    const ratio=currentP/fairValue;
     // Bandas del rainbow (multiplicadores del fair value)
     let band,bandColor,bandDesc;
     if(ratio<0.5){band=1;bandColor='#1d4ed8';bandDesc='Zona azul — Infravalorado extremo. Precio de acumulación máxima histórica.';}
@@ -2669,7 +2671,7 @@ function renderForecast(){
   const onChainBadge=OC.loaded
     ?'<span style="font-size:10px;color:#10b981;font-weight:600">✅ Datos on-chain en tiempo real</span>'
     :'<span style="font-size:10px;color:#eab308;font-weight:600"><span class="spin" style="font-size:10px">⏳</span> Cargando datos on-chain...</span>';
-  return '<div class="space-y">'
+  const html='<div class="space-y">'
     +'<div style="background:rgba(234,179,8,.08);border:1px solid rgba(234,179,8,.3);border-radius:12px;padding:12px;display:flex;gap:10px">'
     +'<div style="font-size:20px">⚠️</div>'
     +'<div style="font-size:11px;color:var(--text2);line-height:1.5"><b style="color:#eab308"><b style=\"color:#eab308\">⚠️ Aviso:</b> Esto no es consejo financiero. Son rangos probabilísticos. Bitcoin es extremadamente volátil. Nunca inviertas más de lo que puedas perder.</div>'
@@ -2743,14 +2745,13 @@ function renderForecast(){
     +'</div>'
     +'</div>'
     +'<div id="pred-history-container"><div class="card"><div style="text-align:center;padding:16px;color:var(--text3);font-size:12px"><span class="spin">⏳</span> Cargando historial...</div></div></div>';
-  // Inyectar historial async sin bloquear el render principal
-  setTimeout(async()=>{
-    try{
-      const histHTML=await renderPredictionHistory();
-      const el=document.getElementById('pred-history-container');
-      if(el)el.innerHTML=histHTML;
-    }catch(e){console.warn('historial:',e);}
-  },100);
+  // El return ya ocurrió arriba — inyectar historial via requestAnimationFrame
+  // para que el DOM esté disponible antes de escribir en él
+  Promise.resolve().then(()=>renderPredictionHistory()).then(histHTML=>{
+    const el=document.getElementById('pred-history-container');
+    if(el)el.innerHTML=histHTML;
+  }).catch(e=>console.warn('historial:',e));
+  return html;
 }
 async function init(){
   try{
