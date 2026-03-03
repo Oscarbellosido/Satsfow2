@@ -346,6 +346,13 @@ async function savePrediction(snap){
 async function loadPredictions(){
   try{const db=await openDB();const tx=db.transaction('predictions','readonly');return new Promise(res=>{const q=tx.objectStore('predictions').getAll();q.onsuccess=()=>res((q.result||[]).sort((a,b)=>b.ts-a.ts));q.onerror=()=>res([]);});}catch{return[];}
 }
+async function purgeInvalidSnapshots(){
+  const preds=await loadPredictions();
+  const invalid=preds.filter(p=>!p.week?.bear||p.week.bear===0);
+  for(const p of invalid)await deletePrediction(p.date);
+  if(invalid.length>0)showNotif('🧹 SatsFlow',invalid.length+' registros inválidos eliminados');
+  renderTab('forecast');
+}
 async function deletePrediction(date){
   try{const db=await openDB();const tx=db.transaction('predictions','readwrite');tx.objectStore('predictions').delete(date);}catch{}
 }
@@ -516,8 +523,9 @@ async function renderPredictionHistory(){
     +'<div style="font-size:15px;font-weight:700">📜 Historial de predicciones</div>'
     +'<div style="text-align:right">'+accuracyBadge+'</div>'
     +'</div>'
-    +'<div style="margin-bottom:10px;display:flex;gap:8px">'
+    +'<div style="margin-bottom:10px;display:flex;gap:8px;flex-wrap:wrap">'
     +'<button class="btn-orange" style="font-size:12px;padding:7px 12px" onclick="saveSnapshotIfNeeded(true)">📸 Guardar ahora</button>'
+    +'<button onclick="purgeInvalidSnapshots()" style="font-size:11px;padding:7px 10px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text3);cursor:pointer">🧹 Limpiar $0</button>'
     +'<div style="font-size:10px;color:var(--text3);align-self:center">Auto: 9:00 cada día</div>'
     +'</div>'
     +rows.join('')
@@ -2550,6 +2558,18 @@ function calcForecast(currentPrice){
     {group:'⛓️ On-chain & Futuros',name:'Whale Activity (ballenas)',score:whaleScore,desc:whaleDesc},
     {group:'⛓️ On-chain & Futuros',name:'Lightning Network',score:lightningScore,desc:lightningDesc},
   ];
+  // Calcular precios bear/base/bull para cada horizonte (misma lógica que renderForecast)
+  horizons.forEach(h=>{
+    const bias=h.localScore;
+    const bullMult=1+h.vol*(1+bias*2);
+    const baseMult=1+h.vol*0.3*bias;
+    const bearMult=1-h.vol*(1-bias*1.5);
+    h.bull=Math.round(currentPrice*Math.max(bullMult,1.01));
+    h.base=Math.round(currentPrice*Math.max(Math.min(baseMult,bullMult*0.9),bearMult*1.1));
+    h.bear=Math.round(currentPrice*Math.min(bearMult,0.99));
+    h.mostLikely=bias>0.05?'bull':bias<-0.05?'bear':'base';
+    h.signal=bias>0.1?'COMPRAR':bias<-0.1?'VENDER':'NEUTRAL';
+  });
   return{horizons,factors,netScore,taTotal,onChainTotal,macroTotal,ta};
 }
 function renderForecast(){
