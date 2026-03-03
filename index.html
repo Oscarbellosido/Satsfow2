@@ -387,6 +387,8 @@ function buildSnapshot(){
       taTotal:parseFloat(taTotal.toFixed(4)),
       onChainTotal:parseFloat(onChainTotal.toFixed(4)),
       macroTotal:parseFloat(macroTotal.toFixed(4)),
+      regime,
+      wTA:parseFloat(wTA.toFixed(2)),wOC:parseFloat(wOC.toFixed(2)),wMacro:parseFloat(wMacro.toFixed(2)),
       week:{
         bear:Math.round(week.bear),
         base:Math.round(week.base),
@@ -505,7 +507,7 @@ async function renderPredictionHistory(){
     return'<div style="padding:12px;border-radius:10px;background:var(--bg);border:1px solid var(--border);margin-bottom:8px">'
       +'<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">'
       +'<div>'
-      +'<div style="font-size:12px;font-weight:700;color:var(--text)">'+dateStr+' <span style="font-size:10px;color:var(--text3)">'+timeStr+'</span> '+badge+'</div>'
+      +'<div style="font-size:12px;font-weight:700;color:var(--text)">'+dateStr+' <span style="font-size:10px;color:var(--text3)">'+timeStr+'</span> '+badge+(snap.regime?' <span style="font-size:9px;padding:1px 5px;border-radius:4px;background:rgba(99,102,241,.1);color:#818cf8">'+snap.regime+'</span>':'')+'</div>'
       +'<div style="font-size:13px;font-weight:800;color:#f97316;margin-top:2px">$'+snap.price.toLocaleString()+'</div>'
       +'</div>'
       +'<div style="text-align:right">'
@@ -2336,21 +2338,67 @@ function calcForecast(currentPrice){
     else if(spCorr<0.3&&goldCorr>0.5){corrScore=0.04;corrDesc='BTC desacoplado del S&P500. Correlando más con oro (r='+goldCorr.toFixed(2)+') — comportamiento reserva de valor.';}
     else{corrScore=0.01;corrDesc='Correlaciones mixtas (S&P r='+spCorr.toFixed(2)+', Oro r='+goldCorr.toFixed(2)+'). Sin señal clara.';}
   } else { corrScore=0.01; corrDesc='Correlación S&P/Oro: visita la pestaña Correlación para cargar estos datos.'; }
-  const halvingMonthsAgo=10;
-  let halvingScore=halvingMonthsAgo<6?0.10:halvingMonthsAgo<12?0.20:halvingMonthsAgo<18?0.15:halvingMonthsAgo<24?0.05:-0.02;
-  const halvingDesc='Mes '+halvingMonthsAgo+' post-halving (abril 2024). '+(halvingMonthsAgo<18?'Históricamente el período más alcista del ciclo de 4 años.':'Impulso post-halving agotándose.');
-  const institutionalScore=0.12;
-  const institutionalDesc='ETFs BTC acumulan >$50B AUM. MicroStrategy, tesoros corporativos y países comprando activamente.';
-  const macroScore=0.06;
-  const macroDesc='Fed en pausa/bajada leve. Inflación ~2.5%. Liquidez global moderadamente favorable para activos de riesgo.';
+  // ── Halving: calcular dinámicamente desde fecha real
+  const halvingDate=new Date('2024-04-20').getTime();
+  const halvingMonthsAgo=Math.floor((Date.now()-halvingDate)/(30*86400000));
+  let halvingScore=halvingMonthsAgo<6?0.10:halvingMonthsAgo<12?0.20:halvingMonthsAgo<18?0.15:halvingMonthsAgo<24?0.05:halvingMonthsAgo<36?-0.02:-0.05;
+  const halvingDesc='Mes '+halvingMonthsAgo+' post-halving (abril 2024). '+(halvingMonthsAgo<18?'Históricamente el período más alcista del ciclo de 4 años.':halvingMonthsAgo<30?'Impulso post-halving moderándose.':'Fase tardía del ciclo — precaución.');
+
+  // ── Institucional: derivado de ETF flows + dominancia (datos reales)
+  let institutionalScore=0, institutionalDesc='';
+  {
+    const etfBull=OC.etfFlows?.trend==='strong_inflow'||OC.etfFlows?.trend==='inflow';
+    const etfBear=OC.etfFlows?.trend==='strong_outflow'||OC.etfFlows?.trend==='outflow';
+    const domHigh=dom>55;
+    const mstrCorr=S.corrData?.corrBtcMstr;
+    const mstrBull=mstrCorr&&mstrCorr>0.8&&(S.corrData?.mstrChange||0)>0;
+    if(etfBull&&domHigh){institutionalScore=0.13;institutionalDesc='ETF flows positivos + alta dominancia BTC. Institucionales acumulando activamente.';}
+    else if(etfBull){institutionalScore=0.08;institutionalDesc='ETF flows positivos. Demanda institucional presente aunque dominancia moderada.';}
+    else if(etfBear&&!domHigh){institutionalScore=-0.10;institutionalDesc='ETF flows negativos + dominancia baja. Reducción de exposición institucional.';}
+    else if(etfBear){institutionalScore=-0.05;institutionalDesc='ETF flows negativos. Salidas institucionales moderadas.';}
+    else{institutionalScore=0.04;institutionalDesc='ETF flows neutrales. Acumulación institucional estable sin señal direccional clara.';}
+    if(mstrBull)institutionalScore=Math.min(0.15,institutionalScore+0.03);
+  }
+
+  // ── Macro Fed/inflación: derivado de M2 + DXY (ya tenemos datos reales)
+  let macroScore=0, macroDesc='';
+  {
+    const m2Bull=OC.m2?.trend==='expanding';
+    const dxyWeak=OC.dxy?.trend==='weak_usd'||OC.dxy?.trend==='mild_weak';
+    const dxyStrong=OC.dxy?.trend==='strong_usd'||OC.dxy?.trend==='mild_usd';
+    if(m2Bull&&dxyWeak){macroScore=0.10;macroDesc='M2 expansivo + dólar débil. Entorno macro muy favorable para BTC.';}
+    else if(m2Bull||dxyWeak){macroScore=0.05;macroDesc='Un factor macro favorable (M2 o DXY). Entorno moderadamente positivo.';}
+    else if(dxyStrong&&!m2Bull){macroScore=-0.08;macroDesc='Dólar fuerte + M2 plana/contractiva. Entorno macro desfavorable para activos de riesgo.';}
+    else{macroScore=0.02;macroDesc='Condiciones macro neutras. Sin impulso adicional de política monetaria.';}
+  }
   const fgScore=fg<25?0.12:fg<40?0.08:fg<55?0.02:fg<70?-0.03:-0.08;
   const fgDesc='Fear & Greed: '+fg+'/100 — '+(fg<40?'Zona de miedo = oportunidad histórica de acumulación.':fg>70?'Codicia alta = precaución, posible corrección.':'Zona neutral.');
   const domScore=dom>58?0.08:dom>50?0.04:dom>42?0.00:-0.04;
   const domDesc='Dominancia BTC: '+dom.toFixed(1)+'%. '+(dom>55?'Alta dominancia: capital en Bitcoin, señal alcista para BTC.':'Altcoins compitiendo por capital.');
-  const regulationScore=0.05;
-  const regulationDesc='Marco regulatorio en EE.UU. más claro. MiCA en vigor en Europa. Tendencia global positiva.';
-  const riskScore=-0.06;
-  const riskDesc='Descuento por riesgos: geopolítica, deuda global, posible recesión, guerra comercial EE.UU.-China.';
+  // ── Regulación: derivada de dominancia + tendencia ETF (proxy de clima regulatorio)
+  let regulationScore=0, regulationDesc='';
+  {
+    const etfOk=OC.etfFlows&&OC.etfFlows.trend!=='strong_outflow';
+    const domGrowing=dom>52;
+    if(etfOk&&domGrowing){regulationScore=0.06;regulationDesc='ETFs operando sin restricciones. Alta dominancia sugiere clima regulatorio favorable.';}
+    else if(etfOk){regulationScore=0.03;regulationDesc='ETFs activos. Marco regulatorio estable aunque con incertidumbre moderada.';}
+    else{regulationScore=-0.04;regulationDesc='Señales de presión regulatoria reflejadas en salidas de ETF y baja dominancia.';}
+  }
+
+  // ── Riesgo sistémico: derivado de Fear&Greed + S&P correlación + DXY
+  let riskScore=0, riskDesc='';
+  {
+    const fgExtreme=fg>80||fg<15;
+    const dxyStrong=OC.dxy?.trend==='strong_usd';
+    const spFalling=S.corrData&&(S.corrData.spy||[]).length>=2&&
+      S.corrData.spy[S.corrData.spy.length-1]<S.corrData.spy[S.corrData.spy.length-Math.min(5,S.corrData.spy.length)];
+    let risk=0;
+    if(fgExtreme)risk-=0.04;
+    if(dxyStrong)risk-=0.03;
+    if(spFalling)risk-=0.03;
+    riskScore=Math.max(-0.10,risk);
+    riskDesc='Riesgo sistémico: '+(fgExtreme?'F&G extremo ':'')+(dxyStrong?'USD fuerte ':'')+(spFalling?'S&P cayendo ':'')+(risk===0?'sin señales de alerta — descuento mínimo.':'descuento aplicado.');
+  }
   // ── M2 / Liquidez global
   let m2Score=0, m2Desc='';
   if(OC.m2){
@@ -2503,11 +2551,62 @@ function calcForecast(currentPrice){
     else{trendsScore=0.12;}  // nadie habla de BTC = fondo
   }else{trendsScore=0.02;trendsDesc='Interés retail: calculando proxy...';}
 
-  const taTotal=rsiScore+macdScore+bbScore+smaScore+taCompositeScore+stochRsiScore+obvScore+adxScore;
+  // ── MEJORA 2: Descorelación de factores técnicos
+  // RSI, Stoch RSI y taComposite están altamente correlacionados (miden momentum)
+  // MACD y OBV también solapan en tendencia
+  // Aplicar factor de descuento para evitar doble conteo
+  const momentumRaw = rsiScore + stochRsiScore + taCompositeScore; // 3 factores de momentum
+  const trendRaw    = macdScore + obvScore + adxScore;             // 3 factores de tendencia
+  const priceRaw    = bbScore + smaScore;                          // 2 factores de precio
+  // Promedio ponderado en lugar de suma directa — evita que 3 señales iguales pesen x3
+  const momentumAdj = momentumRaw / 3 * 1.5; // normalizado pero con peso x1.5 vs uno solo
+  const trendAdj    = trendRaw / 3 * 1.2;
+  const priceAdj    = priceRaw / 2 * 0.8;
+  const taTotal     = momentumAdj + trendAdj + priceAdj;
+
   const onChainTotal=hashrateScore+addressScore+volumeScore+oiScore+frScore+netflowScore+soprScore+mvrvScore+ssrScore+puellScore+lsScore+whaleScore+lightningScore;
   const macroTotal=halvingScore+institutionalScore+macroScore+fgScore+domScore+regulationScore+riskScore+corrScore+m2Score+dxyScore+etfScore+trendsScore+rainbowScore;
-  const netScore=taTotal*0.35 + onChainTotal*0.30 + macroTotal*0.35;
-  const volWeek=0.06, volMonth=0.18, vol6M=0.45, volYear=0.75;
+
+  // ── MEJORA 1: Detectar régimen de mercado y ajustar pesos dinámicamente
+  // Régimen basado en: precio vs SMA, dominancia, Fear&Greed, hashrate
+  const sma30val=ta?.sma30||0;
+  const sma7val=ta?.sma7||0;
+  const aboveSMA30=sma30val>0&&currentPrice>sma30val;
+  const aboveSMA7=sma7val>0&&currentPrice>sma7val;
+  const strongTrend=Math.abs(adxScore)>0.08;
+
+  let regime, regimeDesc, wTA, wOC, wMacro;
+  if(aboveSMA30&&aboveSMA7&&fg>55&&dom>52){
+    regime='bull';
+    regimeDesc='Bull market confirmado (precio>SMA30/7, F&G '+fg+', dom '+dom.toFixed(1)+'%)';
+    wTA=0.40; wOC=0.25; wMacro=0.35; // técnico más relevante en tendencia alcista
+  } else if(!aboveSMA30&&fg<40&&dom<50){
+    regime='bear';
+    regimeDesc='Bear market / corrección (precio<SMA30, F&G '+fg+', dom '+dom.toFixed(1)+'%)';
+    wTA=0.25; wOC=0.35; wMacro=0.40; // macro y on-chain dominan en bajadas
+  } else if(strongTrend&&aboveSMA30){
+    regime='trend_up';
+    regimeDesc='Tendencia alcista fuerte (ADX elevado, sobre SMA30)';
+    wTA=0.45; wOC=0.25; wMacro=0.30;
+  } else if(strongTrend&&!aboveSMA30){
+    regime='trend_down';
+    regimeDesc='Tendencia bajista fuerte (ADX elevado, bajo SMA30)';
+    wTA=0.30; wOC=0.35; wMacro=0.35;
+  } else {
+    regime='lateral';
+    regimeDesc='Mercado lateral/indeciso (F&G '+fg+', dom '+dom.toFixed(1)+'%)';
+    wTA=0.30; wOC=0.35; wMacro=0.35; // on-chain más fiable en laterales
+  }
+
+  const netScore = taTotal*wTA + onChainTotal*wOC + macroTotal*wMacro;
+
+  // ── MEJORA 3: Asimetría Bear/Bull según régimen histórico de BTC
+  // BTC en bull sube más de lo que cae; en bear cae más de lo que sube
+  const asymBull = regime==='bull'?1.35:regime==='bear'?0.70:regime==='trend_up'?1.20:regime==='trend_down'?0.80:1.0;
+  const asymBear = regime==='bull'?0.75:regime==='bear'?1.40:regime==='trend_up'?0.80:regime==='trend_down'?1.25:1.0;
+  // Volatilidad ajustada por régimen
+  const volAdj = regime==='bull'?1.15:regime==='bear'?1.30:regime==='lateral'?0.85:1.0;
+  const volWeek=0.06*volAdj, volMonth=0.18*volAdj, vol6M=0.45*volAdj, volYear=0.75*volAdj;
   const horizons=[
     {
       label:'1 semana', days:7, icon:'📅',
@@ -2576,27 +2675,30 @@ function calcForecast(currentPrice){
     const bullMult=1+h.vol*(1+bias*2);
     const baseMult=1+h.vol*0.3*bias;
     const bearMult=1-h.vol*(1-bias*1.5);
-    h.bull=Math.round(currentPrice*Math.max(bullMult,1.01));
-    h.base=Math.round(currentPrice*Math.max(Math.min(baseMult,bullMult*0.9),bearMult*1.1));
-    h.bear=Math.round(currentPrice*Math.min(bearMult,0.99));
+    const bullMultA=1+h.vol*asymBull*(1+bias*2);
+    const bearMultA=1-h.vol*asymBear*(1-bias*1.5);
+    const baseMultA=1+h.vol*0.3*bias;
+    h.bull=Math.round(currentPrice*Math.max(bullMultA,1.01));
+    h.base=Math.round(currentPrice*Math.max(Math.min(baseMultA,bullMultA*0.9),bearMultA*1.1));
+    h.bear=Math.round(currentPrice*Math.min(bearMultA,0.99));
     h.mostLikely=bias>0.05?'bull':bias<-0.05?'bear':'base';
     h.signal=bias>0.1?'COMPRAR':bias<-0.1?'VENDER':'NEUTRAL';
   });
-  return{horizons,factors,netScore,taTotal,onChainTotal,macroTotal,ta};
+  return{horizons,factors,netScore,taTotal,onChainTotal,macroTotal,ta,regime,regimeDesc,wTA,wOC,wMacro,asymBull,asymBear};
 }
 function renderForecast(){
   const price=S.price.usd;
   if(!price)return'<div class="card" style="text-align:center;padding:40px;color:var(--text3)"><span class="spin">⏳</span><br><br>Esperando precio...</div>';
   if(S.history.length<10)return'<div class="card" style="text-align:center;padding:40px;color:var(--text3)"><span class="spin">📊</span><br><br>Cargando datos...<br><small style="color:var(--text3);font-size:11px">Esperando historial de precio</small></div>';
-  const{horizons,factors,netScore,taTotal,onChainTotal,macroTotal,ta}=calcForecast(price);
+  const{horizons,factors,netScore,taTotal,onChainTotal,macroTotal,ta,regime,regimeDesc,wTA,wOC,wMacro,asymBull,asymBear}=calcForecast(price);
   if(!OC.loaded)fetchOnChain();
   const fmt=p=>'$'+(p>=1e6?(p/1e6).toFixed(2)+'M':p>=1000?(p/1000).toFixed(0)+'K':p.toFixed(0));
   const fmtPct=p=>(p>=0?'+':'')+p.toFixed(1)+'%';
   const horizonCards=horizons.map(h=>{
     const bias=h.localScore;
-    const bullMult=1+h.vol*(1+bias*2);
+    const bullMult=1+h.vol*asymBull*(1+bias*2);
     const baseMult=1+h.vol*0.3*bias;
-    const bearMult=1-h.vol*(1-bias*1.5);
+    const bearMult=1-h.vol*asymBear*(1-bias*1.5);
     const bullP=Math.round(price*Math.max(bullMult,1.01));
     const baseP=Math.round(price*Math.max(Math.min(baseMult,bullMult*0.9),bearMult*1.1));
     const bearP=Math.round(price*Math.min(bearMult,0.99));
@@ -2735,6 +2837,11 @@ function renderForecast(){
     +'</div>'
     +'<div style="display:flex;justify-content:space-between;font-size:9px;color:var(--text3);margin-bottom:6px"><span>Muy bajista</span><span>Neutral</span><span>Muy alcista</span></div>'
     +'<div style="text-align:center;font-size:14px;font-weight:800;color:'+signalColor+'">'+signalLabel+'</div>'
+    +'<div style="margin-top:10px;padding:8px 10px;background:var(--bg);border-radius:8px;border:1px solid var(--border)">'
+    +'<div style="font-size:10px;color:var(--text3);margin-bottom:2px">🎯 Régimen detectado</div>'
+    +'<div style="font-size:11px;color:var(--text2)">'+regimeDesc+'</div>'
+    +'<div style="font-size:10px;color:var(--text3);margin-top:4px">Pesos: Técnico '+Math.round(wTA*100)+'% · On-chain '+Math.round(wOC*100)+'% · Macro '+Math.round(wMacro*100)+'%</div>'
+    +'</div>'
     +'</div>'
     +'<div class="card">'
     +'<div style="font-size:15px;font-weight:700;margin-bottom:4px">📅 Rangos por horizonte</div>'
