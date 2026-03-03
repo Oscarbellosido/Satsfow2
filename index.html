@@ -348,9 +348,20 @@ async function loadPredictions(){
 }
 async function purgeInvalidSnapshots(){
   const preds=await loadPredictions();
-  const invalid=preds.filter(p=>!p.week?.bear||p.week.bear===0);
-  for(const p of invalid)await deletePrediction(p.date);
-  if(invalid.length>0)showNotif('🧹 SatsFlow',invalid.length+' registros inválidos eliminados');
+  const invalid=preds.filter(p=>!(p.week?.bear>0));
+  console.log('[purge] total:',preds.length,'invalid:',invalid.length);
+  for(const p of invalid){
+    console.log('[purge] deleting',p.date,'bear=',p.week?.bear);
+    await deletePrediction(p.date);
+  }
+  const msg=invalid.length>0?invalid.length+' registros inválidos eliminados':'No hay registros inválidos';
+  showNotif('🧹 SatsFlow',msg);
+  renderTab('forecast');
+}
+async function clearAllPredictions(){
+  if(!confirm('¿Borrar todo el historial de predicciones?'))return;
+  const preds=await loadPredictions();
+  for(const p of preds)await deletePrediction(p.date);
   renderTab('forecast');
 }
 async function deletePrediction(date){
@@ -526,6 +537,7 @@ async function renderPredictionHistory(){
     +'<div style="margin-bottom:10px;display:flex;gap:8px;flex-wrap:wrap">'
     +'<button class="btn-orange" style="font-size:12px;padding:7px 12px" onclick="saveSnapshotIfNeeded(true)">📸 Guardar ahora</button>'
     +'<button onclick="purgeInvalidSnapshots()" style="font-size:11px;padding:7px 10px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text3);cursor:pointer">🧹 Limpiar $0</button>'
+    +'<button onclick="clearAllPredictions()" style="font-size:11px;padding:7px 10px;border-radius:8px;border:1px solid rgba(239,68,68,.3);background:rgba(239,68,68,.06);color:#ef4444;cursor:pointer">🗑 Borrar todo</button>'
     +'<div style="font-size:10px;color:var(--text3);align-self:center">Auto: 9:00 cada día</div>'
     +'</div>'
     +rows.join('')
