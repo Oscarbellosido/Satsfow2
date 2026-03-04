@@ -372,7 +372,7 @@ function buildSnapshot(){
   // Genera un snapshot de la predicción actual
   if(!S.price.usd||S.price.usd===0)return null;
   try{
-    const{horizons,netScore,taTotal,onChainTotal,macroTotal}=calcForecast(S.price.usd);
+    const{horizons,netScore,taTotal,onChainTotal,macroTotal,regime,wTA,wOC,wMacro}=calcForecast(S.price.usd);
     const week=horizons.find(h=>h.label==='1 semana');
     const month=horizons.find(h=>h.label==='1 mes');
     if(!week)return null;
@@ -412,7 +412,7 @@ function buildSnapshot(){
 
 async function saveSnapshotIfNeeded(manual=false){
   const snap=buildSnapshot();
-  if(!snap)return;
+  if(!snap){console.warn('[snapshot] buildSnapshot devolvió null — precio:',S.price?.usd);return;}
   if(manual){
     snap.manual=true;
     snap.date=snap.date+'_m'+Date.now(); // evitar sobreescribir el auto del mismo día
