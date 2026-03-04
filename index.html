@@ -436,22 +436,38 @@ async function saveSnapshotIfNeeded(manual=false){
 
 // Scheduler diario a las 9:00
 function scheduleDailySnapshot(){
-  function msUntil9(){
+  // Las PWA en Android NO ejecutan código en background — el setTimeout de las 9:00
+  // solo funciona si la app está abierta en ese momento.
+  // Estrategia robusta: comprobar al arrancar y al volver al primer plano
+  // si falta el snapshot de hoy y ya son las 9:00 o más → guardar.
+
+  async function checkAndSave(){
     const now=new Date();
-    const next=new Date(now);
-    next.setHours(9,0,0,0);
-    if(next<=now)next.setDate(next.getDate()+1);
-    return next.getTime()-now.getTime();
+    if(now.getHours()<9)return; // antes de las 9 no guardar
+    const dateKey=now.toISOString().slice(0,10);
+    try{
+      const db=await openDB();
+      const tx=db.transaction('predictions','readonly');
+      const existing=await new Promise(res=>{
+        const q=tx.objectStore('predictions').get(dateKey);
+        q.onsuccess=()=>res(q.result);q.onerror=()=>res(null);
+      });
+      if(!existing){
+        // No hay snapshot de hoy todavía → intentar guardar
+        // Esperar a que los datos estén listos (precio > 0)
+        if(S.price?.usd>0){
+          await saveSnapshotIfNeeded(false);
+        }
+      }
+    }catch(e){console.warn('checkAndSave:',e);}
   }
-  setTimeout(async()=>{
-    await saveSnapshotIfNeeded(false);
-    setInterval(()=>saveSnapshotIfNeeded(false),86400000); // cada 24h
-  },msUntil9());
-  // También intentar al arrancar (por si perdió el tick de las 9:00)
-  const now=new Date();
-  if(now.getHours()>=9){
-    setTimeout(()=>saveSnapshotIfNeeded(false),5000); // 5s después de cargar datos
-  }
+
+  // Al arrancar: esperar 15s para que fetchPrice y fetchOnChain terminen
+  setTimeout(checkAndSave, 15000);
+
+  // También comprobar cada hora mientras la app está abierta
+  // Esto captura el caso de que la app esté abierta exactamente a las 9:00
+  setInterval(checkAndSave, 3600000);
 }
 
 function outcomeIcon(snap,realPrice){
@@ -2974,6 +2990,21 @@ document.addEventListener('visibilitychange', () => {
   // App visible de nuevo → refrescar precio silenciosamente
   if (S.price?.usd > 0) {
     fetchPrice().then(() => renderCurrentTab()).catch(() => {});
+    // Comprobar snapshot diario al volver al primer plano
+    // Captura: usuario abre la app a las 9:05 tras tenerla minimizada
+    setTimeout(()=>{
+      if(typeof scheduleDailySnapshot==='function'){
+        const now=new Date();
+        if(now.getHours()>=9&&S.price?.usd>0){
+          const dateKey=now.toISOString().slice(0,10);
+          openDB().then(db=>{
+            const tx=db.transaction('predictions','readonly');
+            const q=tx.objectStore('predictions').get(dateKey);
+            q.onsuccess=()=>{if(!q.result)saveSnapshotIfNeeded(false);};
+          }).catch(()=>{});
+        }
+      }
+    }, 5000); // 5s para que fetchPrice termine
   }
   // Si lleva más de 6 horas sin usar Y el precio es 0 → recargar
   const inactiveH = (_getTS() > 0) ? (Date.now() - _getTS()) / 3600000 : 0;
