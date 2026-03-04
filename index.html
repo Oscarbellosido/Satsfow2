@@ -2926,75 +2926,63 @@ async function init(){
   }
 }
 
-/* ══════ WAKE-UP DETECTION ══════ */
-// Guarda timestamp en localStorage para detectar inactividad incluso
-// cuando la app estaba completamente cerrada o el móvil apagado
+/* ══════ WAKE-UP DETECTION (Android-safe) ══════ */
+// El problema en Android: al reabrir la PWA tras una noche, el proceso JS
+// arranca en estado "zombie" — sin datos, sin precio. La app queda en blanco.
+// Solución: detectar el zombie DESPUÉS de que init() haya tenido tiempo de cargar.
+// NO recargar durante el uso normal — solo cuando algo realmente falla.
+
 const _TS_KEY = 'sf-last-active';
+const _saveTS = () => { try { localStorage.setItem(_TS_KEY, Date.now().toString()); } catch {} };
+const _getTS  = () => { try { return parseInt(localStorage.getItem(_TS_KEY)||'0')||0; } catch { return 0; } };
 
-function _saveActiveTime() {
-  try { localStorage.setItem(_TS_KEY, Date.now().toString()); } catch {}
-}
+// Guardar timestamp al usar la app (no muy frecuente para no gastar batería)
+_saveTS();
+setInterval(_saveTS, 60000); // cada minuto, no cada 10 segundos
+document.addEventListener('touchstart', _saveTS, {passive:true});
 
-// Leer cuándo fue la última vez que se usó (puede ser de una sesión anterior)
-function _getLastActive() {
-  try { return parseInt(localStorage.getItem(_TS_KEY) || '0') || Date.now(); } catch { return Date.now(); }
-}
-
-// Guardar timestamp periódicamente mientras la app está activa
-_saveActiveTime();
-setInterval(_saveActiveTime, 10000); // cada 10 segundos
-document.addEventListener('touchstart', _saveActiveTime, {passive:true});
-document.addEventListener('click', _saveActiveTime, {passive:true});
-
-// Cuando la página carga — comprobar si viene de una sesión larga
-(function checkOnLoad() {
-  const lastActive = _getLastActive();
-  const inactiveMs = Date.now() - lastActive;
-  const inactiveMin = inactiveMs / 60000;
-  if (inactiveMin > 30) {
-    // Más de 30 min sin usar → forzar recarga limpia ignorando SW cache
-    console.log('[SatsFlow] Inactiva', inactiveMin.toFixed(0), 'min al cargar — recarga forzada');
-    _saveActiveTime();
-    // Recargar forzando bypass del SW cache
-    if (window.location.href.indexOf('?r=') === -1) {
-      window.location.replace(window.location.href.split('?')[0] + '?r=' + Date.now());
+// ── Detector de zombie al arrancar ──
+// Espera 8 segundos tras cargar. Si el precio sigue a 0, algo falló → recargar.
+// Esto cubre el caso de Android noche sin molestar durante el uso normal.
+setTimeout(() => {
+  if (!S.price || S.price.usd === 0) {
+    console.log('[SatsFlow] Zombie detectado (precio=0 tras 8s) — recargando');
+    _saveTS();
+    // Solo recargar si no estamos ya en un loop de recargas
+    const reloadCount = parseInt(sessionStorage.getItem('sf-reloads')||'0');
+    if (reloadCount < 3) {
+      sessionStorage.setItem('sf-reloads', reloadCount + 1);
+      window.location.reload();
+    } else {
+      // Demasiadas recargas seguidas = problema de red, no de zombie
+      // Mostrar mensaje en lugar de bucle infinito
+      sessionStorage.removeItem('sf-reloads');
+      const el = document.getElementById('tab-home');
+      if (el) el.innerHTML = '<div style="padding:40px;text-align:center"><div style="font-size:40px">📡</div><br><b style="color:#f97316">Sin conexión</b><br><small style="color:#999;font-size:12px">Comprueba tu conexión a internet</small><br><br><button onclick="sessionStorage.removeItem(&quot;sf-reloads&quot;);location.reload()" style="margin-top:16px;padding:12px 24px;background:#f97316;color:white;border:none;border-radius:10px;font-size:14px;cursor:pointer">🔄 Reintentar</button></div>';
     }
+  } else {
+    // Arrancó bien — resetear contador de recargas
+    sessionStorage.removeItem('sf-reloads');
   }
-})();
+}, 8000);
 
-// Cuando la app vuelve al primer plano (minimizada → primer plano)
+// ── Visibilitychange: solo refrescar datos, nunca recargar la página ──
+// Android mata el proceso por la noche → el zombie detector lo maneja al reabrir
+// Aquí solo actualizamos el precio cuando el usuario vuelve a la app durante el día
 document.addEventListener('visibilitychange', () => {
-  if (document.hidden) {
-    _saveActiveTime();
-    return;
-  }
-  const inactiveMs = Date.now() - _getLastActive();
-  const inactiveMin = inactiveMs / 60000;
-  _saveActiveTime();
-
-  if (inactiveMin > 30) {
-    console.log('[SatsFlow] Visible tras', inactiveMin.toFixed(0), 'min — recargando');
-    window.location.reload();
-    return;
-  }
-
-  // Menos de 30 min → solo refrescar datos
+  if (document.hidden) { _saveTS(); return; }
+  // App visible de nuevo → refrescar precio silenciosamente
   if (S.price?.usd > 0) {
     fetchPrice().then(() => renderCurrentTab()).catch(() => {});
   }
-});
-
-// Detectar salto de tiempo por suspensión del CPU
-let _lastHeartbeat = Date.now();
-setInterval(() => {
-  const now = Date.now();
-  const gap = now - _lastHeartbeat;
-  _lastHeartbeat = now;
-  if (gap > 60000) { // más de 1 min entre ticks de 10s = móvil dormido
-    console.log('[SatsFlow] CPU sleep detectado (', (gap/1000).toFixed(0), 's) — recargando');
+  // Si lleva más de 6 horas sin usar Y el precio es 0 → recargar
+  const inactiveH = (_getTS() > 0) ? (Date.now() - _getTS()) / 3600000 : 0;
+  if (inactiveH > 6 && (!S.price || S.price.usd === 0)) {
+    console.log('[SatsFlow] >6h inactiva + precio=0 — recargando');
+    _saveTS();
     window.location.reload();
   }
-}, 10000);
+});
 
 init();
 </script>
