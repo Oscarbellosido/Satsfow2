@@ -610,19 +610,80 @@ function playAlertSound(){
 const MEM='https://mempool.space/api';
 async function fetchPrice(){
   try{
-    const[tickerR,klineR,eurR,klinesTA_R]=await Promise.all([
-      fetch('https://api.binance.com/api/v3/ticker/24hr?symbol=BTCUSDT'),
-      fetch(`https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=${S.days==='1'?'1h':S.days==='7'?'4h':S.days==='30'?'1d':S.days==='90'?'3d':'1w'}&limit=${S.days==='1'?'24':S.days==='7'?'42':S.days==='90'?'30':'52'}`),
-      fetch('https://api.binance.com/api/v3/ticker/price?symbol=BTCEUR'),
-    ]);
-    const ticker=await tickerR.json();
-    const klines=await klineR.json();
-    const eur=await eurR.json();
-    const klinesTA=klinesTA_R?await klinesTA_R.json().catch(()=>[]):[];
-    S.price={usd:parseFloat(ticker.lastPrice),eur:parseFloat(eur.price)};
-    S.change24h=parseFloat(ticker.priceChangePercent)||0;
+    // Intentar Binance primero, con fallback a CoinGecko y Kraken
+    let ticker=null, klines=null, eurPrice=null, klinesTA=[];
+
+    // ── Precio USD: Binance → CoinGecko → Kraken
+    try{
+      const r=await fetch('https://api.binance.com/api/v3/ticker/24hr?symbol=BTCUSDT',{signal:AbortSignal.timeout(6000)});
+      if(r.ok) ticker=await r.json();
+    }catch{}
+    if(!ticker||!ticker.lastPrice){
+      try{
+        const r=await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd,eur&include_24hr_change=true',{signal:AbortSignal.timeout(8000)});
+        if(r.ok){const j=await r.json();ticker={lastPrice:j.bitcoin.usd,priceChangePercent:j.bitcoin.usd_24h_change,_source:'coingecko',_eur:j.bitcoin.eur};}
+      }catch{}
+    }
+    if(!ticker||!ticker.lastPrice){
+      try{
+        const r=await fetch('https://api.kraken.com/0/public/Ticker?pair=XBTUSD',{signal:AbortSignal.timeout(8000)});
+        if(r.ok){const j=await r.json();const t=j.result?.XXBTZUSD;if(t)ticker={lastPrice:t.c[0],priceChangePercent:0};}
+      }catch{}
+    }
+    if(!ticker||!ticker.lastPrice)throw new Error('Todas las fuentes de precio fallaron');
+
+    // ── Precio EUR
+    if(ticker._eur){
+      eurPrice=ticker._eur;
+    }else{
+      try{
+        const r=await fetch('https://api.binance.com/api/v3/ticker/price?symbol=BTCEUR',{signal:AbortSignal.timeout(5000)});
+        if(r.ok){const j=await r.json();eurPrice=parseFloat(j.price);}
+      }catch{}
+      if(!eurPrice){
+        try{
+          const r=await fetch('https://api.kraken.com/0/public/Ticker?pair=XBTEUR',{signal:AbortSignal.timeout(5000)});
+          if(r.ok){const j=await r.json();eurPrice=parseFloat(j.result?.XXBTZEUR?.c?.[0])||0;}
+        }catch{}
+      }
+    }
+
+    // ── Klines para gráfico
+    try{
+      const interval=S.days==='1'?'1h':S.days==='7'?'4h':S.days==='30'?'1d':S.days==='90'?'3d':'1w';
+      const limit=S.days==='1'?'24':S.days==='7'?'42':S.days==='90'?'30':'52';
+      const r=await fetch('https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval='+interval+'&limit='+limit,{signal:AbortSignal.timeout(8000)});
+      if(r.ok) klines=await r.json();
+    }catch{}
+    if(!klines){
+      // Fallback klines: construir array mínimo con precio actual
+      klines=[{0:Date.now()-86400000,1:ticker.lastPrice,2:ticker.lastPrice,3:ticker.lastPrice,4:ticker.lastPrice,5:0}];
+    }
+
+    // ── Klines TA (60 días diarios para análisis técnico)
+    try{
+      const r=await fetch('https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=1d&limit=60',{signal:AbortSignal.timeout(8000)});
+      if(r.ok) klinesTA=await r.json();
+    }catch{}
+
+    // A partir de aquí usar las variables locales en lugar de las respuestas del Promise.all
+    const _ticker = ticker;
+    const _klines = Array.isArray(klines)?klines:[];
+    const _eur = eurPrice||0;
+    const _klinesTA = Array.isArray(klinesTA)?klinesTA:[];
+    // Alias para compatibilidad con el código de abajo
+    const tickerR={ok:true}, klineR={ok:true}, eurR={ok:true}, klinesTA_R=null;
+    // Sobrescribir con datos ya parseados
+    S.price={usd:parseFloat(_ticker.lastPrice),eur:_eur};
+    S.change24h=parseFloat(_ticker.priceChangePercent)||0;
     S.marketCap=0;
-    if(!Array.isArray(klines))throw new Error('klines not array');
+    if(!Array.isArray(_klines)||_klines.length===0)throw new Error('klines vacíos');
+    // Reescribir las variables que usa el resto del código
+    {
+    const klines=_klines;
+    const klinesTA=_klinesTA;
+    // S.price ya asignado por el sistema de fallbacks arriba
+    if(!Array.isArray(klines))throw new Error('klines vacíos (duplicado)');
     S.history=klines.map(k=>{
       const d=new Date(k[0]);
       const label=S.days==='1'?d.toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'}):
@@ -641,6 +702,7 @@ async function fetchPrice(){
     }
     S.lastUpdated=new Date();
     updateHeader();
+    } // cierre del bloque klines local
   }catch(e){console.error('fetchPrice',e);}
 }
 async function fetchOHLC(){} // ya incluido en fetchPrice con Binance
