@@ -610,29 +610,43 @@ function playAlertSound(){
 const MEM='https://mempool.space/api';
 async function fetchPrice(){
   try{
-    // Resetear fuente al inicio de cada fetch
-    S.priceSource='Binance';
+    // Estrategia multi-fuente: intentar todas en paralelo, usar la más rápida que responda
+    S.priceSource='CoinGecko';
     let ticker=null, klines=null, eurPrice=null, klinesTA=[];
 
-    // ── Precio USD: Binance → CoinGecko → Kraken
+    // ── Precio: race entre CoinGecko y Binance mirror (el más rápido gana)
     try{
-      const r=await fetch('https://api.binance.com/api/v3/ticker/24hr?symbol=BTCUSDT',{signal:AbortSignal.timeout(6000)});
-      if(r.ok) ticker=await r.json();
+      const results=await Promise.allSettled([
+        fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd,eur&include_24hr_change=true',{signal:AbortSignal.timeout(8000)}),
+        fetch('https://data-api.binance.vision/api/v3/ticker/24hr?symbol=BTCUSDT',{signal:AbortSignal.timeout(6000)}),
+      ]);
+      // CoinGecko
+      const cgR=results[0];
+      if(cgR.status==='fulfilled'&&cgR.value.ok){
+        const j=await cgR.value.json();
+        if(j.bitcoin?.usd){
+          ticker={lastPrice:j.bitcoin.usd,priceChangePercent:j.bitcoin.usd_24h_change||0,_eur:j.bitcoin.eur};
+          S.priceSource='CoinGecko';
+        }
+      }
+      // Binance mirror (preferir si responde — más granular el cambio 24h)
+      const bnR=results[1];
+      if(bnR.status==='fulfilled'&&bnR.value.ok){
+        const j=await bnR.value.json();
+        if(j.lastPrice&&parseFloat(j.lastPrice)>0){
+          ticker={lastPrice:j.lastPrice,priceChangePercent:j.priceChangePercent};
+          S.priceSource='Binance';
+        }
+      }
     }catch{}
-    if(!ticker||!ticker.lastPrice){
-      try{
-        const r=await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd,eur&include_24hr_change=true',{signal:AbortSignal.timeout(8000)});
-        if(r.ok){const j=await r.json();ticker={lastPrice:j.bitcoin.usd,priceChangePercent:j.bitcoin.usd_24h_change,_source:'coingecko',_eur:j.bitcoin.eur};S.priceSource='CoinGecko ⚠️';}
-      }catch{}
-    }
+    // Fallback Kraken si ambos fallaron
     if(!ticker||!ticker.lastPrice){
       try{
         const r=await fetch('https://api.kraken.com/0/public/Ticker?pair=XBTUSD',{signal:AbortSignal.timeout(8000)});
-        if(r.ok){const j=await r.json();const t=j.result?.XXBTZUSD;if(t)ticker={lastPrice:t.c[0],priceChangePercent:0};}
+        if(r.ok){const j=await r.json();const t=j.result?.XXBTZUSD;if(t){ticker={lastPrice:t.c[0],priceChangePercent:0};S.priceSource='Kraken';}}
       }catch{}
     }
     if(!ticker||!ticker.lastPrice)throw new Error('Todas las fuentes de precio fallaron');
-    // S.priceSource ya asignado (Binance por defecto, CoinGecko si falló)
 
     // ── Precio EUR
     if(ticker._eur){
@@ -650,11 +664,11 @@ async function fetchPrice(){
       }
     }
 
-    // ── Klines para gráfico
+    // ── Klines para gráfico: Binance mirror → CoinGecko
     try{
       const interval=S.days==='1'?'1h':S.days==='7'?'4h':S.days==='30'?'1d':S.days==='90'?'3d':'1w';
       const limit=S.days==='1'?'24':S.days==='7'?'42':S.days==='90'?'30':'52';
-      const r=await fetch('https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval='+interval+'&limit='+limit,{signal:AbortSignal.timeout(8000)});
+      const r=await fetch('https://data-api.binance.vision/api/v3/klines?symbol=BTCUSDT&interval='+interval+'&limit='+limit,{signal:AbortSignal.timeout(8000)});
       if(r.ok) klines=await r.json();
     }catch{}
     if(!klines||!Array.isArray(klines)||klines.length===0){
@@ -691,7 +705,7 @@ async function fetchPrice(){
 
     // ── Klines TA (60 días diarios para análisis técnico)
     try{
-      const r=await fetch('https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=1d&limit=60',{signal:AbortSignal.timeout(8000)});
+      const r=await fetch('https://data-api.binance.vision/api/v3/klines?symbol=BTCUSDT&interval=1d&limit=60',{signal:AbortSignal.timeout(8000)});
       if(r.ok) klinesTA=await r.json();
     }catch{}
     if(!klinesTA||klinesTA.length<30){
