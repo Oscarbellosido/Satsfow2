@@ -861,10 +861,15 @@ function renderTab(tab){
   const map={home:renderHome,analysis:renderAnalysis,market:renderMarket,mempool:renderMempool,atm:renderATM,news:renderNews,alerts:renderAlerts,corr:renderCorr,global:renderGlobal,forecast:renderForecast};
   // El tab ATM no se re-renderiza si el mapa ya está activo — evita destruir Leaflet
   if(tab==='atm'&&S.leafletMap){
-    // Solo actualizar el contador si está visible, no tocar el DOM del mapa
     return;
   }
-  if(map[tab])el.innerHTML=map[tab]();
+  if(map[tab]){
+    try{el.innerHTML=map[tab]();}
+    catch(e){
+      console.error('renderTab error ['+tab+']:',e);
+      el.innerHTML='<div style="padding:30px;text-align:center"><div style="font-size:32px">⚠️</div><br><b style="color:#f97316">Error al cargar</b><br><small style="color:#999">'+e.message+'</small><br><br><button onclick="location.reload()" style="margin-top:12px;padding:10px 20px;background:#f97316;color:white;border:none;border-radius:10px;cursor:pointer">🔄 Reintentar</button></div>';
+    }
+  }
   if(tab==='atm'&&!S.atmLoaded)initATM();
 }
 function renderHome(){
@@ -2710,6 +2715,7 @@ function calcForecast(currentPrice){
   return{horizons,factors,netScore,taTotal,onChainTotal,macroTotal,ta,regime,regimeDesc,wTA,wOC,wMacro,asymBull,asymBear};
 }
 function renderForecast(){
+  try{
   const price=S.price.usd;
   if(!price)return'<div class="card" style="text-align:center;padding:40px;color:var(--text3)"><span class="spin">⏳</span><br><br>Esperando precio...</div>';
   if(S.history.length<10)return'<div class="card" style="text-align:center;padding:40px;color:var(--text3)"><span class="spin">📊</span><br><br>Cargando datos...<br><small style="color:var(--text3);font-size:11px">Esperando historial de precio</small></div>';
@@ -2914,6 +2920,15 @@ function renderForecast(){
     if(el)el.innerHTML=histHTML;
   }).catch(e=>console.warn('historial:',e));
   return html;
+  }catch(e){
+    console.error('renderForecast error:',e);
+    return'<div class="card" style="text-align:center;padding:30px">'
+      +'<div style="font-size:32px">⚠️</div>'
+      +'<div style="color:#f97316;font-weight:700;margin:10px 0">Error cargando Previsión</div>'
+      +'<div style="color:var(--text3);font-size:12px;margin-bottom:16px">'+e.message+'</div>'
+      +'<button onclick="location.reload()" style="padding:10px 20px;background:#f97316;color:white;border:none;border-radius:10px;font-size:13px;cursor:pointer">🔄 Reintentar</button>'
+      +'</div>';
+  }
 }
 async function init(){
   try{
@@ -2958,29 +2973,34 @@ setInterval(_saveTS, 60000); // cada minuto, no cada 10 segundos
 document.addEventListener('touchstart', _saveTS, {passive:true});
 
 // ── Detector de zombie al arrancar ──
-// Espera 8 segundos tras cargar. Si el precio sigue a 0, algo falló → recargar.
-// Esto cubre el caso de Android noche sin molestar durante el uso normal.
-setTimeout(() => {
-  if (!S.price || S.price.usd === 0) {
-    console.log('[SatsFlow] Zombie detectado (precio=0 tras 8s) — recargando');
-    _saveTS();
-    // Solo recargar si no estamos ya en un loop de recargas
-    const reloadCount = parseInt(sessionStorage.getItem('sf-reloads')||'0');
-    if (reloadCount < 3) {
-      sessionStorage.setItem('sf-reloads', reloadCount + 1);
-      window.location.reload();
-    } else {
-      // Demasiadas recargas seguidas = problema de red, no de zombie
-      // Mostrar mensaje en lugar de bucle infinito
-      sessionStorage.removeItem('sf-reloads');
-      const el = document.getElementById('tab-home');
-      if (el) el.innerHTML = '<div style="padding:40px;text-align:center"><div style="font-size:40px">📡</div><br><b style="color:#f97316">Sin conexión</b><br><small style="color:#999;font-size:12px">Comprueba tu conexión a internet</small><br><br><button onclick="sessionStorage.removeItem(&quot;sf-reloads&quot;);location.reload()" style="margin-top:16px;padding:12px 24px;background:#f97316;color:white;border:none;border-radius:10px;font-size:14px;cursor:pointer">🔄 Reintentar</button></div>';
-    }
-  } else {
-    // Arrancó bien — resetear contador de recargas
+// Android mata el proceso por la noche → al reabrir el JS arranca sin datos.
+// Comprobamos a los 5s, 12s y 20s — si el precio sigue a 0 → recargar.
+function _checkZombie(attempt) {
+  if (S.price && S.price.usd > 0) {
     sessionStorage.removeItem('sf-reloads');
+    return; // OK
   }
-}, 8000);
+  const delays = [5000, 12000, 20000];
+  if (attempt < delays.length) {
+    setTimeout(() => _checkZombie(attempt + 1), delays[attempt]);
+    return;
+  }
+  // Tras 3 intentos (20s total) precio sigue a 0
+  const reloadCount = parseInt(sessionStorage.getItem('sf-reloads')||'0');
+  console.log('[SatsFlow] Zombie tras 20s, recarga #' + reloadCount);
+  if (reloadCount < 3) {
+    sessionStorage.setItem('sf-reloads', reloadCount + 1);
+    _saveTS();
+    window.location.reload();
+  } else {
+    sessionStorage.removeItem('sf-reloads');
+    // Mostrar error en la pestaña activa en lugar de bucle infinito
+    const tabEl = document.getElementById('tab-' + (S.currentTab||'home'));
+    const errHTML = '<div style="padding:40px;text-align:center"><div style="font-size:40px">📡</div><br><b style="color:#f97316">Sin conexión</b><br><small style="color:#999;font-size:12px">Comprueba tu conexión a internet</small><br><br><button onclick="location.reload()" style="margin-top:16px;padding:12px 24px;background:#f97316;color:white;border:none;border-radius:10px;font-size:14px;cursor:pointer">🔄 Reintentar</button></div>';
+    if (tabEl) tabEl.innerHTML = errHTML;
+  }
+}
+setTimeout(() => _checkZombie(0), 5000);
 
 // ── Visibilitychange: solo refrescar datos, nunca recargar la página ──
 // Android mata el proceso por la noche → el zombie detector lo maneja al reabrir
