@@ -610,7 +610,8 @@ function playAlertSound(){
 const MEM='https://mempool.space/api';
 async function fetchPrice(){
   try{
-    // Intentar Binance primero, con fallback a CoinGecko y Kraken
+    // Resetear fuente al inicio de cada fetch
+    S.priceSource='Binance';
     let ticker=null, klines=null, eurPrice=null, klinesTA=[];
 
     // ── Precio USD: Binance → CoinGecko → Kraken
@@ -631,7 +632,7 @@ async function fetchPrice(){
       }catch{}
     }
     if(!ticker||!ticker.lastPrice)throw new Error('Todas las fuentes de precio fallaron');
-    if(!S.priceSource)S.priceSource='Binance';
+    // S.priceSource ya asignado (Binance por defecto, CoinGecko si falló)
 
     // ── Precio EUR
     if(ticker._eur){
