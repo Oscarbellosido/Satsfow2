@@ -621,7 +621,7 @@ async function fetchPrice(){
     if(!ticker||!ticker.lastPrice){
       try{
         const r=await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd,eur&include_24hr_change=true',{signal:AbortSignal.timeout(8000)});
-        if(r.ok){const j=await r.json();ticker={lastPrice:j.bitcoin.usd,priceChangePercent:j.bitcoin.usd_24h_change,_source:'coingecko',_eur:j.bitcoin.eur};}
+        if(r.ok){const j=await r.json();ticker={lastPrice:j.bitcoin.usd,priceChangePercent:j.bitcoin.usd_24h_change,_source:'coingecko',_eur:j.bitcoin.eur};S.priceSource='CoinGecko ⚠️';}
       }catch{}
     }
     if(!ticker||!ticker.lastPrice){
@@ -631,6 +631,7 @@ async function fetchPrice(){
       }catch{}
     }
     if(!ticker||!ticker.lastPrice)throw new Error('Todas las fuentes de precio fallaron');
+    if(!S.priceSource)S.priceSource='Binance';
 
     // ── Precio EUR
     if(ticker._eur){
@@ -655,9 +656,24 @@ async function fetchPrice(){
       const r=await fetch('https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval='+interval+'&limit='+limit,{signal:AbortSignal.timeout(8000)});
       if(r.ok) klines=await r.json();
     }catch{}
-    if(!klines){
-      // Fallback klines: construir array mínimo con precio actual
-      klines=[{0:Date.now()-86400000,1:ticker.lastPrice,2:ticker.lastPrice,3:ticker.lastPrice,4:ticker.lastPrice,5:0}];
+    if(!klines||!Array.isArray(klines)||klines.length===0){
+      // Fallback: intentar CoinGecko para historial
+      try{
+        const days=S.days==='1'?1:S.days==='7'?7:S.days==='30'?30:S.days==='90'?90:365;
+        const r=await fetch('https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days='+days,{signal:AbortSignal.timeout(10000)});
+        if(r.ok){
+          const j=await r.json();
+          // Convertir formato CoinGecko [timestamp, price] a formato Binance [ts,o,h,l,c,v]
+          if(j.prices&&j.prices.length>0){
+            klines=j.prices.map(([ts,p])=>[ts,p,p,p,p,0]);
+          }
+        }
+      }catch{}
+    }
+    if(!klines||!Array.isArray(klines)||klines.length===0){
+      // Último fallback: punto único con precio actual
+      const p=parseFloat(ticker.lastPrice)||0;
+      klines=[[Date.now()-86400000,p,p,p,p,0],[Date.now(),p,p,p,p,0]];
     }
 
     // ── Klines TA (60 días diarios para análisis técnico)
@@ -665,6 +681,12 @@ async function fetchPrice(){
       const r=await fetch('https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=1d&limit=60',{signal:AbortSignal.timeout(8000)});
       if(r.ok) klinesTA=await r.json();
     }catch{}
+    if(!klinesTA||klinesTA.length<30){
+      try{
+        const r=await fetch('https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=60',{signal:AbortSignal.timeout(10000)});
+        if(r.ok){const j=await r.json();if(j.prices?.length>=30)klinesTA=j.prices.map(([ts,p])=>[ts,p,p,p,p,0]);}
+      }catch{}
+    }
 
     // A partir de aquí usar las variables locales en lugar de las respuestas del Promise.all
     const _ticker = ticker;
