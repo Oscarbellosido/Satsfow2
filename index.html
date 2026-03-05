@@ -663,9 +663,21 @@ async function fetchPrice(){
         const r=await fetch('https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days='+days,{signal:AbortSignal.timeout(10000)});
         if(r.ok){
           const j=await r.json();
-          // Convertir formato CoinGecko [timestamp, price] a formato Binance [ts,o,h,l,c,v]
           if(j.prices&&j.prices.length>0){
-            klines=j.prices.map(([ts,p])=>[ts,p,p,p,p,0]);
+            const prices=j.prices;
+            // Generar OHLC estimado agrupando puntos consecutivos
+            // CoinGecko da un punto por hora → agrupar según período
+            const ptsPerCandle=S.days==='1'?1:S.days==='7'?6:S.days==='30'?24:S.days==='90'?72:168;
+            const candles=[];
+            for(let i=0;i<prices.length;i+=ptsPerCandle){
+              const slice=prices.slice(i,i+ptsPerCandle);
+              const vals=slice.map(p=>p[1]);
+              const ts=slice[0][0];
+              const open=vals[0], close=vals[vals.length-1];
+              const high=Math.max(...vals), low=Math.min(...vals);
+              candles.push([ts,open,high,low,close,0]);
+            }
+            klines=candles;
           }
         }
       }catch{}
@@ -684,7 +696,17 @@ async function fetchPrice(){
     if(!klinesTA||klinesTA.length<30){
       try{
         const r=await fetch('https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=60',{signal:AbortSignal.timeout(10000)});
-        if(r.ok){const j=await r.json();if(j.prices?.length>=30)klinesTA=j.prices.map(([ts,p])=>[ts,p,p,p,p,0]);}
+        if(r.ok){const j=await r.json();if(j.prices?.length>=30){
+            const prices=j.prices;
+            // Agrupar en velas diarias (24 puntos por vela si son horarios)
+            const ppc=prices.length>200?24:1;
+            const candles=[];
+            for(let i=0;i<prices.length;i+=ppc){
+              const sl=prices.slice(i,i+ppc),vals=sl.map(p=>p[1]);
+              candles.push([sl[0][0],vals[0],Math.max(...vals),Math.min(...vals),vals[vals.length-1],0]);
+            }
+            klinesTA=candles;
+          }}
       }catch{}
     }
 
