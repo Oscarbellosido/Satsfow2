@@ -634,42 +634,57 @@ function playAlertSound(){
 const MEM='https://mempool.space/api';
 async function fetchPrice(){
   try{
-    // Estrategia multi-fuente: intentar todas en paralelo, usar la más rápida que responda
+    // Estrategia multi-fuente en paralelo — todas a la vez, gana la más rápida y fiable
     S.priceSource='CoinGecko';
     let ticker=null, klines=null, eurPrice=null, klinesTA=[];
 
-    // ── Precio: race entre CoinGecko y Binance mirror (el más rápido gana)
-    try{
-      const results=await Promise.allSettled([
-        fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd,eur&include_24hr_change=true',{signal:AbortSignal.timeout(8000)}),
-        fetch('https://data-api.binance.vision/api/v3/ticker/24hr?symbol=BTCUSDT',{signal:AbortSignal.timeout(6000)}),
-      ]);
-      // CoinGecko
-      const cgR=results[0];
-      if(cgR.status==='fulfilled'&&cgR.value.ok){
-        const j=await cgR.value.json();
-        if(j.bitcoin?.usd){
-          ticker={lastPrice:j.bitcoin.usd,priceChangePercent:j.bitcoin.usd_24h_change||0,_eur:j.bitcoin.eur};
-          S.priceSource='CoinGecko';
-        }
-      }
-      // Binance mirror (preferir si responde — más granular el cambio 24h)
-      const bnR=results[1];
-      if(bnR.status==='fulfilled'&&bnR.value.ok){
-        const j=await bnR.value.json();
-        if(j.lastPrice&&parseFloat(j.lastPrice)>0){
-          ticker={lastPrice:j.lastPrice,priceChangePercent:j.priceChangePercent};
-          S.priceSource='Binance';
-        }
-      }
-    }catch{}
-    // Fallback Kraken si ambos fallaron
-    if(!ticker||!ticker.lastPrice){
+    // Lanzar las 4 fuentes simultáneamente
+    const [cgR, bnVisionR, bnComR, krakenR] = await Promise.allSettled([
+      fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd,eur&include_24hr_change=true',{signal:AbortSignal.timeout(7000)}),
+      fetch('https://data-api.binance.vision/api/v3/ticker/24hr?symbol=BTCUSDT',{signal:AbortSignal.timeout(5000)}),
+      fetch('https://api.binance.com/api/v3/ticker/24hr?symbol=BTCUSDT',{signal:AbortSignal.timeout(5000)}),
+      fetch('https://api.kraken.com/0/public/Ticker?pair=XBTUSD',{signal:AbortSignal.timeout(7000)}),
+    ]);
+
+    // Prioridad: Binance.com > Binance Vision > CoinGecko > Kraken
+    // Intentar Binance.com primero
+    if(bnComR.status==='fulfilled'&&bnComR.value.ok){
       try{
-        const r=await fetch('https://api.kraken.com/0/public/Ticker?pair=XBTUSD',{signal:AbortSignal.timeout(8000)});
-        if(r.ok){const j=await r.json();const t=j.result?.XXBTZUSD;if(t){ticker={lastPrice:t.c[0],priceChangePercent:0};S.priceSource='Kraken';}}
+        const j=await bnComR.value.json();
+        if(j.lastPrice&&parseFloat(j.lastPrice)>0){ticker={lastPrice:j.lastPrice,priceChangePercent:j.priceChangePercent};S.priceSource='Binance';}
       }catch{}
     }
+    // Binance Vision como segunda opción
+    if(!ticker&&bnVisionR.status==='fulfilled'&&bnVisionR.value.ok){
+      try{
+        const j=await bnVisionR.value.json();
+        if(j.lastPrice&&parseFloat(j.lastPrice)>0){ticker={lastPrice:j.lastPrice,priceChangePercent:j.priceChangePercent};S.priceSource='Binance';}
+      }catch{}
+    }
+    // CoinGecko como tercera opción
+    if(!ticker&&cgR.status==='fulfilled'&&cgR.value.ok){
+      try{
+        const j=await cgR.value.json();
+        if(j.bitcoin?.usd){ticker={lastPrice:j.bitcoin.usd,priceChangePercent:j.bitcoin.usd_24h_change||0,_eur:j.bitcoin.eur};S.priceSource='CoinGecko';}
+      }catch{}
+    }
+    // Kraken último recurso
+    if(!ticker&&krakenR.status==='fulfilled'&&krakenR.value.ok){
+      try{
+        const j=await krakenR.value.json();
+        const t=j.result?.XXBTZUSD;
+        if(t&&parseFloat(t.c[0])>0){ticker={lastPrice:t.c[0],priceChangePercent:0};S.priceSource='Kraken';}
+      }catch{}
+    }
+
+    // Log de diagnóstico — visible en consola del navegador
+    console.log('[SatsFlow] Fuentes precio:',
+      'Binance.com='+(bnComR.status==='fulfilled'?bnComR.value.status:'ERR'),
+      'BinanceVision='+(bnVisionR.status==='fulfilled'?bnVisionR.value.status:'ERR'),
+      'CoinGecko='+(cgR.status==='fulfilled'?cgR.value.status:'ERR'),
+      'Kraken='+(krakenR.status==='fulfilled'?krakenR.value.status:'ERR'),
+      '→ usando:', S.priceSource);
+
     if(!ticker||!ticker.lastPrice)throw new Error('Todas las fuentes de precio fallaron');
 
     // ── Precio EUR
@@ -688,12 +703,17 @@ async function fetchPrice(){
       }
     }
 
-    // ── Klines para gráfico: Binance mirror → CoinGecko
+    // ── Klines para gráfico: intentar ambos endpoints Binance en paralelo
     try{
       const interval=S.days==='1'?'1h':S.days==='7'?'4h':S.days==='30'?'1d':S.days==='90'?'3d':'1w';
       const limit=S.days==='1'?'24':S.days==='7'?'42':S.days==='90'?'30':'52';
-      const r=await fetch('https://data-api.binance.vision/api/v3/klines?symbol=BTCUSDT&interval='+interval+'&limit='+limit,{signal:AbortSignal.timeout(8000)});
-      if(r.ok) klines=await r.json();
+      const kUrl='klines?symbol=BTCUSDT&interval='+interval+'&limit='+limit;
+      const [kBnCom, kBnVis] = await Promise.allSettled([
+        fetch('https://api.binance.com/api/v3/'+kUrl,{signal:AbortSignal.timeout(6000)}),
+        fetch('https://data-api.binance.vision/api/v3/'+kUrl,{signal:AbortSignal.timeout(6000)}),
+      ]);
+      if(kBnCom.status==='fulfilled'&&kBnCom.value.ok) klines=await kBnCom.value.json();
+      else if(kBnVis.status==='fulfilled'&&kBnVis.value.ok) klines=await kBnVis.value.json();
     }catch{}
     if(!klines||!Array.isArray(klines)||klines.length===0){
       // Fallback: intentar CoinGecko para historial
@@ -727,10 +747,14 @@ async function fetchPrice(){
       klines=[[Date.now()-86400000,p,p,p,p,0],[Date.now(),p,p,p,p,0]];
     }
 
-    // ── Klines TA (60 días diarios para análisis técnico)
+    // ── Klines TA (60 días diarios)
     try{
-      const r=await fetch('https://data-api.binance.vision/api/v3/klines?symbol=BTCUSDT&interval=1d&limit=60',{signal:AbortSignal.timeout(8000)});
-      if(r.ok) klinesTA=await r.json();
+      const [taCom, taVis] = await Promise.allSettled([
+        fetch('https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=1d&limit=60',{signal:AbortSignal.timeout(6000)}),
+        fetch('https://data-api.binance.vision/api/v3/klines?symbol=BTCUSDT&interval=1d&limit=60',{signal:AbortSignal.timeout(6000)}),
+      ]);
+      if(taCom.status==='fulfilled'&&taCom.value.ok) klinesTA=await taCom.value.json();
+      else if(taVis.status==='fulfilled'&&taVis.value.ok) klinesTA=await taVis.value.json();
     }catch{}
     if(!klinesTA||klinesTA.length<30){
       try{
