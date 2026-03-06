@@ -880,25 +880,29 @@ function isBitcoinNews(title){
   return btcKeywords.some(k=>t.includes(k));
 }
 async function tryFetchRSS(url){
-  const proxies=[
-    'https://api.allorigins.win/get?url=',
-    'https://api.allorigins.win/raw?url=',
-    'https://corsproxy.io/?',
-  ];
-  for(const proxy of proxies){
-    try{
-      const r=await fetch(proxy+encodeURIComponent(url),{signal:AbortSignal.timeout(8000)});
-      if(!r.ok)continue;
-      let text='';
-      if(proxy.includes('allorigins.win/get')){
-        const j=await r.json();
-        text=j.contents||'';
-      } else {
-        text=await r.text();
+  // rss2json.com: convierte RSS a JSON, sin problemas CORS desde GitHub Pages
+  try{
+    const r=await fetch('https://api.rss2json.com/v1/api.json?rss_url='+encodeURIComponent(url)+'&count=10',{signal:AbortSignal.timeout(8000)});
+    if(r.ok){
+      const j=await r.json();
+      if(j.status==='ok'&&j.items?.length>0){
+        // Convertir formato rss2json a XML simulado para parseRSS
+        const fakeXml=j.items.map(it=>{
+          const d=it.pubDate||new Date().toISOString();
+          const link=it.link||'';
+          const title=it.title||'';
+          const desc=(it.description||it.content||'').replace(/<[^>]+>/g,'').slice(0,200);
+          return '<item><title><![CDATA['+title+']]></title><link>'+link+'</link><description><![CDATA['+desc+']]></description><pubDate>'+d+'</pubDate></item>';
+        }).join('');
+        return '<rss>'+fakeXml+'</rss>';
       }
-      if(text.includes('<item'))return text;
-    }catch(e){continue;}
-  }
+    }
+  }catch{}
+  // Fallback: intentar fetch directo (funciona para algunos feeds con CORS abierto)
+  try{
+    const r=await fetch(url,{signal:AbortSignal.timeout(6000)});
+    if(r.ok){const t=await r.text();if(t.includes('<item'))return t;}
+  }catch{}
   return '';
 }
 function parseRSS(xml,source){
