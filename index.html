@@ -917,11 +917,11 @@ function parseRSS(xml,source){
 }
 async function fetchNews(){
   const feeds=[
-    {url:'https://es.cointelegraph.com/tags/bitcoin/rss',source:'CoinTelegraph ES'},
-    {url:'https://www.criptonoticias.com/category/bitcoin/feed/',source:'CriptoNoticias'},
-    {url:'https://www.criptonoticias.com/feed/',source:'CriptoNoticias'},
-    {url:'https://es.cointelegraph.com/rss',source:'CoinTelegraph ES'},
-    {url:'https://bitcoin.es/feed/',source:'Bitcoin.es'},
+    {url:'https://cointelegraph.com/rss/tag/bitcoin',source:'CoinTelegraph'},
+    {url:'https://coindesk.com/arc/outboundfeeds/rss/',source:'CoinDesk'},
+    {url:'https://bitcoinmagazine.com/.rss/full/',source:'Bitcoin Magazine'},
+    {url:'https://decrypt.co/feed',source:'Decrypt'},
+    {url:'https://www.newsbtc.com/feed/',source:'NewsBTC'},
   ];
   const seen=new Set();
   let results=[];
@@ -942,8 +942,9 @@ async function fetchNews(){
   if(results.length<3){
     try{
       const urls=[
-        'https://es.cointelegraph.com/tags/bitcoin/rss',
-        'https://www.criptonoticias.com/feed/',
+        'https://cointelegraph.com/rss/tag/bitcoin',
+        'https://coindesk.com/arc/outboundfeeds/rss/',
+        'https://bitcoinmagazine.com/.rss/full/',
       ];
       for(const rssUrl of urls){
         if(results.length>=8)break;
