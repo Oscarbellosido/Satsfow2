@@ -566,8 +566,32 @@ if('serviceWorker' in navigator){
     try{
       const base=window.location.pathname.replace(/\/[^/]*$/,'/');
       const swUrl=base+'sw.js';
-      const reg=await navigator.serviceWorker.register(swUrl,{scope:base});
+      // updateViaCache:'none' → el navegador SIEMPRE comprueba sw.js en red, nunca desde caché
+      const reg=await navigator.serviceWorker.register(swUrl,{scope:base,updateViaCache:'none'});
       console.log('[SW] registrado:',reg.scope);
+
+      // Forzar comprobación de actualización cada vez que carga la app
+      reg.update().catch(()=>{});
+
+      // Si hay un SW nuevo esperando → activarlo inmediatamente sin esperar a cerrar tabs
+      if(reg.waiting){
+        reg.waiting.postMessage({type:'SKIP_WAITING'});
+      }
+      reg.addEventListener('updatefound',()=>{
+        const newSW=reg.installing;
+        if(!newSW)return;
+        newSW.addEventListener('statechange',()=>{
+          if(newSW.state==='installed'&&navigator.serviceWorker.controller){
+            console.log('[SW] nueva versión disponible — activando');
+            newSW.postMessage({type:'SKIP_WAITING'});
+            // Recargar la página para que use la nueva versión
+            navigator.serviceWorker.addEventListener('controllerchange',()=>{
+              window.location.reload();
+            },{once:true});
+          }
+        });
+      });
+
       if('periodicSync' in reg){try{const p=await navigator.permissions.query({name:'periodic-background-sync'});if(p.state==='granted')await reg.periodicSync.register('price-check',{minInterval:15*60*1000});}catch{}}
     }catch(e){console.warn('[SW]',e.message);}
   });
