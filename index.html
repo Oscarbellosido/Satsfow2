@@ -874,7 +874,15 @@ async function fetchMining(){
 }
 function isBitcoinNews(title){
   const t=(title||'').toLowerCase();
-  const btcKeywords=['bitcoin','btc','satoshi','sats','lightning','halving','mempool','nakamoto','ordinals','taproot','segwit','cripto','blockchain'];
+  // Español + Catalán + inglés
+  const btcKeywords=[
+    'bitcoin','btc','satoshi','sats','lightning','halving','mempool','nakamoto','ordinals','taproot','segwit',
+    'cripto','criptomoned','blockchain','criptoactivo',
+    // Español
+    'moneda digital','activo digital','reserva bitcoin','etf bitcoin','precio bitcoin',
+    // Catalán
+    'criptomoned','moneda digital','actiu digital',
+  ];
   return btcKeywords.some(k=>t.includes(k));
 }
 async function tryFetchRSS(url){
@@ -917,11 +925,10 @@ function parseRSS(xml,source){
 }
 async function fetchNews(){
   const feeds=[
-    {url:'https://cointelegraph.com/rss/tag/bitcoin',source:'CoinTelegraph'},
-    {url:'https://coindesk.com/arc/outboundfeeds/rss/',source:'CoinDesk'},
-    {url:'https://bitcoinmagazine.com/.rss/full/',source:'Bitcoin Magazine'},
-    {url:'https://decrypt.co/feed',source:'Decrypt'},
-    {url:'https://www.newsbtc.com/feed/',source:'NewsBTC'},
+    {url:'https://news.google.com/rss/search?q=bitcoin&hl=es&gl=ES&ceid=ES:es',source:'Google Noticias ES'},
+    {url:'https://news.google.com/rss/search?q=bitcoin&hl=ca&gl=ES&ceid=ES:ca',source:'Google Notícies CA'},
+    {url:'https://news.google.com/rss/search?q=bitcoin+precio+adopcion&hl=es&gl=ES&ceid=ES:es',source:'Google Noticias ES'},
+    {url:'https://news.google.com/rss/search?q=bitcoin+BTC+halving&hl=es&gl=ES&ceid=ES:es',source:'Google Noticias ES'},
   ];
   const seen=new Set();
   let results=[];
@@ -942,9 +949,8 @@ async function fetchNews(){
   if(results.length<3){
     try{
       const urls=[
-        'https://cointelegraph.com/rss/tag/bitcoin',
-        'https://coindesk.com/arc/outboundfeeds/rss/',
-        'https://bitcoinmagazine.com/.rss/full/',
+        'https://news.google.com/rss/search?q=bitcoin&hl=es&gl=ES&ceid=ES:es',
+        'https://news.google.com/rss/search?q=bitcoin&hl=ca&gl=ES&ceid=ES:ca',
       ];
       for(const rssUrl of urls){
         if(results.length>=8)break;
