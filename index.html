@@ -120,6 +120,7 @@
     <div id="tab-corr" class="tab-content fade" style="display:none"></div>
     <div id="tab-global" class="tab-content fade" style="display:none"></div>
     <div id="tab-forecast" class="tab-content fade" style="display:none"></div>
+    <div id="tab-cycles" class="tab-content fade" style="display:none"></div>
   </div>
   <nav id="tabbar">
     <button class="tab-btn active" data-tab="home" onclick="switchTab('home')"><span class="tab-icon">🏠</span>Inicio</button>
@@ -132,6 +133,7 @@
     <button class="tab-btn" data-tab="corr" onclick="switchTab('corr')"><span class="tab-icon">📈</span>Correlac.</button>
     <button class="tab-btn" data-tab="global" onclick="switchTab('global')"><span class="tab-icon">🌍</span>Global</button>
     <button class="tab-btn" data-tab="forecast" onclick="switchTab('forecast')"><span class="tab-icon">🔮</span>Previsión</button>
+    <button class="tab-btn" data-tab="cycles" onclick="switchTab('cycles')"><span class="tab-icon">🔄</span>Ciclos</button>
   </nav>
 </div>
 
@@ -1037,9 +1039,301 @@ function updateHeader(){
     setI('btc',S.conv_btc);setI('sats',S.conv_sats);setI('usd',S.conv_usd);setI('eur',S.conv_eur);
   }
 }
+
+// ─── Comparador de ciclos Bitcoin ────────────────────────────────────────────
+// Datos históricos normalizados: días desde halving → precio normalizado (halving=1.0)
+// Ciclo 2016: halving 9 Jul 2016, ATH ~$20k Dic 2017 (día ~525)
+// Ciclo 2020: halving 11 May 2020, ATH ~$69k Nov 2021 (día ~549)
+// Ciclo 2024: halving 20 Abr 2024 (en curso)
+const CYCLE_DATA = {
+  c2016:{
+    label:'Ciclo 2016–2017',color:'#818cf8',
+    // [día, multiplicador desde precio halving] puntos clave interpolados
+    points:[
+      [0,1],[30,1.1],[60,1.3],[90,1.5],[120,1.8],[150,2.2],[180,2.8],
+      [210,3.5],[240,4.5],[270,6],[300,8],[330,12],[360,18],[390,25],
+      [420,30],[450,28],[480,22],[510,26],[525,32],[540,20],[570,10],[600,8],
+      [630,7],[660,6],[700,5],[730,4.5]
+    ]
+  },
+  c2020:{
+    label:'Ciclo 2020–2021',color:'#10b981',
+    points:[
+      [0,1],[30,1.2],[60,1.5],[90,2],[120,2.8],[150,3.5],[180,4.5],
+      [210,5],[240,4.2],[270,3.5],[300,4],[330,5.5],[360,7],[390,8.5],
+      [420,10],[450,11],[480,12.5],[510,13],[540,13.5],[549,14],
+      [570,10],[600,7],[630,5],[660,4],[700,3.5],[730,3]
+    ]
+  },
+  c2024:{
+    label:'Ciclo 2024 (actual)',color:'#f97316',
+    halvingDate: new Date('2024-04-20'),
+    // Se calcula dinámicamente con precio real
+  }
+};
+
+function getCycleDay2024(){
+  const halving=new Date('2024-04-20');
+  return Math.floor((Date.now()-halving.getTime())/(1000*60*60*24));
+}
+
+async function fetchCycleHistory(){
+  // Precio en el halving 2024 (~$63,800) y precio actual
+  // Intentar obtener historial desde Binance
+  if(S.cycleHistory&&S.cycleHistory.length>10)return;
+  try{
+    // 365 días de velas diarias desde el halving
+    const r=await fetch('https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=1d&limit=365&startTime='+new Date('2024-04-20').getTime(),{signal:AbortSignal.timeout(8000)});
+    if(r.ok){
+      const raw=await r.json();
+      S.cycleHistory=raw.map((k,i)=>({day:i,price:parseFloat(k[4])})); // close price
+      S.halvingPrice2024=parseFloat(raw[0][1]); // open del día halving
+    }
+  }catch{}
+}
+
+function renderCyclesChart(){
+  const W=340,H=200,PX=40,PY=12,PB=28;
+  const cw=W-PX,ch=H-PY-PB;
+
+  // Calcular máximo de días a mostrar
+  const day2024=getCycleDay2024();
+  const maxDays=Math.max(730,day2024+30);
+
+  // Escala Y: multiplicadores 0.5 → máximo (~35)
+  const allMults=[...CYCLE_DATA.c2016.points,...CYCLE_DATA.c2020.points].map(p=>p[1]);
+  const yMax=Math.min(35,Math.max(...allMults)*1.1);
+  const yMin=0.5;
+
+  const tx=d=>PX+(d/maxDays)*cw;
+  const ty=m=>PY+ch-(((m-yMin)/(yMax-yMin))*ch);
+
+  // Líneas de cuadrícula
+  let grid='';
+  [1,2,5,10,15,20,30].forEach(m=>{
+    if(m>yMax)return;
+    const y=ty(m);
+    grid+=`<line x1="${PX}" y1="${y}" x2="${W}" y2="${y}" stroke="#334155" stroke-width="0.5" stroke-dasharray="4 3"/>`;
+    grid+=`<text x="${PX-4}" y="${y+4}" font-size="8" fill="#64748b" text-anchor="end">${m}x</text>`;
+  });
+  // Líneas verticales año
+  [180,365,545,730].forEach(d=>{
+    const x=tx(d);
+    grid+=`<line x1="${x}" y1="${PY}" x2="${x}" y2="${H-PB}" stroke="#334155" stroke-width="0.5" stroke-dasharray="3 3"/>`;
+    grid+=`<text x="${x}" y="${H-PB+12}" font-size="7" fill="#475569" text-anchor="middle">${d===180?'6m':d===365?'1a':d===545?'18m':'2a'}</text>`;
+  });
+
+  function makePath(points,color,dash=''){
+    const pts=points.map(([d,m])=>`${tx(d)},${ty(m)}`).join(' ');
+    return `<polyline points="${pts}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" ${dash?'stroke-dasharray="'+dash+'"':''}/>`;
+  }
+
+  // Ciclo 2024 desde historial real
+  let path2024='',dot2024='',currentMultEl='';
+  const halvingPrice=S.halvingPrice2024||63800;
+  if(S.cycleHistory&&S.cycleHistory.length>1){
+    const pts2024=S.cycleHistory
+      .filter(p=>p.day<=day2024)
+      .map(p=>`${tx(p.day)},${ty(p.price/halvingPrice)}`).join(' ');
+    if(pts2024) path2024=`<polyline points="${pts2024}" fill="none" stroke="#f97316" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>`;
+    const curMult=(S.price.usd/halvingPrice).toFixed(2);
+    const cx2=tx(day2024),cy2=ty(S.price.usd/halvingPrice);
+    dot2024=`<circle cx="${cx2}" cy="${cy2}" r="4" fill="#f97316" stroke="#0f172a" stroke-width="1.5"/>`;
+    currentMultEl=`<text x="${Math.min(cx2+6,W-30)}" y="${Math.max(cy2-6,14)}" font-size="9" fill="#f97316" font-weight="bold">${curMult}x</text>`;
+  } else {
+    // Sin historial: usar punto actual
+    const curMult=S.price.usd/halvingPrice;
+    const cx2=tx(day2024),cy2=ty(curMult);
+    dot2024=`<circle cx="${cx2}" cy="${cy2}" r="5" fill="#f97316" stroke="#0f172a" stroke-width="2"/>`;
+    path2024=`<line x1="${tx(0)}" y1="${ty(1)}" x2="${cx2}" y2="${cy2}" stroke="#f97316" stroke-width="2" stroke-dasharray="5 3"/>`;
+    currentMultEl=`<text x="${Math.min(cx2+7,W-30)}" y="${Math.max(cy2-7,14)}" font-size="9" fill="#f97316" font-weight="bold">${curMult.toFixed(2)}x</text>`;
+  }
+
+  // Línea de referencia halving (día 0 = 1x)
+  grid+=`<line x1="${PX}" y1="${ty(1)}" x2="${W}" y2="${ty(1)}" stroke="#f97316" stroke-width="0.8" stroke-dasharray="6 3" opacity="0.4"/>`;
+
+  // Línea vertical día actual ciclo 2024
+  const todayX=tx(day2024);
+  grid+=`<line x1="${todayX}" y1="${PY}" x2="${todayX}" y2="${H-PB}" stroke="#f97316" stroke-width="1" stroke-dasharray="3 3" opacity="0.5"/>`;
+  grid+=`<text x="${Math.min(todayX+3,W-50)}" y="${PY+9}" font-size="8" fill="#f97316" opacity="0.8">Hoy (día ${day2024})</text>`;
+
+  const svg=`<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:200px;overflow:visible" preserveAspectRatio="none">
+    <rect x="${PX}" y="${PY}" width="${cw}" height="${ch}" fill="#0f172a" rx="4"/>
+    ${grid}
+    ${makePath(CYCLE_DATA.c2016.points,'#818cf8')}
+    ${makePath(CYCLE_DATA.c2020.points,'#10b981')}
+    ${path2024}
+    ${dot2024}
+    ${currentMultEl}
+  </svg>`;
+  return svg;
+}
+
+function renderCycles(){
+  const day=getCycleDay2024();
+  const halvingPrice=S.halvingPrice2024||63800;
+  const currentMult=(S.price.usd/halvingPrice);
+
+  // Día equivalente en ciclos anteriores
+  const get2016mult=d=>{const pts=CYCLE_DATA.c2016.points;for(let i=0;i<pts.length-1;i++){if(d>=pts[i][0]&&d<=pts[i+1][0]){const t=(d-pts[i][0])/(pts[i+1][0]-pts[i][0]);return pts[i][1]+(pts[i+1][1]-pts[i][1])*t;}}return null;};
+  const get2020mult=d=>{const pts=CYCLE_DATA.c2020.points;for(let i=0;i<pts.length-1;i++){if(d>=pts[i][0]&&d<=pts[i+1][0]){const t=(d-pts[i][0])/(pts[i+1][0]-pts[i][0]);return pts[i][1]+(pts[i+1][1]-pts[i][1])*t;}}return null;};
+
+  const mult2016=get2016mult(day);
+  const mult2020=get2020mult(day);
+
+  // Precio proyectado si siguiera ciclos anteriores
+  const proj16=mult2016?Math.round(halvingPrice*mult2016):null;
+  const proj20=mult2020?Math.round(halvingPrice*mult2020):null;
+
+  // ATH proyectado para ciclo 2024 (promedio ponderado 2016/2020 con decremento ~45%)
+  const athMult2016=32, athMult2020=14;
+  const projATHMult=(athMult2016*0.3+athMult2020*0.7)*0.6; // decrecimiento de ciclo
+  const projATH=Math.round(halvingPrice*projATHMult);
+  const projATHDay=Math.round((549*0.4+525*0.6)); // ~día 535 aprox
+
+  const daysToATH=projATHDay-day;
+  const dateATH=new Date(new Date('2024-04-20').getTime()+(projATHDay*86400000));
+
+  // Comparativa en día actual
+  const compCards=[
+    {label:'Ciclo 2016 (día '+day+')',val:proj16?'$'+proj16.toLocaleString():'—',mult:mult2016?mult2016.toFixed(1)+'x':'—',color:'#818cf8'},
+    {label:'Ciclo 2020 (día '+day+')',val:proj20?'$'+proj20.toLocaleString():'—',mult:mult2020?mult2020.toFixed(1)+'x':'—',color:'#10b981'},
+    {label:'Actual (ciclo 2024)',val:'$'+S.price.usd.toLocaleString(),mult:currentMult.toFixed(2)+'x',color:'#f97316'},
+  ].map(r=>`
+    <div style="background:#1e293b;border-radius:10px;padding:12px;border-left:3px solid ${r.color}">
+      <div style="font-size:10px;color:#64748b;margin-bottom:4px">${r.label}</div>
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div style="font-size:15px;font-weight:700;color:${r.color}">${r.val}</div>
+        <div style="font-size:20px;font-weight:800;color:${r.color};opacity:.8">${r.mult}</div>
+      </div>
+    </div>`).join('');
+
+  // Posición del ciclo actual vs histórico
+  let posLabel='', posColor='', posIcon='';
+  if(mult2020&&currentMult>mult2020*1.2){posLabel='Por encima del ciclo 2020';posColor='#10b981';posIcon='🚀';}
+  else if(mult2020&&currentMult>mult2020*0.9){posLabel='En línea con ciclo 2020';posColor='#eab308';posIcon='📊';}
+  else if(mult2020&&currentMult>mult2020*0.6){posLabel='Por debajo del ciclo 2020';posColor='#f97316';posIcon='📉';}
+  else{posLabel='Muy por debajo del histórico';posColor='#ef4444';posIcon='⚠️';}
+
+  // Datos técnicos
+  const halvingDate='20 Abr 2024';
+  const halvingPriceStr='$'+halvingPrice.toLocaleString();
+
+  return `<div class="space-y">
+  <div class="card">
+    <div style="font-size:15px;font-weight:700;margin-bottom:4px">🔄 Comparador de Ciclos BTC</div>
+    <div style="font-size:11px;color:#64748b;margin-bottom:14px">Precio normalizado desde el halving (halving = 1x)</div>
+    ${renderCyclesChart()}
+    <div style="display:flex;gap:12px;margin-top:10px;flex-wrap:wrap">
+      <div style="display:flex;align-items:center;gap:5px"><div style="width:16px;height:3px;background:#818cf8;border-radius:2px"></div><span style="font-size:10px;color:#94a3b8">2016–2017</span></div>
+      <div style="display:flex;align-items:center;gap:5px"><div style="width:16px;height:3px;background:#10b981;border-radius:2px"></div><span style="font-size:10px;color:#94a3b8">2020–2021</span></div>
+      <div style="display:flex;align-items:center;gap:5px"><div style="width:16px;height:3px;background:#f97316;border-radius:2px"></div><span style="font-size:10px;color:#94a3b8">2024 (actual)</span></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div style="font-size:14px;font-weight:700;margin-bottom:10px">📍 Posición actual</div>
+    <div style="background:#1e293b;border-radius:10px;padding:12px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center">
+      <div>
+        <div style="font-size:12px;color:#64748b">Día del ciclo</div>
+        <div style="font-size:26px;font-weight:800;color:#f97316">${day}</div>
+        <div style="font-size:10px;color:#64748b">Desde halving ${halvingDate}</div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-size:12px;color:#64748b">Multiplicador</div>
+        <div style="font-size:26px;font-weight:800;color:#f97316">${currentMult.toFixed(2)}x</div>
+        <div style="font-size:10px;color:#64748b">Precio halving ${halvingPriceStr}</div>
+      </div>
+    </div>
+    <div style="background:#263045;border-radius:10px;padding:10px;text-align:center">
+      <div style="font-size:18px">${posIcon}</div>
+      <div style="font-size:12px;font-weight:700;color:${posColor};margin-top:2px">${posLabel}</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div style="font-size:14px;font-weight:700;margin-bottom:10px">📊 Precio en día ${day} de cada ciclo</div>
+    <div style="display:flex;flex-direction:column;gap:8px">${compCards}</div>
+  </div>
+
+  <div class="card">
+    <div style="font-size:14px;font-weight:700;margin-bottom:10px">🎯 Proyección ATH ciclo 2024</div>
+    <div style="background:#1e293b;border-radius:10px;padding:12px">
+      <div style="display:flex;justify-content:space-between;margin-bottom:8px">
+        <span style="font-size:11px;color:#94a3b8">ATH proyectado (modelo histórico)</span>
+        <span style="font-size:14px;font-weight:700;color:#eab308">$${projATH.toLocaleString()}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:8px">
+        <span style="font-size:11px;color:#94a3b8">Multiplicador esperado</span>
+        <span style="font-size:13px;font-weight:700;color:#eab308">${projATHMult.toFixed(1)}x</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:8px">
+        <span style="font-size:11px;color:#94a3b8">Fecha estimada</span>
+        <span style="font-size:12px;font-weight:600;color:#94a3b8">${dateATH.toLocaleDateString('es-ES',{month:'long',year:'numeric'})}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between">
+        <span style="font-size:11px;color:#94a3b8">Días restantes estimados</span>
+        <span style="font-size:13px;font-weight:700;color:${daysToATH>0?'#10b981':'#ef4444'}">${daysToATH>0?'~'+daysToATH+' días':'Ya pasó o muy cerca'}</span>
+      </div>
+    </div>
+    <div style="font-size:10px;color:#475569;margin-top:8px">⚠️ Basado en patrones históricos. Cada ciclo es diferente. No es consejo financiero.</div>
+  </div>
+</div>`;
+}
+// ─── WebSocket precio en tiempo real ─────────────────────────────────────────
+let _ws=null, _wsRetries=0;
+function startPriceWS(){
+  if(_ws&&(_ws.readyState===0||_ws.readyState===1))return; // ya conectado
+  try{
+    _ws=new WebSocket('wss://stream.binance.com:9443/ws/btcusdt@miniTicker');
+    _ws.onopen=()=>{_wsRetries=0;console.log('[WS] Conectado');
+      // Indicador visual
+      const d=document.getElementById('ws-dot');if(d){d.style.background='#10b981';d.title='Precio en tiempo real';}
+    };
+    _ws.onmessage=(e)=>{
+      try{
+        const t=JSON.parse(e.data);
+        const newPrice=parseFloat(t.c);
+        if(!newPrice||newPrice<=0)return;
+        const prev=S.price.usd;
+        S.price.usd=newPrice;
+        // Actualizar cambio 24h desde apertura
+        if(t.o&&parseFloat(t.o)>0){
+          S.change24h=((newPrice-parseFloat(t.o))/parseFloat(t.o))*100;
+        }
+        // Flash verde/rojo en header
+        const hp=document.getElementById('header-price');
+        if(hp&&prev>0&&prev!==newPrice){
+          hp.style.transition='color .3s';
+          hp.style.color=newPrice>prev?'#10b981':'#ef4444';
+          setTimeout(()=>{hp.style.color='';},600);
+        }
+        updateHeader();
+        // Actualizar conversor si tab activo
+        if(S.currentTab==='home'){
+          const el=document.getElementById('tab-home');
+          if(el){
+            // Solo actualizar los valores del conversor y stats, no redibujar el gráfico
+            const upd=new Date().toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'});
+            const updEl=document.querySelector('.stat-val[data-upd]');
+            if(updEl)updEl.textContent=upd;
+          }
+        }
+      }catch{}
+    };
+    _ws.onerror=()=>{};
+    _ws.onclose=()=>{
+      const d=document.getElementById('ws-dot');if(d){d.style.background='#ef4444';d.title='Reconectando...';}
+      _wsRetries++;
+      const delay=Math.min(30000,2000*Math.pow(2,_wsRetries)); // backoff exponencial
+      setTimeout(startPriceWS,delay);
+    };
+  }catch(e){console.warn('[WS]',e);}
+}
+
 function renderTab(tab){
   const el=document.getElementById('tab-'+tab);if(!el)return;
-  const map={home:renderHome,analysis:renderAnalysis,market:renderMarket,mempool:renderMempool,atm:renderATM,news:renderNews,alerts:renderAlerts,corr:renderCorr,global:renderGlobal,forecast:renderForecast};
+  const map={home:renderHome,analysis:renderAnalysis,market:renderMarket,mempool:renderMempool,atm:renderATM,news:renderNews,alerts:renderAlerts,corr:renderCorr,global:renderGlobal,forecast:renderForecast,cycles:renderCycles};
   // El tab ATM no se re-renderiza si el mapa ya está activo — evita destruir Leaflet
   if(tab==='atm'&&S.leafletMap){
     return;
@@ -3120,10 +3414,12 @@ async function init(){
     try{if(S.lang&&S.lang!=='es')setLang(S.lang,true);}catch(e){}
     try{if(S.morningAlert?.enabled)scheduleMorningCheck();}catch(e){}
     setTimeout(async()=>{
-      try{await Promise.all([fetchOHLC().catch(()=>{}),fetchMempool().catch(()=>{}),fetchMarket().catch(()=>{}),fetchMining().catch(()=>{}),fetchNews().catch(()=>{})]);}catch{}
+      try{await Promise.all([fetchOHLC().catch(()=>{}),fetchMempool().catch(()=>{}),fetchMarket().catch(()=>{}),fetchMining().catch(()=>{}),fetchNews().catch(()=>{}),fetchCycleHistory().catch(()=>{})]);}catch{}
       try{renderCurrentTab();}catch{}
     },200);
     setInterval(async()=>{try{await fetchPrice();checkAlerts();renderCurrentTab();}catch{}},60000);
+    // WebSocket para precio tick a tick
+    startPriceWS();
     setInterval(async()=>{try{await fetchMempool();if(S.currentTab==='mempool')renderTab('mempool');}catch{}},30000);
     setInterval(async()=>{try{await Promise.all([fetchMarket(),fetchMining()]);if(S.currentTab==='market')renderTab('market');}catch{}},120000);
     setInterval(async()=>{try{await fetchNews();if(S.currentTab==='news')renderTab('news');}catch{}},300000);
