@@ -33,8 +33,11 @@
     .card{background:var(--card-bg);border:1px solid var(--border);border-radius:18px;padding:18px}
     #header{position:sticky;top:0;z-index:100;background:var(--bg);border-bottom:1px solid var(--border);padding:10px 16px;display:flex;align-items:center;justify-content:space-between}
     .logo{width:34px;height:34px;background:#f97316;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;box-shadow:0 0 12px rgba(249,115,22,.3)}
-    #tabbar{position:fixed;bottom:0;left:0;right:0;z-index:100;background:var(--bg2);border-top:1px solid var(--border);display:flex;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;-webkit-overflow-scrolling:touch;padding-bottom:env(safe-area-inset-bottom)}
+    #tabbar{position:relative;z-index:100;background:var(--bg2);border-top:1px solid var(--border);display:flex;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;-webkit-overflow-scrolling:touch;padding-bottom:env(safe-area-inset-bottom)}
     #tabbar::-webkit-scrollbar{display:none}
+    #tabbar-wrap{position:fixed;bottom:0;left:0;right:0;z-index:100}
+    #tabbar-wrap{--fade-op:1}
+    #tabbar-wrap::after{content:'';position:absolute;right:0;top:0;bottom:0;width:36px;background:linear-gradient(to right,transparent,var(--bg2));pointer-events:none;z-index:1;opacity:var(--fade-op);transition:opacity .3s}
     .tab-btn{display:flex;flex-direction:column;align-items:center;gap:2px;padding:7px 0 6px;border:none;background:transparent;color:var(--text3);font-size:9px;font-weight:500;position:relative;cursor:pointer;flex:0 0 auto;width:62px;white-space:nowrap}
     .tab-btn.active{color:#f97316}
     .tab-btn.active::after{content:'';position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:24px;height:2px;background:#f97316;border-radius:2px}
@@ -123,7 +126,7 @@
     <div id="tab-forecast" class="tab-content fade" style="display:none"></div>
     <div id="tab-cycles" class="tab-content fade" style="display:none"></div>
   </div>
-  <nav id="tabbar">
+  <div id="tabbar-wrap"><nav id="tabbar">
     <button class="tab-btn active" data-tab="home" onclick="switchTab('home')"><span class="tab-icon">🏠</span>Inicio</button>
     <button class="tab-btn" data-tab="analysis" onclick="switchTab('analysis')"><span class="tab-icon">🧠</span>Análisis</button>
     <button class="tab-btn" data-tab="market" onclick="switchTab('market')"><span class="tab-icon">📊</span>Mercado</button>
@@ -135,7 +138,7 @@
     <button class="tab-btn" data-tab="global" onclick="switchTab('global')"><span class="tab-icon">🌍</span>Global</button>
     <button class="tab-btn" data-tab="forecast" onclick="switchTab('forecast')"><span class="tab-icon">🔮</span>Previsión</button>
     <button class="tab-btn" data-tab="cycles" onclick="switchTab('cycles')"><span class="tab-icon">🔄</span>Ciclos</button>
-  </nav>
+  </nav></div>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -242,15 +245,27 @@ function disableMorningAlert(){
   if(window._morningInterval)clearInterval(window._morningInterval);
 }
 function scheduleMorningCheck(){
+  // Comprobar en el momento actual (al abrir la app o al configurar)
+  _checkMorningNow();
+  // También comprobar cada minuto POR SI la app sigue abierta a la hora exacta
   if(window._morningInterval)clearInterval(window._morningInterval);
-  window._morningInterval=setInterval(async()=>{
-    if(!S.morningAlert?.enabled)return;
-    if(S.notifPerm!=='granted')return;
-    const now=new Date();
-    if(now.getHours()===S.morningAlert.hour&&now.getMinutes()===S.morningAlert.minute){
-      await sendMorningBriefing();
-    }
-  },60000);
+  window._morningInterval=setInterval(_checkMorningNow, 60000);
+}
+async function _checkMorningNow(){
+  if(!S.morningAlert?.enabled)return;
+  if(S.notifPerm!=='granted')return;
+  const now=new Date();
+  const todayKey=now.toISOString().slice(0,10);
+  const lastSent=localStorage.getItem('sf-morning-sent');
+  if(lastSent===todayKey)return; // ya enviado hoy
+  // Enviar si ya pasó la hora configurada (con margen de 2h para cuando abren tarde)
+  const configH=S.morningAlert.hour, configM=S.morningAlert.minute||0;
+  const nowMins=now.getHours()*60+now.getMinutes();
+  const cfgMins=configH*60+configM;
+  if(nowMins>=cfgMins && nowMins<=cfgMins+120){
+    localStorage.setItem('sf-morning-sent',todayKey);
+    await sendMorningBriefing();
+  }
 }
 async function sendMorningBriefing(){
   try{await fetchPrice();}catch{}
@@ -328,6 +343,7 @@ function switchTab(tab){
   // Scroll del tabbar al botón activo
   const activeBtn=document.querySelector('.tab-btn.active');
   if(activeBtn){const nav=document.getElementById('tabbar');const bL=activeBtn.offsetLeft,bW=activeBtn.offsetWidth,nW=nav.offsetWidth;nav.scrollTo({left:bL-nW/2+bW/2,behavior:'smooth'});}
+  _updateTabFade();
   const el=document.getElementById('tab-'+tab);
   el.style.display='block';
   el.classList.remove('fade');void el.offsetWidth;el.classList.add('fade');
@@ -1283,6 +1299,14 @@ function renderCycles(){
     <div style="font-size:10px;color:#475569;margin-top:8px">⚠️ Basado en patrones históricos. Cada ciclo es diferente. No es consejo financiero.</div>
   </div>
 </div>`;
+}
+
+function _updateTabFade(){
+  const nav=document.getElementById('tabbar');
+  const wrap=document.getElementById('tabbar-wrap');
+  if(!nav||!wrap)return;
+  const atEnd=nav.scrollLeft+nav.clientWidth>=nav.scrollWidth-4;
+  wrap.style.setProperty('--fade-op',atEnd?'0':'1');
 }
 // ─── WebSocket precio en tiempo real ─────────────────────────────────────────
 let _ws=null, _wsRetries=0;
@@ -3424,6 +3448,11 @@ async function init(){
     setInterval(async()=>{try{await fetchPrice();checkAlerts();renderCurrentTab();}catch{}},60000);
     // WebSocket para precio tick a tick
     startPriceWS();
+    // Scroll indicator del tabbar
+    setTimeout(()=>{
+      const nav=document.getElementById('tabbar');
+      if(nav){nav.addEventListener('scroll',_updateTabFade,{passive:true});_updateTabFade();}
+    },500);
     setInterval(async()=>{try{await fetchMempool();if(S.currentTab==='mempool')renderTab('mempool');}catch{}},30000);
     setInterval(async()=>{try{await Promise.all([fetchMarket(),fetchMining()]);if(S.currentTab==='market')renderTab('market');}catch{}},120000);
     setInterval(async()=>{try{await fetchNews();if(S.currentTab==='news')renderTab('news');}catch{}},300000);
@@ -3491,6 +3520,8 @@ document.addEventListener('visibilitychange', () => {
   // App visible de nuevo → refrescar precio silenciosamente
   if (S.price?.usd > 0) {
     fetchPrice().then(() => renderCurrentTab()).catch(() => {});
+    // Comprobar aviso matutino al volver al primer plano
+    setTimeout(()=>{try{_checkMorningNow();}catch{}},2000);
     // Comprobar snapshot diario al volver al primer plano
     // Captura: usuario abre la app a las 9:05 tras tenerla minimizada
     setTimeout(()=>{
