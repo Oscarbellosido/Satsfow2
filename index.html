@@ -33,11 +33,12 @@
     .card{background:var(--card-bg);border:1px solid var(--border);border-radius:18px;padding:18px}
     #header{position:sticky;top:0;z-index:100;background:var(--bg);border-bottom:1px solid var(--border);padding:10px 16px;display:flex;align-items:center;justify-content:space-between}
     .logo{width:34px;height:34px;background:#f97316;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;box-shadow:0 0 12px rgba(249,115,22,.3)}
-    #tabbar{position:fixed;bottom:0;left:0;right:0;z-index:100;background:var(--bg2);border-top:1px solid var(--border);display:grid;grid-template-columns:repeat(5,1fr);grid-template-rows:auto auto}
-    .tab-btn{display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 4px;border:none;background:transparent;color:var(--text3);font-size:9px;font-weight:500;position:relative;cursor:pointer}
+    #tabbar{position:fixed;bottom:0;left:0;right:0;z-index:100;background:var(--bg2);border-top:1px solid var(--border);display:flex;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;-webkit-overflow-scrolling:touch;padding-bottom:env(safe-area-inset-bottom)}
+    #tabbar::-webkit-scrollbar{display:none}
+    .tab-btn{display:flex;flex-direction:column;align-items:center;gap:2px;padding:7px 0 6px;border:none;background:transparent;color:var(--text3);font-size:9px;font-weight:500;position:relative;cursor:pointer;flex:0 0 auto;width:62px;white-space:nowrap}
     .tab-btn.active{color:#f97316}
-    .tab-btn:nth-child(n+6){border-top:1px solid var(--border)}
-    .tab-btn.active::before{content:'';position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:20px;height:2px;background:#f97316;border-radius:2px}
+    .tab-btn.active::after{content:'';position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:24px;height:2px;background:#f97316;border-radius:2px}
+    .tab-icon{font-size:17px;line-height:1}
     .tab-icon{font-size:18px;line-height:1}
     #content{padding:14px 14px 90px;max-width:700px;margin:0 auto}
     .space-y>*+*{margin-top:14px}
@@ -324,6 +325,9 @@ function switchTab(tab){
   S.currentTab=tab;
   document.querySelectorAll('.tab-content').forEach(el=>el.style.display='none');
   document.querySelectorAll('.tab-btn').forEach(el=>el.classList.toggle('active',el.dataset.tab===tab));
+  // Scroll del tabbar al botón activo
+  const activeBtn=document.querySelector('.tab-btn.active');
+  if(activeBtn){const nav=document.getElementById('tabbar');const bL=activeBtn.offsetLeft,bW=activeBtn.offsetWidth,nW=nav.offsetWidth;nav.scrollTo({left:bL-nW/2+bW/2,behavior:'smooth'});}
   const el=document.getElementById('tab-'+tab);
   el.style.display='block';
   el.classList.remove('fade');void el.offsetWidth;el.classList.add('fade');
