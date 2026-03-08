@@ -39,8 +39,8 @@
     #tabbar::-webkit-scrollbar{display:none}
     #tabbar-wrap{position:fixed;bottom:0;left:0;right:0;z-index:100}
     #tabbar-wrap{--fade-op:1}
-    #tab-scroll-fade{position:absolute;right:0;top:0;bottom:0;width:44px;background:linear-gradient(to right,transparent,#1e293b);pointer-events:none;z-index:10;opacity:var(--fade-op);transition:opacity .4s;display:flex;align-items:center;justify-content:flex-end;padding-right:4px}
-    #tab-scroll-fade::after{content:'›';color:#f97316;font-size:18px;font-weight:700;opacity:.9}
+    #tab-scroll-fade{position:fixed;right:0;bottom:0;width:50px;height:56px;background:linear-gradient(to right,transparent,var(--bg2,#1e293b));pointer-events:none;z-index:200;transition:opacity .4s;display:flex;align-items:center;justify-content:flex-end;padding-right:6px;padding-bottom:env(safe-area-inset-bottom)}
+    #tab-scroll-fade::after{content:'❯';color:#f97316;font-size:16px;font-weight:900}
     .tab-btn{display:flex;flex-direction:column;align-items:center;gap:2px;padding:7px 0 6px;border:none;background:transparent;color:var(--text3);font-size:9px;font-weight:500;position:relative;cursor:pointer;flex:0 0 auto;width:62px;white-space:nowrap}
     .tab-btn.active{color:#f97316}
     .tab-btn.active::after{content:'';position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:24px;height:2px;background:#f97316;border-radius:2px}
@@ -129,7 +129,7 @@
     <div id="tab-forecast" class="tab-content fade" style="display:none"></div>
     <div id="tab-cycles" class="tab-content fade" style="display:none"></div>
   </div>
-  <div id="tabbar-wrap" style="position:relative"><div id="tab-scroll-fade"></div><nav id="tabbar">
+  <div id="tabbar-wrap"><nav id="tabbar">
     <button class="tab-btn active" data-tab="home" onclick="switchTab('home')"><span class="tab-icon">🏠</span>Inicio</button>
     <button class="tab-btn" data-tab="analysis" onclick="switchTab('analysis')"><span class="tab-icon">🧠</span>Análisis</button>
     <button class="tab-btn" data-tab="market" onclick="switchTab('market')"><span class="tab-icon">📊</span>Mercado</button>
@@ -142,11 +142,12 @@
     <button class="tab-btn" data-tab="forecast" onclick="switchTab('forecast')"><span class="tab-icon">🔮</span>Previsión</button>
     <button class="tab-btn" data-tab="cycles" onclick="switchTab('cycles')"><span class="tab-icon">🔄</span>Ciclos</button>
   </nav></div>
+  <div id="tab-scroll-fade"></div>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-const BUILD_TS='202603080825';
+const BUILD_TS='202603081013';
 const S={price:{usd:0,eur:0},change24h:0,marketCap:0,history:[],ohlc:[],mempool:null,marketData:null,miningData:null,news:[],alerts:[],days:'30',chartType:'area',dark:localStorage.getItem('sf-theme')!=='light',notifPerm:window.Notification?.permission||'unsupported',atmLoaded:false,leafletMap:null,lastUpdated:null,feeLevel:'hour',txSize:250,currentTab:'home',corrData:null,corrPeriod:'30',dominanceHistory:[],rainbowData:null,dominanceYearData:null,historyTA:[],lang:localStorage.getItem('sf-lang')||'es',morningAlert:JSON.parse(localStorage.getItem('sf-morning')||'null')};
 
 /* ══════ TRADUCCIONS / TRADUCCIONES ══════ */
@@ -1321,8 +1322,9 @@ function _updateTabFade(){
   const nav=document.getElementById('tabbar');
   const fade=document.getElementById('tab-scroll-fade');
   if(!nav||!fade)return;
+  const canScroll=nav.scrollWidth>nav.clientWidth+4;
   const atEnd=nav.scrollLeft+nav.clientWidth>=nav.scrollWidth-4;
-  fade.style.opacity=atEnd?'0':'1';
+  fade.style.opacity=(canScroll&&!atEnd)?'1':'0';
 }
 // ─── WebSocket precio en tiempo real ─────────────────────────────────────────
 let _ws=null, _wsRetries=0;
@@ -3468,7 +3470,9 @@ async function init(){
     setTimeout(()=>{
       const nav=document.getElementById('tabbar');
       if(nav){nav.addEventListener('scroll',_updateTabFade,{passive:true});_updateTabFade();}
-    },500);
+    },300);
+    // Segunda llamada por si el layout aún no estaba listo
+    setTimeout(_updateTabFade,1000);
     setInterval(async()=>{try{await fetchMempool();if(S.currentTab==='mempool')renderTab('mempool');}catch{}},30000);
     setInterval(async()=>{try{await Promise.all([fetchMarket(),fetchMining()]);if(S.currentTab==='market')renderTab('market');}catch{}},120000);
     setInterval(async()=>{try{await fetchNews();if(S.currentTab==='news')renderTab('news');}catch{}},300000);
