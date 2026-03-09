@@ -158,7 +158,7 @@
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-const BUILD_TS='202603091807';
+const BUILD_TS='202603091838';
 const S={price:{usd:0,eur:0},change24h:0,marketCap:0,history:[],ohlc:[],mempool:null,marketData:null,miningData:null,news:[],alerts:[],days:'30',chartType:'area',dark:localStorage.getItem('sf-theme')!=='light',notifPerm:window.Notification?.permission||'unsupported',atmLoaded:false,leafletMap:null,lastUpdated:null,feeLevel:'hour',txSize:250,currentTab:'home',corrData:null,corrPeriod:'30',dominanceHistory:[],rainbowData:null,dominanceYearData:null,historyTA:[],lang:localStorage.getItem('sf-lang')||'es',morningAlert:JSON.parse(localStorage.getItem('sf-morning')||'null')};
 
 /* ══════ TRADUCCIONS / TRADUCCIONES ══════ */
@@ -1105,13 +1105,12 @@ function areaSVG(data){
     <animate attributeName="r" values="3.5;5;3.5" dur="2s" repeatCount="indefinite"/>
   </circle>`;
   // Etiqueta preu actual
-  // Si el punt és a la dreta, posar l'etiqueta a l'esquerra del punt
-  const nearRight = cx > (W - PL - PR) * 0.65 + PL;
-  const tagW = 42;
-  const tagX = nearRight ? cx - tagW - 6 : cx + 5;
-  const anchor = 'start';
-  const priceTag=`<rect x="${tagX}" y="${cy-10}" width="${tagW}" height="16" rx="4" fill="${color}" opacity=".2"/>
-    <text x="${tagX + tagW/2}" y="${cy+2}" font-size="9" fill="${color}" font-weight="800" text-anchor="middle">$${fmtPrice(last)}</text>`;
+  // Etiqueta sempre dins del viewBox
+  const tagW = 44;
+  const tagX = Math.min(cx - tagW/2, W - PR - tagW - 2);  // mai surt per la dreta
+  const tagXfinal = Math.max(tagX, PL + 2);                // mai surt per l'esquerra
+  const priceTag=`<rect x="${tagXfinal}" y="${cy-11}" width="${tagW}" height="17" rx="4" fill="${color}" opacity=".25"/>
+    <text x="${tagXfinal + tagW/2}" y="${cy+2}" font-size="9" fill="${color}" font-weight="800" text-anchor="middle">$${fmtPrice(last)}</text>`;
 
   return`<svg id="chart-svg" viewBox="0 0 ${W} ${H}" style="width:100%;height:180px;touch-action:pan-y" preserveAspectRatio="xMidYMid meet">
     <defs>
