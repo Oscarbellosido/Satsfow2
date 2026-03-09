@@ -41,6 +41,17 @@
     #tabbar-wrap{--fade-op:1}
     #tab-scroll-fade{position:fixed;right:0;bottom:0;width:50px;height:56px;background:linear-gradient(to right,transparent,var(--bg2,#1e293b));pointer-events:none;z-index:200;transition:opacity .4s;display:flex;align-items:center;justify-content:flex-end;padding-right:6px;padding-bottom:env(safe-area-inset-bottom)}
     #tab-scroll-fade::after{content:'❯';color:#f97316;font-size:16px;font-weight:900}
+    @keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
+    .skeleton{border-radius:8px;background:linear-gradient(90deg,#1e293b 25%,#263045 50%,#1e293b 75%);background-size:200% 100%;animation:shimmer 1.5s infinite;min-height:16px}
+    .sk-h1{height:32px;width:60%}
+    .sk-h2{height:18px;width:40%}
+    .sk-text{height:13px;width:80%}
+    .sk-text-sm{height:11px;width:55%}
+    .sk-chart{height:160px;width:100%;border-radius:12px}
+    .sk-card{background:#1e293b;border-radius:16px;padding:16px;margin-bottom:12px}
+    .sk-row{display:flex;gap:10px;margin-bottom:10px}
+    .sk-circle{border-radius:50%;width:48px;height:48px;flex-shrink:0}
+    .sk-box{height:80px;border-radius:10px}
     .tab-btn{display:flex;flex-direction:column;align-items:center;gap:2px;padding:7px 0 6px;border:none;background:transparent;color:var(--text3);font-size:9px;font-weight:500;position:relative;cursor:pointer;flex:0 0 auto;width:62px;white-space:nowrap}
     .tab-btn.active{color:#f97316}
     .tab-btn.active::after{content:'';position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:24px;height:2px;background:#f97316;border-radius:2px}
@@ -147,7 +158,7 @@
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-const BUILD_TS='202603081013';
+const BUILD_TS='202603082120';
 const S={price:{usd:0,eur:0},change24h:0,marketCap:0,history:[],ohlc:[],mempool:null,marketData:null,miningData:null,news:[],alerts:[],days:'30',chartType:'area',dark:localStorage.getItem('sf-theme')!=='light',notifPerm:window.Notification?.permission||'unsupported',atmLoaded:false,leafletMap:null,lastUpdated:null,feeLevel:'hour',txSize:250,currentTab:'home',corrData:null,corrPeriod:'30',dominanceHistory:[],rainbowData:null,dominanceYearData:null,historyTA:[],lang:localStorage.getItem('sf-lang')||'es',morningAlert:JSON.parse(localStorage.getItem('sf-morning')||'null')};
 
 /* ══════ TRADUCCIONS / TRADUCCIONES ══════ */
@@ -1048,20 +1059,107 @@ function miniLine(data,color,h=65,refs=[]){
   const rls=refs.map(({val,color:rc})=>{const y=P+(1-(val-min)/range)*(H-P*2);return`<line x1="${P}" y1="${y}" x2="${W-P}" y2="${y}" stroke="${rc}" stroke-dasharray="4 3" stroke-width="1" opacity=".7"/>`;}).join('');
   return`<svg viewBox="0 0 ${W} ${H}" class="mini-chart" preserveAspectRatio="none">${rls}<polyline points="${pts}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round"/></svg>`;
 }
+function fmtPrice(v){if(v>=1e6)return(v/1e6).toFixed(2)+'M';if(v>=1e3)return(v/1e3).toFixed(1)+'k';return v.toFixed(0);}
+
 function areaSVG(data){
   if(!data.length)return'';
-  const prices=data.map(d=>d.price),min=Math.min(...prices),max=Math.max(...prices),range=max-min||1;
-  const W=300,H=100,P=4,last=prices[prices.length-1],first=prices[0],color=last>=first?'#10b981':'#ef4444';
-  const pts=data.map((d,i)=>`${P+(i/(data.length-1))*(W-P*2)},${P+(1-(d.price-min)/range)*(H-P*2)}`);
-  return`<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:120px" preserveAspectRatio="none"><defs><linearGradient id="ag" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${color}" stop-opacity=".3"/><stop offset="100%" stop-color="${color}" stop-opacity="0"/></linearGradient></defs><polygon points="${P},${H} ${pts.join(' ')} ${W-P},${H}" fill="url(#ag)"/><polyline points="${pts.join(' ')}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round"/></svg>`;
+  const prices=data.map(d=>d.price);
+  const min=Math.min(...prices),max=Math.max(...prices),range=max-min||1;
+  const W=320,H=150,PL=48,PR=8,PT=12,PB=28;
+  const cw=W-PL-PR,ch=H-PT-PB;
+  const last=prices[prices.length-1],first=prices[0];
+  const color=last>=first?'#10b981':'#ef4444';
+  const toX=i=>PL+(i/(data.length-1||1))*cw;
+  const toY=v=>PT+ch-((v-min)/range)*ch;
+
+  // Línies de quadrícula horitzontals (4 nivells)
+  const levels=4;
+  let gridLines='',yLabels='';
+  for(let i=0;i<=levels;i++){
+    const v=min+(range/levels)*i;
+    const y=toY(v);
+    gridLines+=`<line x1="${PL}" y1="${y}" x2="${W-PR}" y2="${y}" stroke="#1e293b" stroke-width="1"/>`;
+    yLabels+=`<text x="${PL-4}" y="${y+4}" font-size="9" fill="#475569" text-anchor="end">${fmtPrice(v)}</text>`;
+  }
+
+  // Etiquetes eix X (dates)
+  let xLabels='';
+  const nLabels=Math.min(5,data.length);
+  const step=Math.floor((data.length-1)/(nLabels-1||1));
+  for(let i=0;i<nLabels;i++){
+    const idx=Math.min(i*step,data.length-1);
+    const d=data[idx];
+    const x=toX(idx);
+    const label=d.time?new Date(d.time).toLocaleDateString('ca-ES',{day:'2-digit',month:'2-digit'}):'';
+    if(label) xLabels+=`<text x="${x}" y="${H-PB+14}" font-size="8" fill="#475569" text-anchor="middle">${label}</text>`;
+  }
+
+  // Àrea i línia
+  const pts=data.map((d,i)=>`${toX(i)},${toY(d.price)}`);
+  const area=`<polygon points="${PL},${PT+ch} ${pts.join(' ')} ${toX(data.length-1)},${PT+ch}" fill="url(#ag${color==='#10b981'?'g':'r'})"/>`;
+  const line=`<polyline points="${pts.join(' ')}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`;
+
+  // Punt final (preu actual)
+  const cx=toX(data.length-1),cy=toY(last);
+  const dot=`<circle cx="${cx}" cy="${cy}" r="3.5" fill="${color}" stroke="#0f172a" stroke-width="1.5">
+    <animate attributeName="r" values="3.5;5;3.5" dur="2s" repeatCount="indefinite"/>
+  </circle>`;
+  // Etiqueta preu actual
+  const labelX=Math.min(cx+6,W-PR-32);
+  const priceTag=`<rect x="${labelX-2}" y="${cy-9}" width="38" height="13" rx="3" fill="${color}" opacity=".15"/>
+    <text x="${labelX+17}" y="${cy+1}" font-size="9" fill="${color}" font-weight="700" text-anchor="middle">$${fmtPrice(last)}</text>`;
+
+  return`<svg id="chart-svg" viewBox="0 0 ${W} ${H}" style="width:100%;height:160px;touch-action:pan-y" preserveAspectRatio="none">
+    <defs>
+      <linearGradient id="agg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#10b981" stop-opacity=".25"/><stop offset="100%" stop-color="#10b981" stop-opacity="0"/></linearGradient>
+      <linearGradient id="agr" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#ef4444" stop-opacity=".25"/><stop offset="100%" stop-color="#ef4444" stop-opacity="0"/></linearGradient>
+    </defs>
+    ${gridLines}${area}${line}${dot}${priceTag}${yLabels}${xLabels}
+  </svg>`;
 }
 function candleSVG(data){
   if(!data.length)return'';
-  const ps=data.flatMap(d=>[d.high,d.low]),min=Math.min(...ps),max=Math.max(...ps),range=max-min||1;
-  const W=300,H=120,P=4,cW=Math.max(2,Math.floor((W-P*2)/data.length)-2);
-  const toY=v=>P+(1-(v-min)/range)*(H-P*2),toX=i=>P+(i+.5)*((W-P*2)/data.length);
-  const c=data.map((d,i)=>{const up=d.close>=d.open,x=toX(i),col=up?'#10b981':'#ef4444';const yH=toY(d.high),yL=toY(d.low),yO=toY(d.open),yC=toY(d.close),bT=Math.min(yO,yC),bH=Math.max(1,Math.abs(yO-yC));return`<line x1="${x}" y1="${yH}" x2="${x}" y2="${yL}" stroke="${col}" stroke-width="1"/><rect x="${x-cW/2}" y="${bT}" width="${cW}" height="${bH}" fill="${col}" rx="1"/>`;}).join('');
-  return`<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:120px" preserveAspectRatio="none">${c}</svg>`;
+  const ps=data.flatMap(d=>[d.high,d.low]);
+  const min=Math.min(...ps),max=Math.max(...ps),range=max-min||1;
+  const W=320,H=150,PL=48,PR=8,PT=12,PB=28;
+  const cw=W-PL-PR,ch=H-PT-PB;
+  const toY=v=>PT+ch-((v-min)/range)*ch;
+  const toX=i=>PL+(i+.5)*(cw/data.length);
+  const cW=Math.max(2,Math.floor(cw/data.length)-2);
+
+  // Quadrícula
+  let gridLines='',yLabels='';
+  const levels=4;
+  for(let i=0;i<=levels;i++){
+    const v=min+(range/levels)*i;
+    const y=toY(v);
+    gridLines+=`<line x1="${PL}" y1="${y}" x2="${W-PR}" y2="${y}" stroke="#1e293b" stroke-width="1"/>`;
+    yLabels+=`<text x="${PL-4}" y="${y+4}" font-size="9" fill="#475569" text-anchor="end">${fmtPrice(v)}</text>`;
+  }
+
+  // Etiquetes X
+  let xLabels='';
+  const nLabels=Math.min(5,data.length);
+  const step=Math.floor((data.length-1)/(nLabels-1||1));
+  for(let i=0;i<nLabels;i++){
+    const idx=Math.min(i*step,data.length-1);
+    const d=data[idx];
+    const x=toX(idx);
+    const label=d.time?new Date(d.time).toLocaleDateString('ca-ES',{day:'2-digit',month:'2-digit'}):'';
+    if(label) xLabels+=`<text x="${x}" y="${H-PB+14}" font-size="8" fill="#475569" text-anchor="middle">${label}</text>`;
+  }
+
+  const candles=data.map((d,i)=>{
+    const up=d.close>=d.open,x=toX(i),col=up?'#10b981':'#ef4444';
+    const yH=toY(d.high),yL=toY(d.low),yO=toY(d.open),yC=toY(d.close);
+    const bT=Math.min(yO,yC),bH=Math.max(1.5,Math.abs(yO-yC));
+    return`<line x1="${x}" y1="${yH}" x2="${x}" y2="${yL}" stroke="${col}" stroke-width="1" opacity=".8"/>
+      <rect x="${x-cW/2}" y="${bT}" width="${cW}" height="${bH}" fill="${col}" rx="1"/>`;
+  }).join('');
+
+  return`<svg id="chart-svg" viewBox="0 0 ${W} ${H}" style="width:100%;height:160px;touch-action:pan-y" preserveAspectRatio="none">
+    ${gridLines}${candles}${yLabels}${xLabels}
+  </svg>`;
 }
 function updateHeader(){
   const p=document.getElementById('header-price'),ch=document.getElementById('header-change');
@@ -1326,6 +1424,66 @@ function _updateTabFade(){
   const atEnd=nav.scrollLeft+nav.clientWidth>=nav.scrollWidth-4;
   fade.style.opacity=(canScroll&&!atEnd)?'1':'0';
 }
+
+// ── Skeleton screens ──────────────────────────────────────────────────────────
+function skRow(...widths){
+  return '<div class="sk-row">'+widths.map(w=>`<div class="skeleton" style="height:13px;width:${w};flex:${w==='1'?'1':'none'}"></div>`).join('')+'</div>';
+}
+function skeletonHome(){
+  return`<div class="space-y">
+  <div class="sk-card">
+    <div class="skeleton sk-h2" style="width:120px;margin-bottom:14px"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      ${[0,1,2,3].map(()=>`<div><div class="skeleton" style="height:10px;width:60%;margin-bottom:6px"></div><div class="skeleton" style="height:38px;border-radius:10px"></div></div>`).join('')}
+    </div>
+  </div>
+  <div class="sk-card">
+    <div style="display:flex;justify-content:space-between;margin-bottom:12px">
+      <div class="skeleton sk-h2" style="width:100px"></div>
+      <div class="skeleton" style="width:80px;height:28px;border-radius:8px"></div>
+    </div>
+    <div class="skeleton" style="height:36px;border-radius:8px;margin-bottom:12px"></div>
+    <div class="skeleton sk-chart"></div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+    ${[0,1,2].map(()=>`<div class="sk-card" style="padding:12px">${skRow('50%')}<div class="skeleton" style="height:20px;width:70%;margin-top:4px"></div></div>`).join('')}
+  </div>
+</div>`;
+}
+function skeletonAnalysis(){
+  return`<div class="space-y">
+  <div class="sk-card">
+    <div class="skeleton sk-h2" style="margin-bottom:14px"></div>
+    <div class="skeleton" style="height:80px;border-radius:12px;margin-bottom:12px"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      ${[0,1,2,3].map(()=>`<div class="sk-card sk-box"></div>`).join('')}
+    </div>
+  </div>
+  <div class="sk-card"><div class="skeleton sk-chart"></div></div>
+  <div class="sk-card"><div class="skeleton sk-chart"></div></div>
+</div>`;
+}
+function skeletonMarket(){
+  return`<div class="space-y">
+  <div class="sk-card">
+    <div class="skeleton sk-h2" style="margin-bottom:16px"></div>
+    <div style="display:flex;justify-content:center"><div class="skeleton sk-circle" style="width:160px;height:90px;border-radius:12px"></div></div>
+  </div>
+  <div class="sk-card">
+    ${[0,1,2].map(()=>`<div style="margin-bottom:14px">${skRow('40%','20%')}<div class="skeleton" style="height:8px;border-radius:999px;margin-top:4px"></div></div>`).join('')}
+  </div>
+  <div class="sk-card"><div class="skeleton sk-chart"></div></div>
+</div>`;
+}
+function skeletonGeneric(){
+  return`<div class="space-y">
+  ${[0,1,2].map(()=>`<div class="sk-card">
+    <div class="skeleton sk-h2" style="margin-bottom:14px"></div>
+    ${skRow('70%')}${skRow('50%','30%')}${skRow('60%')}
+    <div class="skeleton" style="height:60px;margin-top:8px;border-radius:10px"></div>
+  </div>`).join('')}
+</div>`;
+}
 // ─── WebSocket precio en tiempo real ─────────────────────────────────────────
 let _ws=null, _wsRetries=0;
 function startPriceWS(){
@@ -1379,16 +1537,31 @@ function startPriceWS(){
 
 function renderTab(tab){
   const el=document.getElementById('tab-'+tab);if(!el)return;
+  // Skeleton map — mostra mentre carrega
+  const skeletonMap={home:skeletonHome,analysis:skeletonAnalysis,market:skeletonMarket,mempool:skeletonGeneric,news:skeletonGeneric,corr:skeletonGeneric,global:skeletonGeneric,forecast:skeletonGeneric,cycles:skeletonGeneric};
   const map={home:renderHome,analysis:renderAnalysis,market:renderMarket,mempool:renderMempool,atm:renderATM,news:renderNews,alerts:renderAlerts,corr:renderCorr,global:renderGlobal,forecast:renderForecast,cycles:renderCycles};
   // El tab ATM no se re-renderiza si el mapa ya está activo — evita destruir Leaflet
   if(tab==='atm'&&S.leafletMap){
     return;
   }
   if(map[tab]){
+    // Mostrar skeleton si la tab no té dades encara
+    const needsSkeleton=(tab==='home'&&S.price.usd===0)||(tab==='analysis'&&!S.historyTA?.length)||(tab==='market'&&!S.marketData)||(tab==='mempool'&&!S.mempool)||(tab==='news'&&!S.news.length)||(tab==='cycles'&&!S.cycleHistory);
+    if(needsSkeleton&&skeletonMap[tab]){
+      el.innerHTML=skeletonMap[tab]();
+      // Tornar a renderitzar quan les dades arribin
+      const waitAndRender=()=>{
+        const stillNeeds=(tab==='home'&&S.price.usd===0)||(tab==='analysis'&&!S.historyTA?.length)||(tab==='market'&&!S.marketData)||(tab==='mempool'&&!S.mempool)||(tab==='news'&&!S.news.length)||(tab==='cycles'&&!S.cycleHistory);
+        if(!stillNeeds||S.currentTab!==tab)return;
+        setTimeout(waitAndRender,400);
+      };
+      setTimeout(()=>{if(S.currentTab===tab)try{el.innerHTML=map[tab]();}catch(e){el.innerHTML=skeletonMap[tab]();}},400);
+      return;
+    }
     try{el.innerHTML=map[tab]();}
     catch(e){
       console.error('renderTab error ['+tab+']:',e);
-      el.innerHTML='<div style="padding:30px;text-align:center"><div style="font-size:32px">⚠️</div><br><b style="color:#f97316">Error al cargar</b><br><small style="color:#999">'+e.message+'</small><br><br><button onclick="location.reload()" style="margin-top:12px;padding:10px 20px;background:#f97316;color:white;border:none;border-radius:10px;cursor:pointer">🔄 Reintentar</button></div>';
+      el.innerHTML='<div style="padding:30px;text-align:center"><div style="font-size:32px">⚠️</div><br><b style="color:#f97316">Error al carregar</b><br><small style="color:#999">'+e.message+'</small><br><br><button onclick="location.reload()" style="margin-top:12px;padding:10px 20px;background:#f97316;color:white;border:none;border-radius:10px;cursor:pointer">🔄 Reintentar</button></div>';
     }
   }
   if(tab==='atm'&&!S.atmLoaded)initATM();
