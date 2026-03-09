@@ -158,7 +158,7 @@
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-const BUILD_TS='202603091850';
+const BUILD_TS='202603091857';
 const S={price:{usd:0,eur:0},change24h:0,marketCap:0,history:[],ohlc:[],mempool:null,marketData:null,miningData:null,news:[],alerts:[],days:'30',chartType:'area',dark:localStorage.getItem('sf-theme')!=='light',notifPerm:window.Notification?.permission||'unsupported',atmLoaded:false,leafletMap:null,lastUpdated:null,feeLevel:'hour',txSize:250,currentTab:'home',corrData:null,corrPeriod:'30',dominanceHistory:[],rainbowData:null,dominanceYearData:null,historyTA:[],lang:localStorage.getItem('sf-lang')||'es',morningAlert:JSON.parse(localStorage.getItem('sf-morning')||'null')};
 
 /* ══════ TRADUCCIONS / TRADUCCIONES ══════ */
@@ -369,7 +369,7 @@ function switchTab(tab){
     setTimeout(_inv,50);setTimeout(_inv,200);setTimeout(_inv,500);
   }
 }
-function renderCurrentTab(){renderTab(S.currentTab);}
+function renderCurrentTab(){renderTab(S.currentTab);if(S.currentTab==='home')setTimeout(updateChartPriceTag,50);}
 const fmtN=(v,d=2)=>isNaN(v)?'—':Number(v).toLocaleString('en-US',{maximumFractionDigits:d});
 const fmtBig=v=>{if(!v)return'—';if(v>=1e12)return`$${(v/1e12).toFixed(2)}T`;if(v>=1e9)return`$${(v/1e9).toFixed(1)}B`;return`$${v.toLocaleString()}`;};
 const timeAgo=d=>{const s=Math.floor((Date.now()-d)/1000);if(s<60)return s+'s';if(s<3600)return Math.floor(s/60)+'m';if(s<86400)return Math.floor(s/3600)+'h';return Math.floor(s/86400)+'d';};
@@ -1065,24 +1065,20 @@ function areaSVG(data){
   if(!data.length)return'';
   const prices=data.map(d=>d.price);
   const min=Math.min(...prices),max=Math.max(...prices),range=max-min||1;
-  const W=320,H=160,PL=52,PR=10,PT=14,PB=26;
+  const W=320,H=180,PL=52,PR=6,PT=14,PB=26;
   const cw=W-PL-PR,ch=H-PT-PB;
   const last=prices[prices.length-1],first=prices[0];
   const color=last>=first?'#10b981':'#ef4444';
   const toX=i=>PL+(i/(data.length-1||1))*cw;
   const toY=v=>PT+ch-((v-min)/range)*ch;
-
-  // Línies de quadrícula horitzontals (4 nivells)
-  const levels=4;
   let gridLines='',yLabels='';
+  const levels=4;
   for(let i=0;i<=levels;i++){
     const v=min+(range/levels)*i;
     const y=toY(v);
     gridLines+=`<line x1="${PL}" y1="${y}" x2="${W-PR}" y2="${y}" stroke="#1e293b" stroke-width="1"/>`;
-    yLabels+=`<text x="${PL-4}" y="${y+4}" font-size="9" fill="#475569" text-anchor="end">${fmtPrice(v)}</text>`;
+    yLabels+=`<text x="${PL-4}" y="${y+4}" font-size="9" fill="#64748b" text-anchor="end">${fmtPrice(v)}</text>`;
   }
-
-  // Etiquetes eix X (dates)
   let xLabels='';
   const nLabels=Math.min(5,data.length);
   const step=Math.floor((data.length-1)/(nLabels-1||1));
@@ -1093,55 +1089,39 @@ function areaSVG(data){
     const label=d.time?new Date(d.time).toLocaleDateString('ca-ES',{day:'2-digit',month:'2-digit'}):d.date||'';
     if(label) xLabels+=`<text x="${x}" y="${H-PB+14}" font-size="8" fill="#64748b" text-anchor="middle">${label}</text>`;
   }
-
-  // Àrea i línia
   const pts=data.map((d,i)=>`${toX(i)},${toY(d.price)}`);
   const area=`<polygon points="${PL},${PT+ch} ${pts.join(' ')} ${toX(data.length-1)},${PT+ch}" fill="url(#ag${color==='#10b981'?'g':'r'})"/>`;
   const line=`<polyline points="${pts.join(' ')}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`;
-
-  // Punt final (preu actual)
   const cx=toX(data.length-1),cy=toY(last);
-  const dot=`<circle cx="${cx}" cy="${cy}" r="3.5" fill="${color}" stroke="#0f172a" stroke-width="1.5">
-    <animate attributeName="r" values="3.5;5;3.5" dur="2s" repeatCount="indefinite"/>
-  </circle>`;
-  // Etiqueta preu actual
-  // Etiqueta sempre a l'esquerra del punt per evitar tall
-  const tagW = 44, tagH = 17;
-  const tagX = cx - tagW - 6;  // sempre a l'esquerra del punt
-  const tagXf = Math.max(tagX, PL + 2);
-  const tagY = Math.max(cy - tagH/2, PT + 2);
-  const priceTag=`<rect x="${tagXf}" y="${tagY}" width="${tagW}" height="${tagH}" rx="4" fill="${color}" opacity=".25"/>
-    <text x="${tagXf + tagW/2}" y="${tagY + tagH*0.72}" font-size="9" fill="${color}" font-weight="800" text-anchor="middle">$${fmtPrice(last)}</text>`;
-
-  return`<svg id="chart-svg" viewBox="0 0 ${W} ${H}" style="width:100%;height:180px;touch-action:pan-y" preserveAspectRatio="xMidYMid meet">
+  const dot=`<circle cx="${cx}" cy="${cy}" r="3.5" fill="${color}" stroke="#0f172a" stroke-width="1.5"><animate attributeName="r" values="3.5;5;3.5" dur="2s" repeatCount="indefinite"/></circle>`;
+  // Guardar posició del dot per l'etiqueta HTML
+  S._chartDotPct={x:cx/W,y:cy/H,color,price:last};
+  return`<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:195px;display:block" preserveAspectRatio="none">
     <defs>
       <linearGradient id="agg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#10b981" stop-opacity=".25"/><stop offset="100%" stop-color="#10b981" stop-opacity="0"/></linearGradient>
       <linearGradient id="agr" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#ef4444" stop-opacity=".25"/><stop offset="100%" stop-color="#ef4444" stop-opacity="0"/></linearGradient>
     </defs>
-    ${gridLines}${area}${line}${dot}${priceTag}${yLabels}${xLabels}
+    ${gridLines}${area}${line}${dot}${yLabels}${xLabels}
   </svg>`;
 }
+
 function candleSVG(data){
   if(!data.length)return'';
   const ps=data.flatMap(d=>[d.high,d.low]);
   const min=Math.min(...ps),max=Math.max(...ps),range=max-min||1;
-  const W=320,H=160,PL=52,PR=10,PT=14,PB=26;
+  const W=320,H=210,PL=52,PR=6,PT=14,PB=26;
   const cw=W-PL-PR,ch=H-PT-PB;
   const toY=v=>PT+ch-((v-min)/range)*ch;
   const toX=i=>PL+(i+.5)*(cw/data.length);
   const cW=Math.max(2,Math.floor(cw/data.length)-2);
-
-  // Quadrícula
   let gridLines='',yLabels='';
   const levels=4;
   for(let i=0;i<=levels;i++){
     const v=min+(range/levels)*i;
     const y=toY(v);
     gridLines+=`<line x1="${PL}" y1="${y}" x2="${W-PR}" y2="${y}" stroke="#1e293b" stroke-width="1"/>`;
-    yLabels+=`<text x="${PL-4}" y="${y+4}" font-size="9" fill="#475569" text-anchor="end">${fmtPrice(v)}</text>`;
+    yLabels+=`<text x="${PL-4}" y="${y+4}" font-size="9" fill="#64748b" text-anchor="end">${fmtPrice(v)}</text>`;
   }
-
-  // Etiquetes X
   let xLabels='';
   const nLabels=Math.min(5,data.length);
   const step=Math.floor((data.length-1)/(nLabels-1||1));
@@ -1152,19 +1132,17 @@ function candleSVG(data){
     const label=d.time?new Date(d.time).toLocaleDateString('ca-ES',{day:'2-digit',month:'2-digit'}):d.date||'';
     if(label) xLabels+=`<text x="${x}" y="${H-PB+14}" font-size="8" fill="#64748b" text-anchor="middle">${label}</text>`;
   }
-
   const candles=data.map((d,i)=>{
     const up=d.close>=d.open,x=toX(i),col=up?'#10b981':'#ef4444';
     const yH=toY(d.high),yL=toY(d.low),yO=toY(d.open),yC=toY(d.close);
     const bT=Math.min(yO,yC),bH=Math.max(1.5,Math.abs(yO-yC));
-    return`<line x1="${x}" y1="${yH}" x2="${x}" y2="${yL}" stroke="${col}" stroke-width="1" opacity=".8"/>
-      <rect x="${x-cW/2}" y="${bT}" width="${cW}" height="${bH}" fill="${col}" rx="1"/>`;
+    return`<line x1="${x}" y1="${yH}" x2="${x}" y2="${yL}" stroke="${col}" stroke-width="1" opacity=".8"/><rect x="${x-cW/2}" y="${bT}" width="${cW}" height="${bH}" fill="${col}" rx="1"/>`;
   }).join('');
-
-  return`<svg id="chart-svg" viewBox="0 0 ${W} ${H}" style="width:100%;height:180px;touch-action:pan-y" preserveAspectRatio="xMidYMid meet">
+  return`<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:225px;display:block" preserveAspectRatio="none">
     ${gridLines}${candles}${yLabels}${xLabels}
   </svg>`;
 }
+
 function updateHeader(){
   const p=document.getElementById('header-price'),ch=document.getElementById('header-change');
   if(p)p.textContent='$'+S.price.usd.toLocaleString();
@@ -1593,7 +1571,7 @@ function renderHome(){
       <div class="chart-type-wrap"><button class="chart-type-btn ${S.chartType==='area'?'active':''}" onclick="setChartType('area')">Área</button><button class="chart-type-btn ${S.chartType==='candle'?'active':''}" onclick="setChartType('candle')">Velas</button></div>
     </div>
     <div class="period-wrap">${['1','7','30','90','365'].map(d=>`<button class="period-btn ${S.days===d?'active':''}" onclick="setPeriod('${d}')">${d==='1'?'24h':d==='365'?'1A':d+'D'}</button>`).join('')}</div>
-    <div style="background:#0a1628;border-radius:12px;padding:6px 4px 2px;margin:0 -4px">${chart||'<div style="text-align:center;color:var(--text3);padding:40px">Carregant dades...</div>'}</div>
+    <div style="background:#0a1628;border-radius:12px;padding:6px 4px 2px;margin:0 -4px;position:relative">${chart||'<div style="text-align:center;color:var(--text3);padding:40px">Carregant dades...</div>'}<div id="chart-price-tag"></div></div>
   </div>
   <div class="grid-3">
     <div class="stat-box"><div class="stat-label">Cap. Mercado</div><div class="stat-val" style="color:#3b82f6">${fmtBig(S.marketData?.totalMcap||S.marketCap)}</div></div>
@@ -1602,6 +1580,22 @@ function renderHome(){
   </div>
   <div style="font-size:10px;color:var(--text3);text-align:center">Precios: ${S.priceSource||'—'} · Mempool: mempool.space · No es un consejo financiero.</div>
 </div>`;
+}
+function updateChartPriceTag(){
+  const tag=document.getElementById('chart-price-tag');
+  if(!tag||!S._chartDotPct)return;
+  const{x,y,color,price}=S._chartDotPct;
+  const wrap=tag.parentElement;
+  if(!wrap)return;
+  const ww=wrap.offsetWidth,wh=wrap.offsetHeight;
+  const px=x*ww,py=y*wh;
+  const lbl='$'+fmtPrice(price);
+  const tw=50,th=18;
+  // Sempre a l'esquerra del punt, ajustat per no sortir
+  let left=Math.max(6,px-tw-8);
+  const top=Math.max(4,Math.min(py-th/2,wh-th-4));
+  tag.style.cssText=`position:absolute;left:${left}px;top:${top}px;width:${tw}px;height:${th}px;background:${color}33;border:1px solid ${color}66;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;color:${color};pointer-events:none;z-index:5`;
+  tag.textContent=lbl;
 }
 function calcConv(f,raw){
   const v=parseFloat(raw),ok=!isNaN(v)&&v>=0,pU=S.price.usd,pE=S.price.eur;
