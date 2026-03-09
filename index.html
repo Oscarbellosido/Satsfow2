@@ -158,7 +158,7 @@
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-const BUILD_TS='202603082120';
+const BUILD_TS='202603091049';
 const S={price:{usd:0,eur:0},change24h:0,marketCap:0,history:[],ohlc:[],mempool:null,marketData:null,miningData:null,news:[],alerts:[],days:'30',chartType:'area',dark:localStorage.getItem('sf-theme')!=='light',notifPerm:window.Notification?.permission||'unsupported',atmLoaded:false,leafletMap:null,lastUpdated:null,feeLevel:'hour',txSize:250,currentTab:'home',corrData:null,corrPeriod:'30',dominanceHistory:[],rainbowData:null,dominanceYearData:null,historyTA:[],lang:localStorage.getItem('sf-lang')||'es',morningAlert:JSON.parse(localStorage.getItem('sf-morning')||'null')};
 
 /* ══════ TRADUCCIONS / TRADUCCIONES ══════ */
@@ -846,7 +846,7 @@ async function fetchPrice(){
       const label=S.days==='1'?d.toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'}):
         S.days==='7'||S.days==='30'?d.toLocaleDateString('es-ES',{month:'numeric',day:'numeric'}):
         d.toLocaleDateString('es-ES',{month:'short',year:'2-digit'});
-      return{date:label,price:parseFloat(k[4])}; // close price
+      return{date:label,price:parseFloat(k[4]),time:k[0],open:parseFloat(k[1]),high:parseFloat(k[2]),low:parseFloat(k[3])}; // close price
     });
     S.ohlc=klines.map(k=>({
       ts:k[0],
@@ -1090,8 +1090,8 @@ function areaSVG(data){
     const idx=Math.min(i*step,data.length-1);
     const d=data[idx];
     const x=toX(idx);
-    const label=d.time?new Date(d.time).toLocaleDateString('ca-ES',{day:'2-digit',month:'2-digit'}):'';
-    if(label) xLabels+=`<text x="${x}" y="${H-PB+14}" font-size="8" fill="#475569" text-anchor="middle">${label}</text>`;
+    const label=d.time?new Date(d.time).toLocaleDateString('ca-ES',{day:'2-digit',month:'2-digit'}):d.date||'';
+    if(label) xLabels+=`<text x="${x}" y="${H-PB+14}" font-size="8" fill="#64748b" text-anchor="middle">${label}</text>`;
   }
 
   // Àrea i línia
@@ -1109,7 +1109,7 @@ function areaSVG(data){
   const priceTag=`<rect x="${labelX-2}" y="${cy-9}" width="38" height="13" rx="3" fill="${color}" opacity=".15"/>
     <text x="${labelX+17}" y="${cy+1}" font-size="9" fill="${color}" font-weight="700" text-anchor="middle">$${fmtPrice(last)}</text>`;
 
-  return`<svg id="chart-svg" viewBox="0 0 ${W} ${H}" style="width:100%;height:160px;touch-action:pan-y" preserveAspectRatio="none">
+  return`<svg id="chart-svg" viewBox="0 0 ${W} ${H}" style="width:100%;height:180px;touch-action:pan-y" preserveAspectRatio="xMidYMid meet">
     <defs>
       <linearGradient id="agg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#10b981" stop-opacity=".25"/><stop offset="100%" stop-color="#10b981" stop-opacity="0"/></linearGradient>
       <linearGradient id="agr" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#ef4444" stop-opacity=".25"/><stop offset="100%" stop-color="#ef4444" stop-opacity="0"/></linearGradient>
@@ -1145,8 +1145,8 @@ function candleSVG(data){
     const idx=Math.min(i*step,data.length-1);
     const d=data[idx];
     const x=toX(idx);
-    const label=d.time?new Date(d.time).toLocaleDateString('ca-ES',{day:'2-digit',month:'2-digit'}):'';
-    if(label) xLabels+=`<text x="${x}" y="${H-PB+14}" font-size="8" fill="#475569" text-anchor="middle">${label}</text>`;
+    const label=d.time?new Date(d.time).toLocaleDateString('ca-ES',{day:'2-digit',month:'2-digit'}):d.date||'';
+    if(label) xLabels+=`<text x="${x}" y="${H-PB+14}" font-size="8" fill="#64748b" text-anchor="middle">${label}</text>`;
   }
 
   const candles=data.map((d,i)=>{
@@ -1157,7 +1157,7 @@ function candleSVG(data){
       <rect x="${x-cW/2}" y="${bT}" width="${cW}" height="${bH}" fill="${col}" rx="1"/>`;
   }).join('');
 
-  return`<svg id="chart-svg" viewBox="0 0 ${W} ${H}" style="width:100%;height:160px;touch-action:pan-y" preserveAspectRatio="none">
+  return`<svg id="chart-svg" viewBox="0 0 ${W} ${H}" style="width:100%;height:180px;touch-action:pan-y" preserveAspectRatio="xMidYMid meet">
     ${gridLines}${candles}${yLabels}${xLabels}
   </svg>`;
 }
@@ -1589,7 +1589,7 @@ function renderHome(){
       <div class="chart-type-wrap"><button class="chart-type-btn ${S.chartType==='area'?'active':''}" onclick="setChartType('area')">Área</button><button class="chart-type-btn ${S.chartType==='candle'?'active':''}" onclick="setChartType('candle')">Velas</button></div>
     </div>
     <div class="period-wrap">${['1','7','30','90','365'].map(d=>`<button class="period-btn ${S.days===d?'active':''}" onclick="setPeriod('${d}')">${d==='1'?'24h':d==='365'?'1A':d+'D'}</button>`).join('')}</div>
-    ${chart||'<div style="text-align:center;color:var(--text3);padding:20px">Cargando datos...</div>'}
+    <div style="background:#0a1628;border-radius:12px;padding:6px 4px 2px;margin:0 -4px">${chart||'<div style="text-align:center;color:var(--text3);padding:40px">Carregant dades...</div>'}</div>
   </div>
   <div class="grid-3">
     <div class="stat-box"><div class="stat-label">Cap. Mercado</div><div class="stat-val" style="color:#3b82f6">${fmtBig(S.marketData?.totalMcap||S.marketCap)}</div></div>
