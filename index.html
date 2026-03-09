@@ -158,7 +158,7 @@
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-const BUILD_TS='202603091838';
+const BUILD_TS='202603091850';
 const S={price:{usd:0,eur:0},change24h:0,marketCap:0,history:[],ohlc:[],mempool:null,marketData:null,miningData:null,news:[],alerts:[],days:'30',chartType:'area',dark:localStorage.getItem('sf-theme')!=='light',notifPerm:window.Notification?.permission||'unsupported',atmLoaded:false,leafletMap:null,lastUpdated:null,feeLevel:'hour',txSize:250,currentTab:'home',corrData:null,corrPeriod:'30',dominanceHistory:[],rainbowData:null,dominanceYearData:null,historyTA:[],lang:localStorage.getItem('sf-lang')||'es',morningAlert:JSON.parse(localStorage.getItem('sf-morning')||'null')};
 
 /* ══════ TRADUCCIONS / TRADUCCIONES ══════ */
@@ -1065,7 +1065,7 @@ function areaSVG(data){
   if(!data.length)return'';
   const prices=data.map(d=>d.price);
   const min=Math.min(...prices),max=Math.max(...prices),range=max-min||1;
-  const W=320,H=150,PL=48,PR=8,PT=12,PB=28;
+  const W=320,H=160,PL=52,PR=10,PT=14,PB=26;
   const cw=W-PL-PR,ch=H-PT-PB;
   const last=prices[prices.length-1],first=prices[0];
   const color=last>=first?'#10b981':'#ef4444';
@@ -1105,12 +1105,13 @@ function areaSVG(data){
     <animate attributeName="r" values="3.5;5;3.5" dur="2s" repeatCount="indefinite"/>
   </circle>`;
   // Etiqueta preu actual
-  // Etiqueta sempre dins del viewBox
-  const tagW = 44;
-  const tagX = Math.min(cx - tagW/2, W - PR - tagW - 2);  // mai surt per la dreta
-  const tagXfinal = Math.max(tagX, PL + 2);                // mai surt per l'esquerra
-  const priceTag=`<rect x="${tagXfinal}" y="${cy-11}" width="${tagW}" height="17" rx="4" fill="${color}" opacity=".25"/>
-    <text x="${tagXfinal + tagW/2}" y="${cy+2}" font-size="9" fill="${color}" font-weight="800" text-anchor="middle">$${fmtPrice(last)}</text>`;
+  // Etiqueta sempre a l'esquerra del punt per evitar tall
+  const tagW = 44, tagH = 17;
+  const tagX = cx - tagW - 6;  // sempre a l'esquerra del punt
+  const tagXf = Math.max(tagX, PL + 2);
+  const tagY = Math.max(cy - tagH/2, PT + 2);
+  const priceTag=`<rect x="${tagXf}" y="${tagY}" width="${tagW}" height="${tagH}" rx="4" fill="${color}" opacity=".25"/>
+    <text x="${tagXf + tagW/2}" y="${tagY + tagH*0.72}" font-size="9" fill="${color}" font-weight="800" text-anchor="middle">$${fmtPrice(last)}</text>`;
 
   return`<svg id="chart-svg" viewBox="0 0 ${W} ${H}" style="width:100%;height:180px;touch-action:pan-y" preserveAspectRatio="xMidYMid meet">
     <defs>
@@ -1124,7 +1125,7 @@ function candleSVG(data){
   if(!data.length)return'';
   const ps=data.flatMap(d=>[d.high,d.low]);
   const min=Math.min(...ps),max=Math.max(...ps),range=max-min||1;
-  const W=320,H=150,PL=48,PR=8,PT=12,PB=28;
+  const W=320,H=160,PL=52,PR=10,PT=14,PB=26;
   const cw=W-PL-PR,ch=H-PT-PB;
   const toY=v=>PT+ch-((v-min)/range)*ch;
   const toX=i=>PL+(i+.5)*(cw/data.length);
