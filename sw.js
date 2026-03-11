@@ -1,6 +1,6 @@
 // ─── SatsFlow Service Worker ─────────────────────────────────────────────────
 // Versión del caché — cambia este número para forzar actualización
-const CACHE_VERSION = 'Satsfow2-v63';
+const CACHE_VERSION = 'Satsfow2-v64';
 const CACHE_ASSETS  = [
   './',
   './index.html',
