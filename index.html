@@ -158,7 +158,7 @@
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-const BUILD_TS='202603111750';
+const BUILD_TS='202603111822';
 const S={price:{usd:0,eur:0},change24h:0,marketCap:0,history:[],ohlc:[],mempool:null,marketData:null,miningData:null,news:[],alerts:[],days:'30',chartType:'area',dark:localStorage.getItem('sf-theme')!=='light',notifPerm:window.Notification?.permission||'unsupported',atmLoaded:false,leafletMap:null,lastUpdated:null,feeLevel:'hour',txSize:250,currentTab:'home',corrData:null,corrPeriod:'30',dominanceHistory:[],rainbowData:null,dominanceYearData:null,historyTA:[],lang:localStorage.getItem('sf-lang')||'es',morningAlert:JSON.parse(localStorage.getItem('sf-morning')||'null')};
 
 /* ══════ TRADUCCIONS / TRADUCCIONES ══════ */
@@ -1551,9 +1551,8 @@ function renderHome(){
   const pct=S.days==='1'?S.change24h.toFixed(2):S.history.length>1?((S.history[S.history.length-1].price-S.history[0].price)/S.history[0].price*100).toFixed(2):'0.00';
   const pctColor=parseFloat(pct)>=0?'#10b981':'#ef4444';
   // Max i min del període actual
-  const _prices=S.history.map(h=>h.price).filter(v=>v>0);
-  const _high=_prices.length?Math.max(..._prices):0;
-  const _low=_prices.length?Math.min(..._prices):0;
+  const _high=S.history.length?Math.max(...S.history.map(h=>h.high||h.price).filter(v=>v>0)):0;
+  const _low=S.history.length?Math.min(...S.history.map(h=>h.low||h.price).filter(v=>v>0)):0;
   const upd=S.lastUpdated?S.lastUpdated.toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'}):'—';
   const chart=S.chartType==='area'?areaSVG(S.history):candleSVG(S.ohlc);
   return`<div class="space-y">
