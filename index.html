@@ -158,7 +158,7 @@
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-const BUILD_TS='202603111714';
+const BUILD_TS='202603111750';
 const S={price:{usd:0,eur:0},change24h:0,marketCap:0,history:[],ohlc:[],mempool:null,marketData:null,miningData:null,news:[],alerts:[],days:'30',chartType:'area',dark:localStorage.getItem('sf-theme')!=='light',notifPerm:window.Notification?.permission||'unsupported',atmLoaded:false,leafletMap:null,lastUpdated:null,feeLevel:'hour',txSize:250,currentTab:'home',corrData:null,corrPeriod:'30',dominanceHistory:[],rainbowData:null,dominanceYearData:null,historyTA:[],lang:localStorage.getItem('sf-lang')||'es',morningAlert:JSON.parse(localStorage.getItem('sf-morning')||'null')};
 
 /* ══════ TRADUCCIONS / TRADUCCIONES ══════ */
@@ -1570,15 +1570,9 @@ function renderHome(){
   <div class="card">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
       <div><div style="font-size:15px;font-weight:700">📈 Historial</div><span style="font-size:11px;font-weight:600;color:${pctColor}">${parseFloat(pct)>=0?'+':''}${pct}%</span><span style="font-size:10px;color:var(--text3);margin-left:4px">en este periodo</span></div>
-      <div style="display:flex;gap:16px;margin-top:6px;margin-bottom:2px">
-        <div style="display:flex;align-items:center;gap:5px">
-          <span style="font-size:9px;color:#10b981;font-weight:700;letter-spacing:.3px">▲ MÀX</span>
-          <span style="font-size:12px;font-weight:800;color:#10b981">$\${_high>=1000?(_high/1000).toFixed(1)+'k':_high.toFixed(0)}</span>
-        </div>
-        <div style="display:flex;align-items:center;gap:5px">
-          <span style="font-size:9px;color:#ef4444;font-weight:700;letter-spacing:.3px">▼ MÍN</span>
-          <span style="font-size:12px;font-weight:800;color:#ef4444">$\${_low>=1000?(_low/1000).toFixed(1)+'k':_low.toFixed(0)}</span>
-        </div>
+      <div style="display:flex;gap:14px;margin-top:5px;margin-bottom:2px">
+        <span style="font-size:11px;color:#10b981;font-weight:700">▲ $${_high>=1000?(_high/1000).toFixed(1)+'k':Math.round(_high).toLocaleString()}</span>
+        <span style="font-size:11px;color:#ef4444;font-weight:700">▼ $${_low>=1000?(_low/1000).toFixed(1)+'k':Math.round(_low).toLocaleString()}</span>
       </div>
       <div class="chart-type-wrap"><button class="chart-type-btn ${S.chartType==='area'?'active':''}" onclick="setChartType('area')">Área</button><button class="chart-type-btn ${S.chartType==='candle'?'active':''}" onclick="setChartType('candle')">Velas</button></div>
     </div>
