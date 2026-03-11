@@ -158,7 +158,7 @@
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-const BUILD_TS='202603091857';
+const BUILD_TS='202603110548';
 const S={price:{usd:0,eur:0},change24h:0,marketCap:0,history:[],ohlc:[],mempool:null,marketData:null,miningData:null,news:[],alerts:[],days:'30',chartType:'area',dark:localStorage.getItem('sf-theme')!=='light',notifPerm:window.Notification?.permission||'unsupported',atmLoaded:false,leafletMap:null,lastUpdated:null,feeLevel:'hour',txSize:250,currentTab:'home',corrData:null,corrPeriod:'30',dominanceHistory:[],rainbowData:null,dominanceYearData:null,historyTA:[],lang:localStorage.getItem('sf-lang')||'es',morningAlert:JSON.parse(localStorage.getItem('sf-morning')||'null')};
 
 /* ══════ TRADUCCIONS / TRADUCCIONES ══════ */
@@ -320,7 +320,7 @@ function renderSettings(){
     +'<div style="font-size:13px;font-weight:600;margin-bottom:10px">🌐 '+tr.language+'</div>'
     +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">'
     +'<button onclick="setLang(\'es\')" style="padding:10px;border-radius:10px;border:2px solid '+(S.lang==='es'?'#f97316':'var(--border)')+';background:'+(S.lang==='es'?'rgba(249,115,22,.1)':'var(--bg)')+';font-size:13px;font-weight:'+(S.lang==='es'?'700':'400')+';cursor:pointer;color:var(--text)">🇪🇸 Español</button>'
-    +'<button onclick="setLang(\'ca\')" style="padding:10px;border-radius:10px;border:2px solid '+(S.lang==='ca'?'#f97316':'var(--border)')+';background:'+(S.lang==='ca'?'rgba(249,115,22,.1)':'var(--bg)')+';font-size:13px;font-weight:'+(S.lang==='ca'?'700':'400')+';cursor:pointer;color:var(--text)">🏴󠁥󠁳󠁣󠁴󠁿 Català</button>'
+    +'<button onclick="setLang(\'ca\')" style="padding:10px;border-radius:10px;border:2px solid '+(S.lang==='ca'?'#f97316':'var(--border)')+';background:'+(S.lang==='ca'?'rgba(249,115,22,.1)':'var(--bg)')+';font-size:13px;font-weight:'+(S.lang==='ca'?'700':'400')+';cursor:pointer;color:var(--text)"><img src=\"data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMCAyMCI+PHJlY3Qgd2lkdGg9IjMwIiBoZWlnaHQ9IjIwIiBmaWxsPSIjRkNERDA5Ii8+PHJlY3QgeT0iMi44NiIgd2lkdGg9IjMwIiBoZWlnaHQ9IjIuODYiIGZpbGw9IiNEQTEyMUEiLz48cmVjdCB5PSI4LjU3IiB3aWR0aD0iMzAiIGhlaWdodD0iMi44NiIgZmlsbD0iI0RBMTIxQSIvPjxyZWN0IHk9IjE0LjI4IiB3aWR0aD0iMzAiIGhlaWdodD0iMi44NiIgZmlsbD0iI0RBMTIxQSIvPjxwb2x5Z29uIHBvaW50cz0iMCwwIDE0LDEwIDAsMjAiIGZpbGw9IiMwMDMyQTAiLz48cG9seWdvbiBwb2ludHM9IjUuNSw2LjUgNi41LDkuNSA5LjUsOS41IDcsMTEuNSA4LDE0LjUgNS41LDEyLjUgMywxNC41IDQsMTEuNSAxLjUsOS41IDQuNSw5LjUiIGZpbGw9IndoaXRlIi8+PC9zdmc+\" style=\"width:20px;height:13px;vertical-align:middle;margin-right:5px;border-radius:2px\">Català</button>'
     +'</div></div>'
     // Resumen matutino
     +'<div>'
@@ -2021,130 +2021,124 @@ function removeAlert(id){S.alerts=S.alerts.filter(a=>a.id!==id);saveAlerts();ren
 function checkAlerts(){if(!S.price.usd)return;let changed=false;S.alerts=S.alerts.map(a=>{if(a.triggered)return a;const p=a.currency==='usd'?S.price.usd:S.price.eur,hit=a.condition==='above'?p>=a.targetPrice:p<=a.targetPrice;if(hit){const sym=a.currency==='usd'?'$':'€';showNotif('⚡ Alerta SatsFlow',`BTC ha ${a.condition==='above'?'subido sobre':'bajado de'} ${sym}${a.targetPrice.toLocaleString()} — $${S.price.usd.toLocaleString()}`);changed=true;return{...a,triggered:true};}return a;});if(changed){saveAlerts();if(S.currentTab==='alerts')renderTab('alerts');}}
 async function fetchCorr(){
   S.corrError=null;
+  const days=parseInt(S.corrPeriod)||30;
+  const limit=days<=30?35:days<=90?95:370;
+  const range=days<=30?'1mo':days<=90?'3mo':'1y';
+
+  // Obtenir BTC de Binance (sempre funciona)
+  let btcPrices=[];
   try{
-    const days=parseInt(S.corrPeriod)||30;
-    const limit=days<=30?35:days<=90?95:370;
-    const btcR=await fetch(`https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=1d&limit=${limit}`);
-    const btcJ=await btcR.json();
-    const btcPrices=btcJ.map(k=>parseFloat(k[4]));
-    const range=days<=30?'1mo':days<=90?'3mo':'1y';
-    const proxy='https://corsproxy.io/?';
-    const spyUrl=`https://query1.finance.yahoo.com/v8/finance/chart/SPY?interval=1d&range=${range}`;
-    const gldUrl=`https://query1.finance.yahoo.com/v8/finance/chart/GLD?interval=1d&range=${range}`;
-    const mstrUrl=`https://query1.finance.yahoo.com/v8/finance/chart/MSTR?interval=1d&range=${range}`;
-    const[spyR,goldR,mstrR]=await Promise.all([
-      fetch(proxy+encodeURIComponent(spyUrl),{signal:AbortSignal.timeout(12000)}),
-      fetch(proxy+encodeURIComponent(gldUrl),{signal:AbortSignal.timeout(12000)}),
-      fetch(proxy+encodeURIComponent(mstrUrl),{signal:AbortSignal.timeout(12000)})
-    ]);
-    const spyJ=await spyR.json();
-    const goldJ=await goldR.json();
-    const mstrJ=await mstrR.json();
-    const spyPrices=(spyJ.chart?.result?.[0]?.indicators?.quote?.[0]?.close||[]).filter(v=>v!=null);
-    const goldPrices=(goldJ.chart?.result?.[0]?.indicators?.quote?.[0]?.close||[]).filter(v=>v!=null);
-    const mstrPrices=(mstrJ.chart?.result?.[0]?.indicators?.quote?.[0]?.close||[]).filter(v=>v!=null);
-    if(!spyPrices.length||!goldPrices.length) throw new Error('Sin datos de mercado');
-    const normalize=arr=>{const base=arr[0]||1;return arr.map(v=>(v/base)*100);};
-    const minLen=Math.min(btcPrices.length,spyPrices.length,goldPrices.length,mstrPrices.length||999);
-    if(minLen<5){S.corrData=null;S.corrError='Datos insuficientes';return;}
-    const btcN=normalize(btcPrices.slice(-minLen));
-    const spyN=normalize(spyPrices.slice(-minLen));
-    const goldN=normalize(goldPrices.slice(-minLen));
-    const mstrN=mstrPrices.length>=5?normalize(mstrPrices.slice(-minLen)):null;
-    const pearson=(a,b)=>{
-      if(!a||!b||a.length<2||b.length<2)return 0;
-      const n=Math.min(a.length,b.length);
-      const an=a.slice(-n),bn=b.slice(-n);
-      const ma=an.reduce((s,v)=>s+v,0)/n,mb=bn.reduce((s,v)=>s+v,0)/n;
-      const num=an.reduce((s,v,i)=>s+(v-ma)*(bn[i]-mb),0);
-      const da=Math.sqrt(an.reduce((s,v)=>s+(v-ma)**2,0));
-      const db=Math.sqrt(bn.reduce((s,v)=>s+(v-mb)**2,0));
-      return(da&&db)?num/(da*db):0;
-    };
-    const w=Math.min(14,minLen);
-    const rollCorr=(a,b)=>{
-      if(!a||!b)return[];
-      return a.map((_,i)=>i<w-1?null:pearson(a.slice(i-w+1,i+1),b.slice(i-w+1,i+1)));
-    };
-    S.corrData={
-      btc:btcN,spy:spyN,gold:goldN,mstr:mstrN,
-      corrBtcSpy:pearson(btcN,spyN),
-      corrBtcGold:pearson(btcN,goldN),
-      corrBtcMstr:mstrN?pearson(btcN,mstrN):null,
-      corrSpyGold:pearson(spyN,goldN),
-      rollBtcSpy:rollCorr(btcN,spyN),
-      rollBtcGold:rollCorr(btcN,goldN),
-      rollBtcMstr:mstrN?rollCorr(btcN,mstrN):null,
-      len:minLen,
-      mstrLastPrice:mstrPrices.length?mstrPrices[mstrPrices.length-1]:null,
-      mstrChange:mstrPrices.length>=2?((mstrPrices[mstrPrices.length-1]-mstrPrices[0])/mstrPrices[0]*100):null
-    };
-  }catch(e){
-    console.error('fetchCorr',e);
-    S.corrData=null;
-    await fetchCorrFallback();
+    const r=await fetch(`https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=1d&limit=${limit}`);
+    const j=await r.json();
+    btcPrices=j.map(k=>parseFloat(k[4]));
+  }catch(e){console.warn('BTC klines:',e);}
+
+  // Intentar S&P500 i Or via múltiples proxies en paral·lel
+  const spyUrl=`https://query1.finance.yahoo.com/v8/finance/chart/SPY?interval=1d&range=${range}`;
+  const gldUrl=`https://query1.finance.yahoo.com/v8/finance/chart/GLD?interval=1d&range=${range}`;
+  const mstrUrl=`https://query1.finance.yahoo.com/v8/finance/chart/MSTR?interval=1d&range=${range}`;
+
+  const proxies=[
+    'https://api.allorigins.win/raw?url=',
+    'https://corsproxy.io/?',
+    'https://api.codetabs.com/v1/proxy?quest=',
+    'https://thingproxy.freeboard.io/fetch/',
+    'https://proxy.cors.sh/',
+  ];
+
+  async function fetchWithProxies(url){
+    // Intentar directe primer (de vegades funciona)
+    const attempts=[
+      ()=>fetch(url,{signal:AbortSignal.timeout(6000)}),
+      ...proxies.map(p=>()=>fetch(p+encodeURIComponent(url),{signal:AbortSignal.timeout(8000)}))
+    ];
+    for(const attempt of attempts){
+      try{
+        const r=await attempt();
+        if(!r.ok) continue;
+        const j=await r.json();
+        const prices=(j.chart?.result?.[0]?.indicators?.quote?.[0]?.close||[]).filter(v=>v!=null);
+        if(prices.length>=5) return prices;
+      }catch{}
+    }
+    return [];
   }
+
+  // Intentar via Stooq (CSV, sense proxy, CORS obert)
+  async function fetchStooq(symbol, nDays){
+    try{
+      const to=new Date();
+      const from=new Date(Date.now()-nDays*86400000*1.5);
+      const fmt=d=>`${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;
+      const url=`https://stooq.com/q/d/l/?s=${symbol}&d1=${fmt(from)}&d2=${fmt(to)}&i=d`;
+      const r=await fetch(url,{signal:AbortSignal.timeout(8000)});
+      if(!r.ok) return [];
+      const txt=await r.text();
+      const rows=txt.trim().split('\n').slice(1);
+      const prices=rows.map(row=>{const cols=row.split(',');return parseFloat(cols[4]||cols[1]);}).filter(v=>!isNaN(v));
+      return prices;
+    }catch{return [];}
+  }
+
+  // Executar tot en paral·lel
+  const [spyPrices, goldPrices, mstrPrices, spyStooq, goldStooq] = await Promise.all([
+    fetchWithProxies(spyUrl),
+    fetchWithProxies(gldUrl),
+    fetchWithProxies(mstrUrl),
+    fetchStooq('%5Espx', days),   // S&P500 via Stooq
+    fetchStooq('xauusd', days),   // Or via Stooq
+  ]);
+
+  // Prioritzar la font que tingui més dades
+  const finalSpy = spyPrices.length >= spyStooq.length ? spyPrices : spyStooq;
+  const finalGold = goldPrices.length >= goldStooq.length ? goldPrices : goldStooq;
+
+  if(!finalSpy.length || !finalGold.length){
+    S.corrData=null;
+    S.corrError="No s'han pogut carregar dades del S&P500 i Or. Totes les fonts estan no disponibles. Prova-ho mes tard.";
+    renderTab('corr');
+    return;
+  }
+
+  const normalize=arr=>{const base=arr[0]||1;return arr.map(v=>(v/base)*100);};
+  const minLen=Math.min(btcPrices.length||999, finalSpy.length, finalGold.length, mstrPrices.length||999);
+  const useMstr=mstrPrices.length>=5;
+  if(minLen<5){S.corrData=null;S.corrError='Dades insuficients per calcular correlació.';return;}
+  const btcN=normalize(btcPrices.slice(-minLen));
+  const spyN=normalize(finalSpy.slice(-minLen));
+  const goldN=normalize(finalGold.slice(-minLen));
+  const mstrN=useMstr?normalize(mstrPrices.slice(-minLen)):null;
+  const pearson=(a,b)=>{
+    if(!a||!b||a.length<2||b.length<2)return 0;
+    const n=Math.min(a.length,b.length);
+    const an=a.slice(-n),bn=b.slice(-n);
+    const ma=an.reduce((s,v)=>s+v,0)/n,mb=bn.reduce((s,v)=>s+v,0)/n;
+    const num=an.reduce((s,v,i)=>s+(v-ma)*(bn[i]-mb),0);
+    const da=Math.sqrt(an.reduce((s,v)=>s+(v-ma)**2,0));
+    const db=Math.sqrt(bn.reduce((s,v)=>s+(v-mb)**2,0));
+    return(da&&db)?num/(da*db):0;
+  };
+  const w=Math.min(14,minLen);
+  const rollCorr=(a,b)=>{
+    if(!a||!b)return[];
+    return a.map((_,i)=>i<w-1?null:pearson(a.slice(i-w+1,i+1),b.slice(i-w+1,i+1)));
+  };
+  S.corrData={
+    btc:btcN,spy:spyN,gold:goldN,mstr:mstrN,
+    corrBtcSpy:pearson(btcN,spyN),
+    corrBtcGold:pearson(btcN,goldN),
+    corrBtcMstr:mstrN?pearson(btcN,mstrN):null,
+    corrSpyGold:pearson(spyN,goldN),
+    rollBtcSpy:rollCorr(btcN,spyN),
+    rollBtcGold:rollCorr(btcN,goldN),
+    rollBtcMstr:mstrN?rollCorr(btcN,mstrN):null,
+    len:minLen,
+    mstrLastPrice:mstrPrices.length?mstrPrices[mstrPrices.length-1]:null,
+    mstrChange:mstrPrices.length>=2?((mstrPrices[mstrPrices.length-1]-mstrPrices[0])/mstrPrices[0]*100):null
+  };
 }
 async function fetchCorrFallback(){
-  try{
-    const days=parseInt(S.corrPeriod)||30;
-    const limit=days<=30?35:days<=90?95:370;
-    const range=days<=30?'1mo':days<=90?'3mo':'1y';
-    const proxy='https://api.allorigins.win/raw?url=';
-    const spyUrl=`https://query1.finance.yahoo.com/v8/finance/chart/SPY?interval=1d&range=${range}`;
-    const gldUrl=`https://query1.finance.yahoo.com/v8/finance/chart/GLD?interval=1d&range=${range}`;
-    const mstrUrl=`https://query1.finance.yahoo.com/v8/finance/chart/MSTR?interval=1d&range=${range}`;
-    const[btcR,spyR,goldR,mstrR]=await Promise.all([
-      fetch(`https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=1d&limit=${limit}`),
-      fetch(proxy+encodeURIComponent(spyUrl),{signal:AbortSignal.timeout(12000)}),
-      fetch(proxy+encodeURIComponent(gldUrl),{signal:AbortSignal.timeout(12000)}),
-      fetch(proxy+encodeURIComponent(mstrUrl),{signal:AbortSignal.timeout(12000)})
-    ]);
-    const btcJ=await btcR.json();
-    const spyJ=await spyR.json();
-    const goldJ=await goldR.json();
-    const mstrJ=await mstrR.json();
-    const btcPrices=Array.isArray(btcJ)?btcJ.map(k=>parseFloat(k[4])):[];
-    const spyPrices=(spyJ.chart?.result?.[0]?.indicators?.quote?.[0]?.close||[]).filter(v=>v!=null);
-    const goldPrices=(goldJ.chart?.result?.[0]?.indicators?.quote?.[0]?.close||[]).filter(v=>v!=null);
-    const mstrPrices=(mstrJ.chart?.result?.[0]?.indicators?.quote?.[0]?.close||[]).filter(v=>v!=null);
-    if(!spyPrices.length||!goldPrices.length) throw new Error('Proxies no disponibles');
-    const normalize=arr=>{const base=arr[0]||1;return arr.map(v=>(v/base)*100);};
-    const minLen=Math.min(btcPrices.length,spyPrices.length,goldPrices.length,mstrPrices.length||999);
-    const btcN=normalize(btcPrices.slice(-minLen));
-    const spyN=normalize(spyPrices.slice(-minLen));
-    const goldN=normalize(goldPrices.slice(-minLen));
-    const mstrN=mstrPrices.length>=5?normalize(mstrPrices.slice(-minLen)):null;
-    const pearson=(a,b)=>{
-      if(!a||!b||a.length<2||b.length<2)return 0;
-      const n=Math.min(a.length,b.length);
-      const an=a.slice(-n),bn=b.slice(-n);
-      const ma=an.reduce((s,v)=>s+v,0)/n,mb=bn.reduce((s,v)=>s+v,0)/n;
-      const num=an.reduce((s,v,i)=>s+(v-ma)*(bn[i]-mb),0);
-      const da=Math.sqrt(an.reduce((s,v)=>s+(v-ma)**2,0));
-      const db=Math.sqrt(bn.reduce((s,v)=>s+(v-mb)**2,0));
-      return(da&&db)?num/(da*db):0;
-    };
-    const w=Math.min(14,minLen);
-    const rollCorr=(a,b)=>{if(!a||!b)return[];return a.map((_,i)=>i<w-1?null:pearson(a.slice(i-w+1,i+1),b.slice(i-w+1,i+1)));};
-    S.corrData={
-      btc:btcN,spy:spyN,gold:goldN,mstr:mstrN,
-      corrBtcSpy:pearson(btcN,spyN),
-      corrBtcGold:pearson(btcN,goldN),
-      corrBtcMstr:mstrN?pearson(btcN,mstrN):null,
-      corrSpyGold:pearson(spyN,goldN),
-      rollBtcSpy:rollCorr(btcN,spyN),
-      rollBtcGold:rollCorr(btcN,goldN),
-      rollBtcMstr:mstrN?rollCorr(btcN,mstrN):null,
-      len:minLen,
-      mstrLastPrice:mstrPrices.length?mstrPrices[mstrPrices.length-1]:null,
-      mstrChange:mstrPrices.length>=2?((mstrPrices[mstrPrices.length-1]-mstrPrices[0])/mstrPrices[0]*100):null
-    };
-  }catch(e){
-    console.error('fetchCorrFallback',e);
-    S.corrData=null;
-    S.corrError='No se pudieron cargar datos del S&P500 y Oro. Los proxies CORS están temporalmente no disponibles. Inténtalo más tarde.';
-  }
+  // Ja no s'usa — fetchCorr ja té múltiples fallbacks interns
 }
 function renderCorr(){
   if(S.corrLoading){
