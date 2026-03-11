@@ -20,8 +20,8 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
   <style>
-    :root{--bg:#0f172a;--bg2:#1e293b;--bg3:#334155;--text:#f1f5f9;--text2:#94a3b8;--text3:#64748b;--border:#334155;--card-bg:#1e293b;--input-bg:#0f172a;--input-border:#475569;}
-    .light{--bg:#f8fafc;--bg2:#ffffff;--bg3:#e2e8f0;--text:#0f172a;--text2:#475569;--text3:#94a3b8;--border:#e2e8f0;--card-bg:#ffffff;--input-bg:#f8fafc;--input-border:#cbd5e1;}
+    :root{--bg:#0f172a;--bg2:#1e293b;--bg3:#334155;--text:#f1f5f9;--text2:#94a3b8;--text3:#64748b;--border:#334155;--card-bg:#1e293b;--card-bg2:#162032;--input-bg:#0f172a;--input-border:#475569;}
+    .light{--bg:#f8fafc;--bg2:#ffffff;--bg3:#e2e8f0;--text:#0f172a;--text2:#475569;--text3:#94a3b8;--border:#e2e8f0;--card-bg:#ffffff;--card-bg2:#f0f7ff;--input-bg:#f8fafc;--input-border:#cbd5e1;}
     *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
     body{margin:0;font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom);overscroll-behavior-y:none;min-height:100vh}
     ::-webkit-scrollbar{width:3px}::-webkit-scrollbar-thumb{background:var(--bg3);border-radius:4px}
@@ -32,7 +32,7 @@
     .fade{animation:fadeIn .3s ease-out}
     @keyframes spin2{to{transform:rotate(360deg)}}
     .spin{animation:spin2 1s linear infinite;display:inline-block}
-    .card{background:var(--card-bg);border:1px solid var(--border);border-radius:18px;padding:18px}
+    .card{background:linear-gradient(135deg,var(--card-bg) 0%,var(--card-bg2,#16213a) 100%);border:1px solid var(--border);border-radius:18px;padding:18px;box-shadow:0 4px 24px rgba(0,0,0,.25),0 1px 0 rgba(255,255,255,.04) inset}
     #header{position:sticky;top:0;z-index:100;background:var(--bg);border-bottom:1px solid var(--border);padding:10px 16px;display:flex;align-items:center;justify-content:space-between}
     .logo{width:34px;height:34px;background:#f97316;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;box-shadow:0 0 12px rgba(249,115,22,.3)}
     #tabbar{position:relative;z-index:100;background:var(--bg2);border-top:1px solid var(--border);display:flex;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;-webkit-overflow-scrolling:touch;padding-bottom:env(safe-area-inset-bottom)}
@@ -106,10 +106,11 @@
     #map-container .leaflet-container{position:absolute!important;top:0;left:0;right:0;bottom:0}
     .leaflet-popup-content-wrapper{background:var(--card-bg);color:var(--text);border:1px solid var(--border);border-radius:10px}
     .leaflet-popup-tip{background:var(--card-bg)}
+    #chart-tooltip{position:fixed;background:#1e293b;border:1px solid #f97316;border-radius:8px;padding:6px 10px;font-size:11px;font-weight:700;color:#f1f5f9;pointer-events:none;z-index:999;opacity:0;transition:opacity .15s;white-space:nowrap;box-shadow:0 4px 16px rgba(0,0,0,.4)}
   </style>
 </head>
 <body>
-<div id="app">
+<div id="chart-tooltip"></div><div id="app">
   <div id="header">
     <div style="display:flex;align-items:center;gap:10px">
       <img src="./icon-96.png" style="width:34px;height:34px;border-radius:50%;box-shadow:0 0 12px rgba(249,115,22,.3)" alt="SatsFlow"/>
@@ -120,7 +121,7 @@
     </div>
     <div style="display:flex;align-items:center;gap:8px">
       <div style="text-align:right">
-        <div id="header-price" style="font-size:17px;font-weight:800;font-family:monospace">$—</div>
+        <div style="display:flex;align-items:center;gap:4px"><span id="header-arrow" style="font-size:11px;opacity:.5;transition:all .4s">—</span><div id="header-price" style="font-size:17px;font-weight:800;font-family:monospace">$—</div></div>
         <div id="header-change" style="font-size:11px;font-weight:600"></div>
       </div>
       <button class="btn-icon" id="theme-btn" title="Cambiar tema" onclick="toggleTheme()">🌙</button>
@@ -151,15 +152,15 @@
     <button class="tab-btn" data-tab="corr" onclick="switchTab('corr')"><span class="tab-icon">📈</span>Correlac.</button>
     <button class="tab-btn" data-tab="global" onclick="switchTab('global')"><span class="tab-icon">🌍</span>Global</button>
     <button class="tab-btn" data-tab="forecast" onclick="switchTab('forecast')"><span class="tab-icon">🔮</span>Previsión</button>
-    <button class="tab-btn" data-tab="cycles" onclick="switchTab('cycles')"><span class="tab-icon">🔄</span>Ciclos</button>
+    <button class="tab-btn" data-tab="cycles" onclick="switchTab('cycles')"><span class="tab-icon">🔄</span>Ciclos</button><button class="tab-btn" data-tab="dca" onclick="switchTab('dca')"><span class="tab-icon">📐</span>DCA</button>
   </nav></div>
   <div id="tab-scroll-fade"></div>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-const BUILD_TS='202603111822';
-const S={price:{usd:0,eur:0},change24h:0,marketCap:0,history:[],ohlc:[],mempool:null,marketData:null,miningData:null,news:[],alerts:[],days:'30',chartType:'area',dark:localStorage.getItem('sf-theme')!=='light',notifPerm:window.Notification?.permission||'unsupported',atmLoaded:false,leafletMap:null,lastUpdated:null,feeLevel:'hour',txSize:250,currentTab:'home',corrData:null,corrPeriod:'30',dominanceHistory:[],rainbowData:null,dominanceYearData:null,historyTA:[],lang:localStorage.getItem('sf-lang')||'es',morningAlert:JSON.parse(localStorage.getItem('sf-morning')||'null')};
+const BUILD_TS='202603111856';
+const S={price:{usd:0,eur:0},change24h:0,marketCap:0,history:[],ohlc:[],mempool:null,marketData:null,miningData:null,news:[],alerts:[],days:'30',chartType:'area',dark:localStorage.getItem('sf-theme')!=='light',notifPerm:window.Notification?.permission||'unsupported',atmLoaded:false,leafletMap:null,lastUpdated:null,feeLevel:'hour',txSize:250,currentTab:'home',corrData:null,corrPeriod:'30',dominanceHistory:[],rainbowData:null,dominanceYearData:null,historyTA:[],lang:localStorage.getItem('sf-lang')||'es',morningAlert:JSON.parse(localStorage.getItem('sf-morning')||'null'),blockHeight:null,blocksToHalving:null,halvingPct:null};
 
 /* ══════ TRADUCCIONS / TRADUCCIONES ══════ */
 const T={
@@ -1487,10 +1488,23 @@ function startPriceWS(){
         }
         // Flash verde/rojo en header
         const hp=document.getElementById('header-price');
+        const arrow=document.getElementById('header-arrow');
         if(hp&&prev>0&&prev!==newPrice){
-          hp.style.transition='color .3s';
-          hp.style.color=newPrice>prev?'#10b981':'#ef4444';
-          setTimeout(()=>{hp.style.color='';},600);
+          const up=newPrice>prev;
+          const col=up?'#10b981':'#ef4444';
+          hp.style.transition='color .4s';
+          hp.style.color=col;
+          // Animació flash de fons
+          hp.style.textShadow=`0 0 12px ${col}88`;
+          setTimeout(()=>{hp.style.color='';hp.style.textShadow='';},700);
+          // Fletxa direccional
+          if(arrow){
+            arrow.textContent=up?'▲':'▼';
+            arrow.style.color=col;
+            arrow.style.opacity='1';
+            arrow.style.transform=up?'translateY(-2px)':'translateY(2px)';
+            setTimeout(()=>{arrow.style.opacity='0.5';arrow.style.transform='none';},700);
+          }
         }
         updateHeader();
         // Actualizar conversor si tab activo
@@ -1519,7 +1533,7 @@ function renderTab(tab){
   const el=document.getElementById('tab-'+tab);if(!el)return;
   // Skeleton map — mostra mentre carrega
   const skeletonMap={home:skeletonHome,analysis:skeletonAnalysis,market:skeletonMarket,mempool:skeletonGeneric,news:skeletonGeneric,corr:skeletonGeneric,global:skeletonGeneric,forecast:skeletonGeneric,cycles:skeletonGeneric};
-  const map={home:renderHome,analysis:renderAnalysis,market:renderMarket,mempool:renderMempool,atm:renderATM,news:renderNews,alerts:renderAlerts,corr:renderCorr,global:renderGlobal,forecast:renderForecast,cycles:renderCycles};
+  const map={home:renderHome,analysis:renderAnalysis,market:renderMarket,mempool:renderMempool,atm:renderATM,news:renderNews,alerts:renderAlerts,corr:renderCorr,global:renderGlobal,forecast:renderForecast,cycles:renderCycles,dca:renderDCA};
   // El tab ATM no se re-renderiza si el mapa ya está activo — evita destruir Leaflet
   if(tab==='atm'&&S.leafletMap){
     return;
@@ -1573,15 +1587,17 @@ function renderHome(){
         <span style="font-size:11px;color:#10b981;font-weight:700">▲ $${_high>=1000?(_high/1000).toFixed(1)+'k':Math.round(_high).toLocaleString()}</span>
         <span style="font-size:11px;color:#ef4444;font-weight:700">▼ $${_low>=1000?(_low/1000).toFixed(1)+'k':Math.round(_low).toLocaleString()}</span>
       </div>
-      <div class="chart-type-wrap"><button class="chart-type-btn ${S.chartType==='area'?'active':''}" onclick="setChartType('area')">Área</button><button class="chart-type-btn ${S.chartType==='candle'?'active':''}" onclick="setChartType('candle')">Velas</button></div>
+      <div class="chart-type-wrap"><button class="chart-type-btn ${S.chartType==='area'?'active':''}" onclick="setChartType('area')">Área</button><button class="chart-type-btn ${S.chartType==='candle'?'active':''}" onclick="setChartType('candle')">Velas</button><button class="chart-type-btn ${S.showRSI?'active':''}" onclick="S.showRSI=!S.showRSI;renderTab('home')" style="color:${S.showRSI?'#fff':'#a855f7'}">RSI</button></div>
     </div>
     <div class="period-wrap">${['1','7','30','90','365'].map(d=>`<button class="period-btn ${S.days===d?'active':''}" onclick="setPeriod('${d}')">${d==='1'?'24h':d==='365'?'1A':d+'D'}</button>`).join('')}</div>
-    <div style="background:#0a1628;border-radius:12px;padding:6px 4px 2px;margin:0 -4px">${chart||'<div style="text-align:center;color:var(--text3);padding:40px">Carregant dades...</div>'}</div>
+    <div id="chart-wrap" style="background:#0a1628;border-radius:12px;padding:6px 4px 2px;margin:0 -4px;cursor:crosshair" onmousemove="chartHover(event)" ontouchmove="chartHover(event.touches[0])" onmouseleave="chartLeave()" ontouchend="chartLeave()">${chart||'<div style="text-align:center;color:var(--text3);padding:40px">Carregant dades...</div>'}</div>
+    ${S.showRSI&&S.history.length>=14?renderRSIChart():''}
   </div>
   <div class="grid-3">
     <div class="stat-box"><div class="stat-label">Cap. Mercado</div><div class="stat-val" style="color:#3b82f6">${fmtBig(S.marketData?.totalMcap||S.marketCap)}</div></div>
     <div class="stat-box"><div class="stat-label">24h</div><div class="stat-val" style="color:${pos?'#10b981':'#ef4444'}">${pos?'+':''}${S.change24h.toFixed(2)}%</div></div>
     <div class="stat-box"><div class="stat-label">Actualizado</div><div class="stat-val" style="font-size:12px;color:var(--text2)">${upd}</div></div>
+    ${renderBlockStat()}
   </div>
   <div style="font-size:10px;color:var(--text3);text-align:center">Precios: ${S.priceSource||'—'} · Mempool: mempool.space · No es un consejo financiero.</div>
 </div>`;
@@ -2003,10 +2019,66 @@ function renderAlerts(){
   try{settingsHTML=renderSettings();}catch(e){console.warn('renderSettings:',e);settingsHTML='';}
   const perm=S.notifPerm;
   const banner=perm!=='granted'&&perm!=='unsupported'?`<div class="notif-banner"><span style="font-size:18px">🔔</span><div style="flex:1"><div style="font-size:12px;font-weight:600;color:#f97316">Activa las notificaciones</div><div style="font-size:11px;color:var(--text3);margin-top:2px">Para recibir alertas con la app cerrada.</div></div><button class="btn-orange" style="padding:6px 12px;font-size:12px" onclick="activateNotifs()">Activar</button></div>`:perm==='granted'?`<div class="notif-ok"><span>✅</span><div style="font-size:12px;color:#10b981">Notificaciones activas. Recibirás avisos aunque la app esté cerrada.</div></div>`:'';
-  return`<div class="space-y">${settingsHTML}<div class="card"><div style="font-size:15px;font-weight:700;margin-bottom:12px">🔔 Alertas</div>${banner}<div class="input-row"><div style="position:relative;flex:1"><span id="curr-sym" style="position:absolute;left:10px;top:9px;color:var(--text3);font-size:13px">$</span><input id="alert-target" type="number" style="padding-left:26px" placeholder="Precio objetivo" onkeydown="if(event.key==='Enter')addAlert()"/></div><select id="alert-curr" style="width:80px" onchange="document.getElementById('curr-sym').textContent=this.value==='eur'?'€':'$'"><option value="usd">USD</option><option value="eur">EUR</option></select><button class="btn-orange" style="padding:8px 14px;flex-shrink:0" onclick="addAlert()">+</button></div><div id="alert-list">${S.alerts.length===0?`<div style="text-align:center;color:var(--text3);font-size:13px;padding:24px">Sin alertas activas.<br>Introduce un precio y pulsa +.</div>`:S.alerts.map(a=>`<div class="alert-item ${a.triggered?'triggered':''}"><div style="display:flex;align-items:center;gap:10px">${a.triggered?'<span style="color:#eab308;font-size:16px">⚠️</span>':`<div style="width:8px;height:8px;border-radius:50%;background:${a.condition==='above'?'#10b981':'#ef4444'}"></div>`}<div><div style="font-size:13px;font-weight:600">${a.condition==='above'?'↑':'↓'} ${a.currency==='usd'?'$':'€'}${a.targetPrice.toLocaleString()}</div><div style="font-size:10px;color:var(--text3)">${a.triggered?'¡DISPARADA!':'Pendiente'}</div></div></div><button onclick="removeAlert('${a.id}')" style="background:none;border:none;color:var(--text3);font-size:18px;padding:4px;cursor:pointer">✕</button></div>`).join('')}</div></div></div>`;
+  // Render alert list
+  const alertMode=S._alertMode||'price';
+  const alertList=S.alerts.length===0
+    ?'<div style="text-align:center;color:var(--text3);font-size:13px;padding:24px">Sin alertas activas.<br>Añade un precio o porcentaje de cambio.</div>'
+    :S.alerts.map(a=>{
+      const isPct=a.type==='pct';
+      const label=isPct
+        ?(a.condition==='above'?'↑ +':'↓ ')+Math.abs(a.targetPct)+'%'
+        :(a.condition==='above'?'↑ ':'↓ ')+(a.currency==='usd'?'$':'€')+a.targetPrice.toLocaleString();
+      const pctNow=isPct&&a.refPrice?((S.price.usd-a.refPrice)/a.refPrice*100).toFixed(2):null;
+      const dot=a.triggered?'<span style="color:#eab308;font-size:16px">⚠️</span>':'<div style="width:8px;height:8px;border-radius:50%;background:'+(a.condition==='above'?'#10b981':'#ef4444')+'"></div>';
+      const sub=a.triggered?'¡DISPARADA!':isPct?('Ref: $'+Math.round(a.refPrice).toLocaleString()+' · Ahora: '+(pctNow>0?'+':'')+pctNow+'%'):'Pendiente';
+      return '<div class="alert-item '+(a.triggered?'triggered':'')+'">'
+        +'<div style="display:flex;align-items:center;gap:10px">'+dot
+        +'<div><div style="font-size:13px;font-weight:600">'+label+'</div>'
+        +'<div style="font-size:10px;color:var(--text3)">'+sub+'</div></div></div>'
+        +'<button onclick="removeAlert(\\\''+a.id+'\\\')" style="background:none;border:none;color:var(--text3);font-size:18px;padding:4px;cursor:pointer">✕</button></div>';
+    }).join('');
+
+  const modeBtn=(m,label)=>'<button onclick="S._alertMode=\''+m+'\';renderTab(\'alerts\')" style="flex:1;padding:6px;border-radius:8px;border:1px solid var(--border);background:'+(alertMode===m?'#f97316':'var(--bg)')+';color:'+(alertMode===m?'#fff':'var(--text2)')+';font-size:12px;font-weight:'+(alertMode===m?'700':'400')+';cursor:pointer">'+label+'</button>';
+
+  const priceForm=`<div class="input-row">
+    <div style="position:relative;flex:1">
+      <span id="curr-sym" style="position:absolute;left:10px;top:9px;color:var(--text3);font-size:13px">$</span>
+      <input id="alert-target" type="number" style="padding-left:26px" placeholder="Precio objetivo" onkeydown="if(event.key==='Enter')addAlert()"/>
+    </div>
+    <select id="alert-curr" style="width:80px" onchange="document.getElementById('curr-sym').textContent=this.value==='eur'?'€':'$'">
+      <option value="usd">USD</option><option value="eur">EUR</option>
+    </select>
+    <button class="btn-orange" style="padding:8px 14px;flex-shrink:0" onclick="addAlert()">+</button>
+  </div>`;
+
+  const pctForm=`<div style="margin-bottom:8px;font-size:11px;color:var(--text3)">Precio de referencia: <b style="color:var(--text)">$${Math.round(S.price.usd).toLocaleString()}</b> (precio actual)</div>
+  <div class="input-row">
+    <div style="position:relative;flex:1">
+      <span style="position:absolute;left:10px;top:9px;color:var(--text3);font-size:13px">%</span>
+      <input id="alert-pct" type="number" step="0.5" min="0.1" style="padding-left:28px" placeholder="Ej: 5 para ±5%" onkeydown="if(event.key==='Enter')addPctAlert()"/>
+    </div>
+    <select id="alert-pct-dir" style="width:90px">
+      <option value="above">Sube ↑</option>
+      <option value="below">Baja ↓</option>
+    </select>
+    <button class="btn-orange" style="padding:8px 14px;flex-shrink:0" onclick="addPctAlert()">+</button>
+  </div>
+  <div style="font-size:10px;color:var(--text3);margin-top:6px">Se dispara cuando BTC sube/baja ese % desde ahora.</div>`;
+
+  return`<div class="space-y">${settingsHTML}<div class="card">
+    <div style="font-size:15px;font-weight:700;margin-bottom:12px">🔔 Alertas</div>
+    ${banner}
+    <div style="display:flex;gap:6px;margin-bottom:12px">
+      ${modeBtn('price','💰 Precio fijo')}
+      ${modeBtn('pct','📊 % Cambio')}
+    </div>
+    ${alertMode==='pct'?pctForm:priceForm}
+    <div id="alert-list" style="margin-top:12px">${alertList}</div>
+  </div></div>`;
 }
 async function activateNotifs(){const r=await requestNotifPerm();if(r==='granted')showNotif('✅ SatsFlow','Notificaciones activadas.');renderTab('alerts');}
-function addAlert(){const t=document.getElementById('alert-target'),c=document.getElementById('alert-curr');if(!t||!c)return;const val=parseFloat(t.value);if(isNaN(val)||val<=0)return;const curr=c.value,price=curr==='usd'?S.price.usd:S.price.eur;S.alerts.push({id:Date.now().toString(),targetPrice:val,currency:curr,condition:val>price?'above':'below',triggered:false});saveAlerts();navigator.serviceWorker?.ready.then(reg=>reg.active?.postMessage({type:'CHECK_ALERTS',alerts:S.alerts}));renderTab('alerts');}
+function addAlert(){const t=document.getElementById('alert-target'),cur=document.getElementById('alert-curr');if(!t||!cur)return;const val=parseFloat(t.value);if(isNaN(val)||val<=0)return;const curr=cur.value,price=curr==='usd'?S.price.usd:S.price.eur;S.alerts.push({id:Date.now().toString(),type:'price',targetPrice:val,currency:curr,condition:val>price?'above':'below',triggered:false});saveAlerts();navigator.serviceWorker?.ready.then(reg=>reg.active?.postMessage({type:'CHECK_ALERTS',alerts:S.alerts}));t.value='';renderTab('alerts');}
+function addPctAlert(){const t=document.getElementById('alert-pct'),d=document.getElementById('alert-pct-dir');if(!t||!d)return;const pct=parseFloat(t.value);if(isNaN(pct)||pct<=0)return;const dir=d.value;S.alerts.push({id:Date.now().toString(),type:'pct',targetPct:dir==='above'?pct:-pct,condition:dir,refPrice:S.price.usd,triggered:false});saveAlerts();t.value='';renderTab('alerts');}
 function removeAlert(id){S.alerts=S.alerts.filter(a=>a.id!==id);saveAlerts();renderTab('alerts');}
 function checkAlerts(){if(!S.price.usd)return;let changed=false;S.alerts=S.alerts.map(a=>{if(a.triggered)return a;const p=a.currency==='usd'?S.price.usd:S.price.eur,hit=a.condition==='above'?p>=a.targetPrice:p<=a.targetPrice;if(hit){const sym=a.currency==='usd'?'$':'€';showNotif('⚡ Alerta SatsFlow',`BTC ha ${a.condition==='above'?'subido sobre':'bajado de'} ${sym}${a.targetPrice.toLocaleString()} — $${S.price.usd.toLocaleString()}`);changed=true;return{...a,triggered:true};}return a;});if(changed){saveAlerts();if(S.currentTab==='alerts')renderTab('alerts');}}
 async function fetchCorr(){
@@ -3612,6 +3684,238 @@ function renderForecast(){
       +'</div>';
   }
 }
+
+function exportConfig(){
+  const data={
+    alerts:S.alerts,
+    morningAlert:S.morningAlert,
+    lang:S.lang,
+    dark:S.dark,
+    days:S.days,
+    chartType:S.chartType,
+    corrPeriod:S.corrPeriod,
+    exported:new Date().toISOString()
+  };
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;
+  a.download='satsflow-config-'+new Date().toISOString().slice(0,10)+'.json';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+function importConfig(){
+  const inp=document.createElement('input');
+  inp.type='file';
+  inp.accept='.json';
+  inp.onchange=async e=>{
+    const file=e.target.files[0];
+    if(!file)return;
+    try{
+      const txt=await file.text();
+      const data=JSON.parse(txt);
+      if(data.alerts){S.alerts=data.alerts;saveAlerts();}
+      if(data.morningAlert){S.morningAlert=data.morningAlert;localStorage.setItem('sf-morning',JSON.stringify(data.morningAlert));}
+      if(data.lang){S.lang=data.lang;localStorage.setItem('sf-lang',data.lang);}
+      if(data.dark!==undefined){S.dark=data.dark;localStorage.setItem('sf-theme',data.dark?'dark':'light');document.body.classList.toggle('light',!S.dark);}
+      if(data.days){S.days=data.days;}
+      if(data.chartType){S.chartType=data.chartType;}
+      if(data.corrPeriod){S.corrPeriod=data.corrPeriod;}
+      showToast('✅ Config importada correctament!');
+      renderTab(S.currentTab);
+    }catch(err){
+      showToast('❌ Error: fitxer no vàlid');
+    }
+  };
+  inp.click();
+}
+function showToast(msg){
+  let t=document.getElementById('sf-toast');
+  if(!t){t=document.createElement('div');t.id='sf-toast';t.style.cssText='position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#1e293b;color:#f1f5f9;padding:10px 20px;border-radius:12px;font-size:13px;font-weight:600;z-index:9999;border:1px solid #334155;box-shadow:0 4px 20px rgba(0,0,0,.4);transition:opacity .4s';document.body.appendChild(t);}
+  t.textContent=msg;t.style.opacity='1';
+  clearTimeout(t._to);t._to=setTimeout(()=>{t.style.opacity='0';},2500);
+}
+
+function renderDCA(){
+  const currentPrice=S.price.usd||70000;
+  return`<div class="space-y">
+    <div class="card">
+      <div style="font-size:15px;font-weight:700;margin-bottom:4px">📐 Calculadora DCA</div>
+      <div style="font-size:11px;color:var(--text3);margin-bottom:16px">Dollar Cost Averaging — inversió periòdica en Bitcoin</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+        <div>
+          <div style="font-size:11px;color:var(--text3);margin-bottom:4px">Inversió mensual (€)</div>
+          <input type="number" id="dca-amount" value="100" min="1" oninput="calcDCA()" style="text-align:center;font-weight:700;font-size:15px">
+        </div>
+        <div>
+          <div style="font-size:11px;color:var(--text3);margin-bottom:4px">Fa quants mesos</div>
+          <input type="number" id="dca-months" value="12" min="1" max="120" oninput="calcDCA()" style="text-align:center;font-weight:700;font-size:15px">
+        </div>
+      </div>
+      <div>
+        <div style="font-size:11px;color:var(--text3);margin-bottom:4px">Preu inicial BTC (€) <span style="color:#f97316;cursor:pointer" onclick="document.getElementById('dca-start').value=Math.round(${currentPrice*0.92});calcDCA()">usar actual</span></div>
+        <input type="number" id="dca-start" value="${Math.round(currentPrice*0.85)}" min="1" oninput="calcDCA()">
+      </div>
+      <div id="dca-result" style="margin-top:16px"></div>
+    </div>
+    <div class="card" style="background:rgba(249,115,22,.06);border-color:rgba(249,115,22,.3)">
+      <div style="font-size:12px;font-weight:700;color:#f97316;margin-bottom:8px">💡 Què és DCA?</div>
+      <div style="font-size:11px;color:var(--text2);line-height:1.6">
+        <b>Dollar Cost Averaging</b> és invertir una quantitat fixa periòdicament, independentment del preu.<br><br>
+        ✅ Elimina l'estrès de "comprar al moment perfecte"<br>
+        ✅ Promitja el preu d'entrada automàticament<br>
+        ✅ Estratègia recomanada per la majoria de Bitcoiners a llarg termini<br><br>
+        <span style="color:var(--text3);font-size:10px">Els càlculs asumeixen un preu d'entrada lineal des del preu inicial fins al preu actual.</span>
+      </div>
+    </div>
+  </div>`;
+}
+function calcDCA(){
+  const amount=parseFloat(document.getElementById('dca-amount')?.value)||100;
+  const months=parseInt(document.getElementById('dca-months')?.value)||12;
+  const startPrice=parseFloat(document.getElementById('dca-start')?.value)||50000;
+  const currentPrice=S.price.usd*0.92||70000; // EUR approx
+  if(!amount||!months||!startPrice||!currentPrice)return;
+  // Simular compra mensual amb preu lineal de startPrice a currentPrice
+  let totalInvested=0,totalBTC=0;
+  for(let i=0;i<months;i++){
+    const monthPrice=startPrice+((currentPrice-startPrice)*(i/(Math.max(1,months-1))));
+    const btcBought=amount/monthPrice;
+    totalInvested+=amount;
+    totalBTC+=btcBought;
+  }
+  const currentValue=totalBTC*currentPrice;
+  const profit=currentValue-totalInvested;
+  const profitPct=(profit/totalInvested)*100;
+  const avgPrice=totalInvested/totalBTC;
+  const el=document.getElementById('dca-result');
+  if(!el)return;
+  el.innerHTML=`
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+      <div style="background:var(--bg);border-radius:12px;padding:12px;text-align:center">
+        <div style="font-size:10px;color:var(--text3);margin-bottom:4px">TOTAL INVERTIT</div>
+        <div style="font-size:18px;font-weight:800;color:var(--text)">€${Math.round(totalInvested).toLocaleString()}</div>
+      </div>
+      <div style="background:var(--bg);border-radius:12px;padding:12px;text-align:center">
+        <div style="font-size:10px;color:var(--text3);margin-bottom:4px">BTC ACUMULAT</div>
+        <div style="font-size:18px;font-weight:800;color:#f97316">₿${totalBTC.toFixed(6)}</div>
+      </div>
+      <div style="background:var(--bg);border-radius:12px;padding:12px;text-align:center">
+        <div style="font-size:10px;color:var(--text3);margin-bottom:4px">VALOR ACTUAL</div>
+        <div style="font-size:18px;font-weight:800;color:#3b82f6">€${Math.round(currentValue).toLocaleString()}</div>
+      </div>
+      <div style="background:${profit>=0?'rgba(16,185,129,.1)':'rgba(239,68,68,.1)'};border:1px solid ${profit>=0?'rgba(16,185,129,.3)':'rgba(239,68,68,.3)'};border-radius:12px;padding:12px;text-align:center">
+        <div style="font-size:10px;color:var(--text3);margin-bottom:4px">GUANY/PÈRDUA</div>
+        <div style="font-size:18px;font-weight:800;color:${profit>=0?'#10b981':'#ef4444'}">${profit>=0?'+':''}€${Math.round(profit).toLocaleString()}</div>
+        <div style="font-size:11px;color:${profit>=0?'#10b981':'#ef4444'}">${profitPct>=0?'+':''}${profitPct.toFixed(1)}%</div>
+      </div>
+    </div>
+    <div style="background:var(--bg);border-radius:10px;padding:10px;font-size:11px;color:var(--text2)">
+      Preu mig d'entrada: <b style="color:var(--text)">€${Math.round(avgPrice).toLocaleString()}</b> · 
+      Preu actual: <b style="color:#f97316">€${Math.round(currentPrice).toLocaleString()}</b> · 
+      Diferència: <b style="color:${currentPrice>=avgPrice?'#10b981':'#ef4444'}">${((currentPrice-avgPrice)/avgPrice*100).toFixed(1)}%</b>
+    </div>
+  `;
+}
+
+function chartHover(e){
+  const wrap=document.getElementById('chart-wrap');
+  const tip=document.getElementById('chart-tooltip');
+  if(!wrap||!tip||!S.history.length)return;
+  const rect=wrap.getBoundingClientRect();
+  const x=e.clientX-rect.left;
+  const pct=Math.max(0,Math.min(1,x/rect.width));
+  const idx=Math.round(pct*(S.history.length-1));
+  const pt=S.history[idx];
+  if(!pt)return;
+  const d=pt.date||'';
+  const p='$'+Math.round(pt.price).toLocaleString();
+  const h=pt.high?'↑$'+Math.round(pt.high).toLocaleString():'';
+  const l=pt.low?'↓$'+Math.round(pt.low).toLocaleString():'';
+  tip.innerHTML=`<span style="color:#94a3b8;font-size:10px">${d}</span><br>${p}${h?' <span style="color:#10b981">'+h+'</span>':''} ${l?'<span style="color:#ef4444">'+l+'</span>':''}`;
+  // Posició: seguir cursor però no sortir de pantalla
+  const tw=tip.offsetWidth||140;
+  let left=e.clientX+12;
+  if(left+tw>window.innerWidth-8)left=e.clientX-tw-12;
+  tip.style.left=left+'px';
+  tip.style.top=(e.clientY-36)+'px';
+  tip.style.opacity='1';
+  // Línia crosshair vertical al SVG
+  const svg=wrap.querySelector('svg');
+  if(svg){
+    let line=svg.querySelector('#ch-line');
+    if(!line){line=document.createElementNS('http://www.w3.org/2000/svg','line');line.id='ch-line';line.setAttribute('stroke','rgba(249,115,22,.6)');line.setAttribute('stroke-width','1');line.setAttribute('stroke-dasharray','4 3');svg.appendChild(line);}
+    const svgRect=svg.getBoundingClientRect();
+    const svgX=((e.clientX-svgRect.left)/svgRect.width*svg.viewBox.baseVal.width).toFixed(1);
+    line.setAttribute('x1',svgX);line.setAttribute('x2',svgX);
+    line.setAttribute('y1','0');line.setAttribute('y2',svg.viewBox.baseVal.height||200);
+  }
+}
+function chartLeave(){
+  const tip=document.getElementById('chart-tooltip');
+  if(tip)tip.style.opacity='0';
+  const wrap=document.getElementById('chart-wrap');
+  if(wrap){const svg=wrap.querySelector('svg');if(svg){const l=svg.querySelector('#ch-line');if(l)l.remove();}}
+}
+
+async function fetchBlockInfo(){
+  try{
+    const r=await fetch('https://mempool.space/api/blocks/tip/height',{signal:AbortSignal.timeout(6000)});
+    if(r.ok){
+      const h=await r.json();
+      S.blockHeight=h;
+      // Halving: cada 210000 blocs
+      const nextHalving=Math.ceil(h/210000)*210000;
+      S.blocksToHalving=nextHalving-h;
+      S.halvingPct=((h%210000)/210000*100).toFixed(1);
+      if(S.currentTab==='home')renderTab('home');
+    }
+  }catch(e){console.warn('blockInfo:',e);}
+}
+
+function renderRSIChart(){
+  if(!S.history||S.history.length<14)return'';
+  const prices=S.history.map(h=>h.price);
+  const rsiArr=calcRSI(prices);
+  const valid=rsiArr.filter(v=>v!=null);
+  if(valid.length<5)return'';
+  const W=320,H=60,P=6;
+  const toX=i=>P+(i/(rsiArr.length-1))*(W-P*2);
+  const toY=v=>P+(1-((v-0)/100))*(H-P*2);
+  const pts=rsiArr.map((v,i)=>v!=null?`${toX(i).toFixed(1)},${toY(v).toFixed(1)}`:null).filter(Boolean).join(' ');
+  const last=valid[valid.length-1];
+  const rsiColor=last>70?'#ef4444':last<30?'#10b981':'#a855f7';
+  return`<div style="background:#0a1628;border-radius:0 0 12px 12px;padding:2px 4px 4px;margin:0 -4px;margin-top:-4px">
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:2px 4px;margin-bottom:2px">
+      <span style="font-size:9px;color:#a855f7;font-weight:700">RSI (14)</span>
+      <span style="font-size:10px;font-weight:800;color:${rsiColor}">${last.toFixed(1)} — ${last>70?'Sobrecomprat':last<30?'Sobrevenut':'Neutral'}</span>
+    </div>
+    <svg viewBox="0 0 ${W} ${H}" style="width:100%;height:50px" preserveAspectRatio="none">
+      <line x1="${P}" y1="${toY(70)}" x2="${W-P}" y2="${toY(70)}" stroke="#ef444466" stroke-width="1" stroke-dasharray="3 2"/>
+      <line x1="${P}" y1="${toY(30)}" x2="${W-P}" y2="${toY(30)}" stroke="#10b98166" stroke-width="1" stroke-dasharray="3 2"/>
+      <line x1="${P}" y1="${toY(50)}" x2="${W-P}" y2="${toY(50)}" stroke="#33415566" stroke-width="1"/>
+      <polyline points="${pts}" fill="none" stroke="${rsiColor}" stroke-width="1.5" stroke-linejoin="round"/>
+      <circle cx="${toX(rsiArr.length-1)}" cy="${toY(last)}" r="3" fill="${rsiColor}"/>
+    </svg>
+  </div>`;
+}
+
+function renderBlockStat(){
+  if(!S.blockHeight) return '';
+  return '<div class="stat-box" style="grid-column:1/-1">'
+    +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">'
+    +'<div><div class="stat-label">⛏️ Bloc actual</div><div class="stat-val" style="color:#f97316">#'+S.blockHeight.toLocaleString()+'</div></div>'
+    +'<div style="text-align:right"><div class="stat-label">🔥 Proper halving</div><div class="stat-val" style="color:#eab308">'+(S.blocksToHalving?.toLocaleString()||'—')+' blocs</div></div>'
+    +'</div>'
+    +'<div style="background:var(--bg3);border-radius:999px;height:6px;overflow:hidden">'
+    +'<div style="height:100%;background:linear-gradient(90deg,#f97316,#eab308);width:'+S.halvingPct+'%;border-radius:999px"></div>'
+    +'</div>'
+    +'<div style="display:flex;justify-content:space-between;font-size:9px;color:var(--text3);margin-top:3px">'
+    +'<span>Cicle actual: '+S.halvingPct+'%</span>'
+    +'<span>~'+Math.round((S.blocksToHalving||0)/144)+' dies</span>'
+    +'</div></div>';
+}
+
 async function init(){
   try{
     try{S.alerts=await loadAlertsDB();}catch(e){S.alerts=[];}
@@ -3621,7 +3925,7 @@ async function init(){
     try{if(S.lang&&S.lang!=='es')setLang(S.lang,true);}catch(e){}
     try{if(S.morningAlert?.enabled)scheduleMorningCheck();}catch(e){}
     setTimeout(async()=>{
-      try{await Promise.all([fetchOHLC().catch(()=>{}),fetchMempool().catch(()=>{}),fetchMarket().catch(()=>{}),fetchMining().catch(()=>{}),fetchNews().catch(()=>{}),fetchCycleHistory().catch(()=>{})]);}catch{}
+      try{await Promise.all([fetchOHLC().catch(()=>{}),fetchMempool().catch(()=>{}),fetchMarket().catch(()=>{}),fetchMining().catch(()=>{}),fetchNews().catch(()=>{}),fetchCycleHistory().catch(()=>{}),fetchBlockInfo().catch(()=>{})]);}catch{}
       try{renderCurrentTab();}catch{}
     },200);
     setInterval(async()=>{try{await fetchPrice();checkAlerts();renderCurrentTab();}catch{}},60000);
@@ -3637,6 +3941,7 @@ async function init(){
     setInterval(async()=>{try{await fetchMempool();if(S.currentTab==='mempool')renderTab('mempool');}catch{}},30000);
     setInterval(async()=>{try{await Promise.all([fetchMarket(),fetchMining()]);if(S.currentTab==='market')renderTab('market');}catch{}},120000);
     setInterval(async()=>{try{await fetchNews();if(S.currentTab==='news')renderTab('news');}catch{}},300000);
+    setInterval(async()=>{try{await fetchBlockInfo();}catch{}},120000);
     // Snapshot diario de predicciones
     try{scheduleDailySnapshot();}catch(e){console.warn('scheduleDailySnapshot:',e);}
   }catch(e){
@@ -3732,3 +4037,5 @@ init();
 </script>
 </body>
 </html>
+    +'<div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">'+'<div style="font-size:13px;font-weight:700;margin-bottom:10px">💾 Backup de configuració</div>'+'<div style="display:flex;gap:8px">'+'<button class="btn-ghost" style="flex:1;padding:10px" onclick="exportConfig()">📤 Exportar config</button>'+'<button class="btn-ghost" style="flex:1;padding:10px" onclick="importConfig()">📥 Importar config</button>'+'</div>'+'<div style="font-size:10px;color:var(--text3);margin-top:6px">Exporta les alertes i ajustos a un fitxer JSON. Importa'l quan netegis la caché.</div>'+'</div>'
+    
