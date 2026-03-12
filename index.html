@@ -140,6 +140,7 @@
     <div id="tab-global" class="tab-content fade" style="display:none"></div>
     <div id="tab-forecast" class="tab-content fade" style="display:none"></div>
     <div id="tab-cycles" class="tab-content fade" style="display:none"></div>
+    <div id="tab-dca" class="tab-content fade" style="display:none"></div>
   </div>
   <div id="tabbar-wrap"><nav id="tabbar">
     <button class="tab-btn active" data-tab="home" onclick="switchTab('home')"><span class="tab-icon">🏠</span>Inicio</button>
@@ -1561,7 +1562,7 @@ function renderTab(tab){
       setTimeout(()=>{if(S.currentTab===tab)try{el.innerHTML=map[tab]();}catch(e){el.innerHTML=skeletonMap[tab]();}},400);
       return;
     }
-    try{el.innerHTML=map[tab]();}
+    try{el.innerHTML=map[tab]();if(afterRender[tab])afterRender[tab]();}
     catch(e){
       console.error('renderTab error ['+tab+']:',e);
       el.innerHTML='<div style="padding:30px;text-align:center"><div style="font-size:32px">⚠️</div><br><b style="color:#f97316">Error al carregar</b><br><small style="color:#999">'+e.message+'</small><br><br><button onclick="location.reload()" style="margin-top:12px;padding:10px 20px;background:#f97316;color:white;border:none;border-radius:10px;cursor:pointer">🔄 Reintentar</button></div>';
@@ -4046,11 +4047,3 @@ init();
 </script>
 </body>
 </html>
-    +'<div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">'
-    +'<div style="font-size:13px;font-weight:700;margin-bottom:10px">💾 Backup de configuració</div>'
-    +'<div style="display:flex;gap:8px">'
-    +'<button class="btn-ghost" style="flex:1;padding:10px" onclick="exportConfig()">📤 Exportar config</button>'
-    +'<button class="btn-ghost" style="flex:1;padding:10px" onclick="importConfig()">📥 Importar config</button>'
-    +'</div>'
-    +'<div style="font-size:10px;color:var(--text3);margin-top:6px">Exporta les alertes i ajustos a un fitxer JSON. Importa\'l quan netegis la caché.</div>'
-    +'</div>'
