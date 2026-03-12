@@ -198,7 +198,11 @@ const T={
     globalSignal:'Señal global',horizons:'Rangos por horizonte temporal',
     currentPrice:'Precio actual',mostLikely:'MÁS PROBABLE (estimado)',
     bearish2:'BAJISTA',base:'BASE',bullish2:'ALCISTA',
-    disclaimer:'Esto no es consejo financiero. Son rangos probabilísticos. Bitcoin es extremadamente volátil.'
+    disclaimer:'Esto no es consejo financiero. Son rangos probabilísticos. Bitcoin es extremadamente volátil.',
+    rsiOverbought:'RSI > 70 sobrecomprado → posible corrección',
+    rsiNeutral:'RSI 30–70 zona neutral',
+    rsiOversold:'RSI < 30 sobrevendido → posible rebote',
+    rsiOverboughtLabel:'Sobrecomprado',rsiOversoldLabel:'Sobrevendido',rsiNeutralLabel:'Neutral'
   },
   ca:{
     home:'Inici',analysis:'Anàlisi',market:'Mercat',mempool:'Mempool',
@@ -233,7 +237,11 @@ const T={
     globalSignal:'Senyal global',horizons:'Rangs per horitzó temporal',
     currentPrice:'Preu actual',mostLikely:'MÉS PROBABLE (estimat)',
     bearish2:'BAIXISTA',base:'BASE',bullish2:'ALCISTA',
-    disclaimer:'Això no és un consell financer. Són rangs probabilístics. El Bitcoin és extremadament volàtil.'
+    disclaimer:'Això no és un consell financer. Són rangs probabilístics. El Bitcoin és extremadament volàtil.',
+    rsiOverbought:'RSI > 70 sobrecomprat → possible correcció',
+    rsiNeutral:'RSI 30–70 zona neutral',
+    rsiOversold:'RSI < 30 sobrevenut → possible rebot',
+    rsiOverboughtLabel:'Sobrecomprat',rsiOversoldLabel:'Sobrevenut',rsiNeutralLabel:'Neutral'
   }
 };
 const t=()=>T[S.lang]||T.es;
@@ -3894,10 +3902,12 @@ function renderRSIChart(){
   const pts=rsiArr.map((v,i)=>v!=null?`${toX(i).toFixed(1)},${toY(v).toFixed(1)}`:null).filter(Boolean).join(' ');
   const last=valid[valid.length-1];
   const rsiColor=last>70?'#ef4444':last<30?'#10b981':'#a855f7';
+  const tr=t();
+  const rsiLabel=last>70?tr.rsiOverboughtLabel:last<30?tr.rsiOversoldLabel:tr.rsiNeutralLabel;
   return`<div style="background:#0a1628;border-radius:0 0 12px 12px;padding:2px 4px 4px;margin:0 -4px;margin-top:-4px">
     <div style="display:flex;justify-content:space-between;align-items:center;padding:2px 4px;margin-bottom:2px">
       <span style="font-size:9px;color:#a855f7;font-weight:700">RSI (14)</span>
-      <span style="font-size:10px;font-weight:800;color:${rsiColor}">${last.toFixed(1)} — ${last>70?'Sobrecomprat':last<30?'Sobrevenut':'Neutral'}</span>
+      <span style="font-size:10px;font-weight:800;color:${rsiColor}">${last.toFixed(1)} — ${rsiLabel}</span>
     </div>
     <svg viewBox="0 0 ${W} ${H}" style="width:100%;height:50px" preserveAspectRatio="none">
       <line x1="${P}" y1="${toY(70)}" x2="${W-P}" y2="${toY(70)}" stroke="#ef444466" stroke-width="1" stroke-dasharray="3 2"/>
@@ -3907,9 +3917,9 @@ function renderRSIChart(){
       <circle cx="${toX(rsiArr.length-1)}" cy="${toY(last)}" r="3" fill="${rsiColor}"/>
     </svg>
     <div style="padding:8px 4px 2px;display:flex;gap:8px;flex-wrap:wrap">
-      <span style="font-size:10px;color:#ef4444">● RSI &gt; 70 sobrecomprat → possible correcció</span>
-      <span style="font-size:10px;color:#a855f7">● RSI 30–70 zona neutral</span>
-      <span style="font-size:10px;color:#10b981">● RSI &lt; 30 sobrevenut → possible rebot</span>
+      <span style="font-size:10px;color:#ef4444">● ${tr.rsiOverbought}</span>
+      <span style="font-size:10px;color:#a855f7">● ${tr.rsiNeutral}</span>
+      <span style="font-size:10px;color:#10b981">● ${tr.rsiOversold}</span>
     </div>
   </div>`;
 }
