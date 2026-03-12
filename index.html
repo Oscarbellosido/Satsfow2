@@ -3906,6 +3906,11 @@ function renderRSIChart(){
       <polyline points="${pts}" fill="none" stroke="${rsiColor}" stroke-width="1.5" stroke-linejoin="round"/>
       <circle cx="${toX(rsiArr.length-1)}" cy="${toY(last)}" r="3" fill="${rsiColor}"/>
     </svg>
+    <div style="padding:8px 4px 2px;display:flex;gap:8px;flex-wrap:wrap">
+      <span style="font-size:10px;color:#ef4444">● RSI &gt; 70 sobrecomprat → possible correcció</span>
+      <span style="font-size:10px;color:#a855f7">● RSI 30–70 zona neutral</span>
+      <span style="font-size:10px;color:#10b981">● RSI &lt; 30 sobrevenut → possible rebot</span>
+    </div>
   </div>`;
 }
 
