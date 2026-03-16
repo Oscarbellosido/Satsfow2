@@ -2140,6 +2140,7 @@ async function fetchCorr(){
 
   // 2. OR via PAXG/USDT de Binance (or tokenitzat, 24/7, sense CORS, fiable)
   let paxgPrices=[];
+  if(S.corrLoadMsg!==undefined) S.corrLoadMsg='Obtenint Or via PAXG/Binance...';
   try{
     const r=await fetch(`https://api.binance.com/api/v3/klines?symbol=PAXGUSDT&interval=1d&limit=${limit}`);
     const j=await r.json();
@@ -2162,46 +2163,45 @@ async function fetchCorr(){
   ];
 
   async function fetchYahoo(url){
+    // Llançar TOTS els proxies en paral·lel — guanya el primer que respongui
     const attempts=[
-      ()=>fetch(url,{signal:AbortSignal.timeout(6000)}),
-      ()=>fetch(url.replace('query1','query2'),{signal:AbortSignal.timeout(6000)}),
-      ...proxies.map(p=>()=>fetch(p(url),{signal:AbortSignal.timeout(9000)}))
-    ];
-    for(const attempt of attempts){
-      try{
-        const r=await attempt();
-        if(!r.ok) continue;
-        const j=await r.json();
-        const prices=(j.chart?.result?.[0]?.indicators?.quote?.[0]?.close||[]).filter(v=>v!=null&&v>0);
-        if(prices.length>=5) return prices;
-      }catch{}
-    }
-    return [];
+      fetch(url,{signal:AbortSignal.timeout(5000)}),
+      fetch(url.replace('query1','query2'),{signal:AbortSignal.timeout(5000)}),
+      ...proxies.map(p=>fetch(p(url),{signal:AbortSignal.timeout(6000)}))
+    ].map(p=>p.then(async r=>{
+      if(!r.ok) throw new Error('not ok');
+      const j=await r.json();
+      const prices=(j.chart?.result?.[0]?.indicators?.quote?.[0]?.close||[]).filter(v=>v!=null&&v>0);
+      if(prices.length<5) throw new Error('no data');
+      return prices;
+    }));
+    try{return await Promise.any(attempts);}catch{return[];}
   }
 
-  // Stooq com a backup per S&P500
+  // Stooq — paral·lel amb timeout global de 8s
   async function fetchStooq(symbol, nDays){
-    const alts={'spx.us':['^spx','spy.us','gspc.us'],'xauusd':['^xau','xau.us','gold.us']};
+    const alts={'spx.us':['^spx','spy.us'],'xauusd':['^xau','xau.us']};
     const symbols=[symbol,...(alts[symbol]||[])];
     const to=new Date();
     const from=new Date(Date.now()-nDays*86400000*1.6);
     const fmt=d=>`${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;
+    const attempts=[];
     for(const s of symbols){
-      for(const proxy of [null,...proxies]){
-        try{
-          const baseUrl=`https://stooq.com/q/d/l/?s=${encodeURIComponent(s)}&d1=${fmt(from)}&d2=${fmt(to)}&i=d`;
-          const url=proxy?proxy(baseUrl):baseUrl;
-          const r=await fetch(url,{signal:AbortSignal.timeout(9000)});
-          if(!r.ok) continue;
+      const baseUrl=`https://stooq.com/q/d/l/?s=${encodeURIComponent(s)}&d1=${fmt(from)}&d2=${fmt(to)}&i=d`;
+      // directe + primers 2 proxies en paral·lel
+      for(const url of [baseUrl, proxies[0](baseUrl), proxies[1](baseUrl)]){
+        attempts.push(fetch(url,{signal:AbortSignal.timeout(6000)}).then(async r=>{
+          if(!r.ok) throw new Error('not ok');
           const txt=await r.text();
-          if(txt.includes('No data')||txt.trim().length<20) continue;
+          if(txt.includes('No data')||txt.trim().length<20) throw new Error('no data');
           const rows=txt.trim().split('\n').slice(1);
           const prices=rows.map(row=>{const cols=row.split(',');return parseFloat(cols[4]||cols[1]);}).filter(v=>!isNaN(v)&&v>0);
-          if(prices.length>=5) return prices;
-        }catch{}
+          if(prices.length<5) throw new Error('insufficient');
+          return prices;
+        }));
       }
     }
-    return [];
+    try{return await Promise.any(attempts);}catch{return[];}
   }
 
   // Executar en paral·lel: S&P500 per múltiples fonts
@@ -2292,7 +2292,12 @@ async function fetchCorrFallback(){
 }
 function renderCorr(){
   if(S.corrLoading){
-    return`<div class="card" style="text-align:center;padding:40px;color:var(--text3)"><span class="spin" style="font-size:28px">⏳</span><br><br><div style="margin-top:12px;font-size:13px">Cargando S&P500 y Oro...</div></div>`;
+    return`<div class="card" style="text-align:center;padding:40px;color:var(--text3)">
+      <div class="spin" style="font-size:28px">📊</div>
+      <div style="margin-top:16px;font-size:13px;color:var(--text)">Cargando S&P500 y Oro...</div>
+      <div style="margin-top:6px;font-size:11px;color:var(--text3)">Probando múltiples fuentes en paralelo</div>
+      <div style="margin-top:4px;font-size:11px;color:var(--text3)">Máx. 10 segundos</div>
+    </div>`;
   }
   if(!S.corrData){
     return`<div class="space-y">
@@ -2449,9 +2454,20 @@ function renderCorr(){
 }
 async function loadCorr(){
   S.corrLoading=true;
+  S.corrError=null;
   renderTab('corr');
-  await fetchCorr();
+  // Timeout global de 10s — si triga més, usa caché o mostra error
+  const timeout=new Promise(res=>setTimeout(()=>res('timeout'),10000));
+  const result=await Promise.race([fetchCorr().then(()=>'ok'),timeout]);
+  if(result==='timeout'&&!S.corrData){
+    try{
+      const cached=localStorage.getItem('sf-corrData');
+      if(cached){const p=JSON.parse(cached);S.corrData=p.data;S.corrCached=p.savedAt;S.corrError=null;}
+      else S.corrError='Tiempo de espera superado. El S&P500 solo está disponible en días laborables (lun–vier). Pruébalo de nuevo.';
+    }catch{S.corrError='Tiempo de espera superado. Pruébalo en un día laborable.';}
+  }
   S.corrLoading=false;
+  S.corrLoadMsg=null;
   renderTab('corr');
 }
 function setCorrPeriod(p){
