@@ -161,7 +161,7 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 const BUILD_TS='202603111906';
-const S={price:{usd:0,eur:0},change24h:0,marketCap:0,history:[],ohlc:[],mempool:null,marketData:null,miningData:null,news:[],alerts:[],days:'30',chartType:'area',dark:localStorage.getItem('sf-theme')!=='light',notifPerm:window.Notification?.permission||'unsupported',atmLoaded:false,leafletMap:null,lastUpdated:null,feeLevel:'hour',txSize:250,currentTab:'home',corrData:null,corrPeriod:'30',dominanceHistory:[],rainbowData:null,dominanceYearData:null,historyTA:[],lang:localStorage.getItem('sf-lang')||'es',morningAlert:JSON.parse(localStorage.getItem('sf-morning')||'null'),blockHeight:null,blocksToHalving:null,halvingPct:null};
+const S={price:{usd:0,eur:0},change24h:0,marketCap:0,history:[],ohlc:[],mempool:null,marketData:null,miningData:null,news:[],alerts:[],days:'30',chartType:'area',dark:localStorage.getItem('sf-theme')!=='light',notifPerm:window.Notification?.permission||'unsupported',atmLoaded:false,leafletMap:null,lastUpdated:null,feeLevel:'hour',txSize:250,currentTab:'home',corrData:null,corrPeriod:'30',dominanceHistory:[],rainbowData:null,dominanceYearData:null,historyTA:[],lang:localStorage.getItem('sf-lang')||'es',morningAlert:JSON.parse(localStorage.getItem('sf-morning')||'null'),blockHeight:null,blocksToHalving:null,halvingPct:null,corrCached:null};
 
 /* ══════ TRADUCCIONS / TRADUCCIONES ══════ */
 const T={
@@ -605,11 +605,37 @@ async function renderPredictionHistory(){
     ?'<div style="font-size:12px;font-weight:700;color:'+(accuracy>=60?'#10b981':accuracy>=40?'#eab308':'#ef4444')+'">'+accuracy+'% acierto ('+hits+'/'+total+')</div>'
     :'<div style="font-size:11px;color:var(--text3)">Acierto calculado tras 7 días</div>';
 
+  // Anàlisi de biaix del model (si hi ha prou dades resoltes)
+  let biasHTML='';
+  if(total>=3){
+    const resolved=preds.filter(p=>{
+      const age=(now-p.ts)/dayMs;
+      return age>=7&&p.week&&S.price.usd>0;
+    });
+    const aboves=resolved.filter(p=>S.price.usd>p.week.bull).length;
+    const belows=resolved.filter(p=>S.price.usd<p.week.bear).length;
+    const inside=resolved.filter(p=>S.price.usd>=p.week.bear&&S.price.usd<=p.week.bull).length;
+    const bias=aboves>belows?'🚀 El modelo tiende a ser <b>demasiado conservador</b> (BTC supera el bull)':
+               belows>aboves?'📉 El modelo tiende a ser <b>demasiado optimista</b> (BTC cae bajo el bear)':
+               '⚖️ El modelo no muestra biaix significatiu';
+    const biasColor=aboves>belows?'#f97316':belows>aboves?'#ef4444':'#10b981';
+    biasHTML='<div style="margin-top:10px;padding:10px;border-radius:10px;background:var(--bg);border:1px solid var(--border)">'
+      +'<div style="font-size:11px;font-weight:700;color:var(--text);margin-bottom:6px">📊 Anàlisi del model ('+total+' prediccions resoltes)</div>'
+      +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:8px;text-align:center">'
+      +'<div style="background:rgba(16,185,129,.1);border-radius:8px;padding:6px"><div style="font-size:18px;font-weight:800;color:#10b981">'+inside+'</div><div style="font-size:9px;color:var(--text3)">Dins rang</div></div>'
+      +'<div style="background:rgba(249,115,22,.1);border-radius:8px;padding:6px"><div style="font-size:18px;font-weight:800;color:#f97316">'+aboves+'</div><div style="font-size:9px;color:var(--text3)">Per sobre bull</div></div>'
+      +'<div style="background:rgba(239,68,68,.1);border-radius:8px;padding:6px"><div style="font-size:18px;font-weight:800;color:#ef4444">'+belows+'</div><div style="font-size:9px;color:var(--text3)">Per sota bear</div></div>'
+      +'</div>'
+      +'<div style="font-size:11px;color:'+biasColor+'">'+bias+'</div>'
+      +'</div>';
+  }
+
   return'<div class="card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">'
     +'<div style="font-size:15px;font-weight:700">📜 Historial de predicciones</div>'
     +'<div style="text-align:right">'+accuracyBadge+'</div>'
     +'</div>'
-    +'<div style="margin-bottom:10px;display:flex;gap:8px;flex-wrap:wrap">'
+    +biasHTML
+    +'<div style="margin-top:10px;margin-bottom:10px;display:flex;gap:8px;flex-wrap:wrap">'
     +'<button class="btn-orange" style="font-size:12px;padding:7px 12px" onclick="saveSnapshotIfNeeded(true)">📸 Guardar ahora</button>'
     +'<button onclick="purgeInvalidSnapshots()" style="font-size:11px;padding:7px 10px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text3);cursor:pointer">🧹 Limpiar $0</button>'
     +'<button onclick="clearAllPredictions()" style="font-size:11px;padding:7px 10px;border-radius:8px;border:1px solid rgba(239,68,68,.3);background:rgba(239,68,68,.06);color:#ef4444;cursor:pointer">🗑 Borrar todo</button>'
@@ -2104,7 +2130,7 @@ async function fetchCorr(){
   const limit=days<=30?35:days<=90?95:370;
   const range=days<=30?'1mo':days<=90?'3mo':'1y';
 
-  // Obtenir BTC de Binance (sempre funciona)
+  // 1. BTC de Binance (sempre funciona)
   let btcPrices=[];
   try{
     const r=await fetch(`https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=1d&limit=${limit}`);
@@ -2112,75 +2138,106 @@ async function fetchCorr(){
     btcPrices=j.map(k=>parseFloat(k[4]));
   }catch(e){console.warn('BTC klines:',e);}
 
-  // Intentar S&P500 i Or via múltiples proxies en paral·lel
-  const spyUrl=`https://query1.finance.yahoo.com/v8/finance/chart/SPY?interval=1d&range=${range}`;
-  const gldUrl=`https://query1.finance.yahoo.com/v8/finance/chart/GLD?interval=1d&range=${range}`;
-  const mstrUrl=`https://query1.finance.yahoo.com/v8/finance/chart/MSTR?interval=1d&range=${range}`;
+  // 2. OR via PAXG/USDT de Binance (or tokenitzat, 24/7, sense CORS, fiable)
+  let paxgPrices=[];
+  try{
+    const r=await fetch(`https://api.binance.com/api/v3/klines?symbol=PAXGUSDT&interval=1d&limit=${limit}`);
+    const j=await r.json();
+    if(Array.isArray(j)&&j.length>=5) paxgPrices=j.map(k=>parseFloat(k[4]));
+  }catch(e){console.warn('PAXG klines:',e);}
 
+  // 3. MSTR via Binance (MSTR ETF/token — usa proxy Yahoo com a fallback)
+  const mstrUrl=`https://query1.finance.yahoo.com/v8/finance/chart/MSTR?interval=1d&range=${range}`;
+  const spyUrl=`https://query1.finance.yahoo.com/v8/finance/chart/SPY?interval=1d&range=${range}`;
+  const spyUrl2=`https://query2.finance.yahoo.com/v8/finance/chart/SPY?interval=1d&range=${range}`;
+
+  // Proxies CORS per S&P500 — provats per ordre de fiabilitat
   const proxies=[
-    'https://api.allorigins.win/raw?url=',
-    'https://corsproxy.io/?',
-    'https://api.codetabs.com/v1/proxy?quest=',
-    'https://thingproxy.freeboard.io/fetch/',
-    'https://proxy.cors.sh/',
+    url=>`https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+    url=>`https://corsproxy.io/?${encodeURIComponent(url)}`,
+    url=>`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
+    url=>`https://thingproxy.freeboard.io/fetch/${encodeURIComponent(url)}`,
+    url=>`https://proxy.cors.sh/${url}`,
+    url=>`https://cors-anywhere.herokuapp.com/${url}`,
   ];
 
-  async function fetchWithProxies(url){
-    // Intentar directe primer (de vegades funciona)
+  async function fetchYahoo(url){
     const attempts=[
       ()=>fetch(url,{signal:AbortSignal.timeout(6000)}),
-      ...proxies.map(p=>()=>fetch(p+encodeURIComponent(url),{signal:AbortSignal.timeout(8000)}))
+      ()=>fetch(url.replace('query1','query2'),{signal:AbortSignal.timeout(6000)}),
+      ...proxies.map(p=>()=>fetch(p(url),{signal:AbortSignal.timeout(9000)}))
     ];
     for(const attempt of attempts){
       try{
         const r=await attempt();
         if(!r.ok) continue;
         const j=await r.json();
-        const prices=(j.chart?.result?.[0]?.indicators?.quote?.[0]?.close||[]).filter(v=>v!=null);
+        const prices=(j.chart?.result?.[0]?.indicators?.quote?.[0]?.close||[]).filter(v=>v!=null&&v>0);
         if(prices.length>=5) return prices;
       }catch{}
     }
     return [];
   }
 
-  // Intentar via Stooq (CSV, sense proxy, CORS obert)
+  // Stooq com a backup per S&P500
   async function fetchStooq(symbol, nDays){
-    const alts={'spx.us':['^spx','spy.us'],'xauusd':['^xau','xau.us']};
+    const alts={'spx.us':['^spx','spy.us','gspc.us'],'xauusd':['^xau','xau.us','gold.us']};
     const symbols=[symbol,...(alts[symbol]||[])];
     const to=new Date();
-    const from=new Date(Date.now()-nDays*86400000*1.5);
+    const from=new Date(Date.now()-nDays*86400000*1.6);
     const fmt=d=>`${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;
     for(const s of symbols){
-      try{
-        const url=`https://stooq.com/q/d/l/?s=${encodeURIComponent(s)}&d1=${fmt(from)}&d2=${fmt(to)}&i=d`;
-        const r=await fetch(url,{signal:AbortSignal.timeout(8000)});
-        if(!r.ok) continue;
-        const txt=await r.text();
-        if(txt.includes('No data')||txt.trim().length<20) continue;
-        const rows=txt.trim().split('\n').slice(1);
-        const prices=rows.map(row=>{const cols=row.split(',');return parseFloat(cols[4]||cols[1]);}).filter(v=>!isNaN(v)&&v>0);
-        if(prices.length>=5) return prices;
-      }catch{}
+      for(const proxy of [null,...proxies]){
+        try{
+          const baseUrl=`https://stooq.com/q/d/l/?s=${encodeURIComponent(s)}&d1=${fmt(from)}&d2=${fmt(to)}&i=d`;
+          const url=proxy?proxy(baseUrl):baseUrl;
+          const r=await fetch(url,{signal:AbortSignal.timeout(9000)});
+          if(!r.ok) continue;
+          const txt=await r.text();
+          if(txt.includes('No data')||txt.trim().length<20) continue;
+          const rows=txt.trim().split('\n').slice(1);
+          const prices=rows.map(row=>{const cols=row.split(',');return parseFloat(cols[4]||cols[1]);}).filter(v=>!isNaN(v)&&v>0);
+          if(prices.length>=5) return prices;
+        }catch{}
+      }
     }
     return [];
   }
 
-  // Executar tot en paral·lel
-  const [spyPrices, goldPrices, mstrPrices, spyStooq, goldStooq] = await Promise.all([
-    fetchWithProxies(spyUrl),
-    fetchWithProxies(gldUrl),
-    fetchWithProxies(mstrUrl),
-    fetchStooq('spx.us', days),    // S&P500 via Stooq
-    fetchStooq('xauusd', days),   // Or via Stooq (XAU/USD)
+  // Executar en paral·lel: S&P500 per múltiples fonts
+  const [spyYahoo, spyStooq, mstrPrices] = await Promise.all([
+    fetchYahoo(spyUrl),
+    fetchStooq('spx.us', days),
+    fetchYahoo(mstrUrl),
   ]);
 
-  // Prioritzar la font que tingui més dades
-  const finalSpy = spyPrices.length >= spyStooq.length ? spyPrices : spyStooq;
-  const finalGold = goldPrices.length >= goldStooq.length ? goldPrices : goldStooq;
+  const finalSpy = spyYahoo.length >= spyStooq.length ? spyYahoo : spyStooq;
+  // Or: PAXG (Binance) és la font primària, GLD/Stooq de backup
+  const [gldYahoo, goldStooq] = paxgPrices.length>=5 ? [[],[] ] : await Promise.all([
+    fetchYahoo(`https://query1.finance.yahoo.com/v8/finance/chart/GLD?interval=1d&range=${range}`),
+    fetchStooq('xauusd', days),
+  ]);
+  const finalGold = paxgPrices.length>=5 ? paxgPrices
+    : gldYahoo.length>=goldStooq.length ? gldYahoo : goldStooq;
+  const goldSource = paxgPrices.length>=5 ? 'PAXG/Binance' : 'GLD/Yahoo';
 
   if(!finalSpy.length || !finalGold.length){
+    // Intentar caché localStorage
+    try{
+      const cached=localStorage.getItem('sf-corrData');
+      if(cached){
+        const parsed=JSON.parse(cached);
+        S.corrData=parsed.data;
+        S.corrError=null;
+        S.corrCached=parsed.savedAt;
+        renderTab('corr');
+        return;
+      }
+    }catch{}
     S.corrData=null;
-    S.corrError="No s'han pogut carregar dades del S&P500 i Or. Totes les fonts estan no disponibles. Prova-ho mes tard.";
+    S.corrCached=null;
+    const spxFail=!finalSpy.length, goldFail=!finalGold.length;
+    S.corrError=(spxFail&&goldFail?'S&P500 i Or':spxFail?'S&P500':'Or')+': no s\'han pogut carregar dades. Totes les fonts estan no disponibles.';
     renderTab('corr');
     return;
   }
@@ -2188,7 +2245,7 @@ async function fetchCorr(){
   const normalize=arr=>{const base=arr[0]||1;return arr.map(v=>(v/base)*100);};
   const minLen=Math.min(btcPrices.length||999, finalSpy.length, finalGold.length, mstrPrices.length||999);
   const useMstr=mstrPrices.length>=5;
-  if(minLen<5){S.corrData=null;S.corrError='Dades insuficients per calcular correlació.';return;}
+  if(minLen<5){S.corrData=null;S.corrError='Dades insuficients per calcular correlació.';renderTab('corr');return;}
   const btcN=normalize(btcPrices.slice(-minLen));
   const spyN=normalize(finalSpy.slice(-minLen));
   const goldN=normalize(finalGold.slice(-minLen));
@@ -2218,9 +2275,17 @@ async function fetchCorr(){
     rollBtcGold:rollCorr(btcN,goldN),
     rollBtcMstr:mstrN?rollCorr(btcN,mstrN):null,
     len:minLen,
+    goldSource,
     mstrLastPrice:mstrPrices.length?mstrPrices[mstrPrices.length-1]:null,
     mstrChange:mstrPrices.length>=2?((mstrPrices[mstrPrices.length-1]-mstrPrices[0])/mstrPrices[0]*100):null
   };
+  S.corrCached=null;
+  try{
+    localStorage.setItem('sf-corrData',JSON.stringify({
+      data:S.corrData,
+      savedAt:new Date().toLocaleDateString('es-ES',{weekday:'short',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})
+    }));
+  }catch{}
 }
 async function fetchCorrFallback(){
   // Ja no s'usa — fetchCorr ja té múltiples fallbacks interns
@@ -2241,6 +2306,11 @@ function renderCorr(){
     </div>`;
   }
   const d=S.corrData;
+  const cacheBanner=S.corrCached
+    ?`<div style="font-size:11px;background:rgba(234,179,8,.1);border:1px solid rgba(234,179,8,.3);border-radius:8px;padding:8px 12px;margin-bottom:12px;color:#eab308">
+        📦 Dades en caché del <b>${S.corrCached}</b> — els mercats estan tancats (cap de setmana / festiu). S'actualitzarà el proper dia laborable.
+      </div>`
+    :'';
   const corrInfo=r=>{
     const v=parseFloat(r.toFixed(2));
     if(v>=0.7) return{color:'#ef4444',label:'Alta positiva',icon:'🔴',desc:'BTC se mueve igual que este activo'};
@@ -2290,6 +2360,7 @@ function renderCorr(){
   };
   const periods=['30','90','365'];
   return`<div class="space-y">
+  ${cacheBanner}
   <!-- Header -->
   <div class="card">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
