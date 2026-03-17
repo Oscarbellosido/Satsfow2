@@ -485,6 +485,15 @@ async function saveSnapshotIfNeeded(manual=false){
     const existing=await new Promise(res=>{const q=tx.objectStore('predictions').get(snap.date);q.onsuccess=()=>res(q.result);q.onerror=()=>res(null);});
     if(!existing){
       await savePrediction(snap);
+      // Guardar preu diari en log per resolució futura de prediccions
+      try{
+        const log=JSON.parse(localStorage.getItem('sf-pricelog')||'{}');
+        log[snap.date]=snap.price;
+        // Mantenir màxim 400 dies (~13 mesos)
+        const keys=Object.keys(log).sort();
+        if(keys.length>400)keys.slice(0,keys.length-400).forEach(k=>delete log[k]);
+        localStorage.setItem('sf-pricelog',JSON.stringify(log));
+      }catch{}
       console.log('[SatsFlow] Snapshot diario guardado:',snap.date,'BTC $'+snap.price.toLocaleString());
       if(S.currentTab==='forecast')renderTab('forecast');
     }
@@ -527,121 +536,245 @@ function scheduleDailySnapshot(){
   setInterval(checkAndSave, 3600000);
 }
 
-function outcomeIcon(snap,realPrice){
-  if(!realPrice||!snap.week)return '';
-  const{bear,bull,base,mostLikely}=snap.week;
+// Obtenir preu real d'una data (del log o preu actual si és recent)
+function getPriceAtDate(targetDate){
+  try{
+    const log=JSON.parse(localStorage.getItem('sf-pricelog')||'{}');
+    // Buscar la data exacta o les 3 dates properes
+    if(log[targetDate]) return log[targetDate];
+    const keys=Object.keys(log).sort();
+    // Buscar la data més propera
+    let closest=null,minDiff=Infinity;
+    for(const k of keys){
+      const diff=Math.abs(new Date(k)-new Date(targetDate));
+      if(diff<minDiff&&diff<3*86400000){minDiff=diff;closest=k;}
+    }
+    return closest?log[closest]:null;
+  }catch{return null;}
+}
+
+function outcomeIcon(snap,realPrice,range){
+  const r=range||snap.week;
+  if(!realPrice||!r)return '';
+  const{bear,bull,base}=r;
   if(realPrice>=bear&&realPrice<=bull){
-    // Dentro del rango total
     const scenario=realPrice<(bear+base)/2?'📉 Bajista':realPrice<(base+bull)/2?'📊 Base':'📈 Alcista';
-    return'<span style="color:#10b981;font-weight:700">✅ Dentro del rango</span> <span style="font-size:10px;color:var(--text3)">('+scenario+')</span>';
+    return'<span style="color:#10b981;font-weight:700">✅ Dins rang</span> <span style="font-size:10px;color:var(--text3)">('+scenario+')</span>';
   }else if(realPrice<bear){
     const pct=((bear-realPrice)/bear*100).toFixed(1);
-    return'<span style="color:#ef4444;font-weight:700">❌ Por debajo</span> <span style="font-size:10px;color:var(--text3)">('+pct+'% bajo el bear)</span>';
+    return'<span style="color:#ef4444;font-weight:700">❌ Per sota</span> <span style="font-size:10px;color:var(--text3)">('+pct+'% sota el bear)</span>';
   }else{
     const pct=((realPrice-bull)/bull*100).toFixed(1);
-    return'<span style="color:#f97316;font-weight:700">🚀 Por encima</span> <span style="font-size:10px;color:var(--text3)">('+pct+'% sobre el bull)</span>';
+    return'<span style="color:#f97316;font-weight:700">🚀 Per sobre</span> <span style="font-size:10px;color:var(--text3)">('+pct+'% sobre el bull)</span>';
   }
 }
 
 async function renderPredictionHistory(){
-  const preds=await loadPredictions();
-  if(preds.length===0){
+  const allPreds=await loadPredictions();
+  if(allPreds.length===0){
     return'<div class="card"><div style="font-size:15px;font-weight:700;margin-bottom:10px">📜 Historial de predicciones</div>'
       +'<div style="text-align:center;padding:20px;color:var(--text3);font-size:13px">Sin predicciones guardadas aún.<br>Se guardará automáticamente a las 9:00 cada día.</div></div>';
   }
   const now=Date.now();
   const dayMs=86400000;
-  // Calcular aciertos
+
+  // Horitzó actiu (setmanal o mensual)
+  const horizon=S._predHorizon||'week';
+  const horizonDays=horizon==='month'?30:7;
+
+  // Filtre de període (persistit a S._predFilter)
+  const filter=S._predFilter||'30';
+  const filterDays={'7':7,'30':30,'90':90,'365':365,'all':99999};
+  const maxAge=filterDays[filter]*dayMs;
+  const preds=allPreds.filter(p=>(now-p.ts)<=maxAge);
+
+  // Paginació
+  const PAGE=S._predPage||0;
+  const PER_PAGE=10;
+  const totalPages=Math.ceil(preds.length/PER_PAGE);
+  const pagePreds=preds.slice(PAGE*PER_PAGE,(PAGE+1)*PER_PAGE);
+
+  const filterBtn=(v,label)=>'<button onclick="S._predFilter=\''+v+'\';S._predPage=0;renderTab(\'forecast\')" style="padding:5px 10px;border-radius:7px;border:1px solid var(--border);background:'+(filter===v?'#f97316':'var(--bg)')+';color:'+(filter===v?'#fff':'var(--text2)')+';font-size:11px;font-weight:'+(filter===v?'700':'400')+';cursor:pointer">'+label+'</button>';
+  const horizonBtn=(v,label)=>'<button onclick="S._predHorizon=\''+v+'\';renderTab(\'forecast\')" style="padding:5px 10px;border-radius:7px;border:1px solid var(--border);background:'+(horizon===v?'#3b82f6':'var(--bg)')+';color:'+(horizon===v?'#fff':'var(--text2)')+';font-size:11px;font-weight:'+(horizon===v?'700':'400')+';cursor:pointer">'+label+'</button>';
+
+  const filterBar='<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px">'
+    +'<span style="font-size:10px;color:var(--text3);align-self:center;margin-right:2px">Mostra:</span>'
+    +filterBtn('7','7D')+filterBtn('30','1M')+filterBtn('90','3M')+filterBtn('365','1A')+filterBtn('all','Tot')
+    +'<span style="font-size:10px;color:var(--text3);align-self:center;margin-left:4px">'+preds.length+'/'+allPreds.length+'</span></div>';
+
+  const horizonBar='<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:12px;align-items:center">'
+    +'<span style="font-size:10px;color:var(--text3);margin-right:2px">Avalua rang:</span>'
+    +horizonBtn('week','📅 Setmanal (7d)')+horizonBtn('month','📆 Mensual (30d)')
+    +'</div>';
+
+  // Mini gràfic SVG evolució
+  let chartHTML='';
+  const chartPreds=preds.filter(p=>p.week?.bear>0).slice().reverse();
+  if(chartPreds.length>=3){
+    const W=320,H=90,PX=8,PY=8;
+    const prices=chartPreds.map(p=>p.price);
+    const bears=chartPreds.map(p=>(horizon==='month'&&p.month)?p.month.bear:p.week.bear);
+    const bulls=chartPreds.map(p=>(horizon==='month'&&p.month)?p.month.bull:p.week.bull);
+    const allVals=[...prices,...bears,...bulls].filter(v=>v>0);
+    const minV=Math.min(...allVals)*0.995, maxV=Math.max(...allVals)*1.005;
+    const toX=i=>PX+(i/(chartPreds.length-1))*(W-PX*2);
+    const toY=v=>PY+(1-(v-minV)/(maxV-minV))*(H-PY*2);
+    const bandPts=chartPreds.map((_,i)=>toX(i).toFixed(1)+','+toY(bulls[i]).toFixed(1)).join(' ')
+      +' '+chartPreds.map((_,i)=>toX(chartPreds.length-1-i).toFixed(1)+','+toY(bears[chartPreds.length-1-i]).toFixed(1)).join(' ');
+    const pricePts=chartPreds.map((p,i)=>toX(i).toFixed(1)+','+toY(p.price).toFixed(1)).join(' ');
+    chartHTML='<div style="background:#0a1628;border-radius:10px;padding:8px 6px 4px;margin-bottom:12px">'
+      +'<div style="font-size:10px;color:var(--text3);margin-bottom:4px;padding:0 2px">📈 Preu real vs rang predit ('+(horizon==='month'?'1 mes':'1 setmana')+')</div>'
+      +'<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:70px" preserveAspectRatio="none">'
+      +'<polygon points="'+bandPts+'" fill="rgba(59,130,246,.15)"/>'
+      +'<polyline points="'+chartPreds.map((_,i)=>toX(i).toFixed(1)+','+toY(bulls[i]).toFixed(1)).join(' ')+'" fill="none" stroke="rgba(16,185,129,.5)" stroke-width="1" stroke-dasharray="3 2"/>'
+      +'<polyline points="'+chartPreds.map((_,i)=>toX(i).toFixed(1)+','+toY(bears[i]).toFixed(1)).join(' ')+'" fill="none" stroke="rgba(239,68,68,.5)" stroke-width="1" stroke-dasharray="3 2"/>'
+      +'<polyline points="'+pricePts+'" fill="none" stroke="#f97316" stroke-width="2" stroke-linejoin="round"/>'
+      +chartPreds.map((p,i)=>{
+        const b=horizon==='month'&&p.month?p.month:p.week;
+        const inRange=p.price>=(b?.bear||0)&&p.price<=(b?.bull||0);
+        return'<circle cx="'+toX(i).toFixed(1)+'" cy="'+toY(p.price).toFixed(1)+'" r="3" fill="'+(inRange?'#10b981':'#ef4444')+'"/>';
+      }).join('')
+      +'</svg>'
+      +'<div style="display:flex;justify-content:space-between;font-size:9px;color:var(--text3);padding:0 2px">'
+      +'<span>'+new Date(chartPreds[0].ts).toLocaleDateString('es-ES',{day:'2-digit',month:'short'})+'</span>'
+      +'<span style="color:#10b981">— Bull</span><span style="color:#f97316">— Preu real</span><span style="color:#ef4444">— Bear</span>'
+      +'<span>'+new Date(chartPreds[chartPreds.length-1].ts).toLocaleDateString('es-ES',{day:'2-digit',month:'short'})+'</span>'
+      +'</div></div>';
+  }
+
+  // Calcular aciertos usant el preu de la data CORRECTA (7d o 30d després del snapshot)
   let hits=0,total=0;
-  const rows=preds.map(snap=>{
-    const age=now-snap.ts;
-    const ageDays=age/dayMs;
-    const dateStr=new Date(snap.ts).toLocaleDateString('es-ES',{day:'2-digit',month:'short',year:'2-digit'});
-    const timeStr=new Date(snap.ts).toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'});
-    const isManual=snap.manual||snap.date.includes('_m');
-    const badge=isManual
-      ?'<span style="font-size:9px;padding:1px 5px;border-radius:4px;background:rgba(99,102,241,.15);color:#818cf8">manual</span>'
-      :'<span style="font-size:9px;padding:1px 5px;border-radius:4px;background:rgba(16,185,129,.12);color:#10b981">auto</span>';
+  const snapToRealPrice=(snap)=>{
+    // Primer intenta trobar el snapshot de la data adequada
+    const targetDate=new Date(snap.ts+horizonDays*dayMs).toISOString().slice(0,10);
+    const targetSnap=allPreds.find(p=>p.date===targetDate||p.date?.startsWith(targetDate));
+    if(targetSnap) return targetSnap.price;
+    // Fallback: pricelog
+    return getPriceAtDate(targetDate);
+  };
 
-    // Resultado: ¿ya pasó la semana?
-    let outcomeHTML='';
-    if(ageDays>=7){
-      const outcome=outcomeIcon(snap,S.price.usd);
-      outcomeHTML='<div style="margin-top:6px;font-size:11px">'+outcome+'</div>';
-      if(outcome.includes('✅'))hits++;
-      total++;
-    }else{
-      const daysLeft=Math.ceil(7-ageDays);
-      outcomeHTML='<div style="margin-top:6px;font-size:10px;color:var(--text3)">⏳ Resultado en ~'+daysLeft+' día'+(daysLeft===1?'':'s')+'</div>';
-    }
-
-    const scoreColor=snap.netScore>0.05?'#10b981':snap.netScore<-0.05?'#ef4444':'#eab308';
-    const w=snap.week;
-    return'<div style="padding:12px;border-radius:10px;background:var(--bg);border:1px solid var(--border);margin-bottom:8px">'
-      +'<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">'
-      +'<div>'
-      +'<div style="font-size:12px;font-weight:700;color:var(--text)">'+dateStr+' <span style="font-size:10px;color:var(--text3)">'+timeStr+'</span> '+badge+(snap.regime?' <span style="font-size:9px;padding:1px 5px;border-radius:4px;background:rgba(99,102,241,.1);color:#818cf8">'+snap.regime+'</span>':'')+'</div>'
-      +'<div style="font-size:13px;font-weight:800;color:#f97316;margin-top:2px">$'+snap.price.toLocaleString()+'</div>'
-      +'</div>'
-      +'<div style="text-align:right">'
-      +'<div style="font-size:10px;color:var(--text3)">Score</div>'
-      +'<div style="font-size:14px;font-weight:800;color:'+scoreColor+'">'+((snap.netScore||0)>=0?'+':'')+((snap.netScore||0)*100).toFixed(1)+'</div>'
-      +'</div>'
-      +'</div>'
-      +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;font-size:10px;margin-bottom:4px">'
-      +'<div style="background:rgba(239,68,68,.08);border-radius:6px;padding:4px;text-align:center"><div style="color:var(--text3)">📉 Bear</div><div style="font-weight:700;color:#ef4444">$'+(w?.bear||0).toLocaleString()+'</div></div>'
-      +'<div style="background:rgba(234,179,8,.08);border-radius:6px;padding:4px;text-align:center"><div style="color:var(--text3)">📊 Base</div><div style="font-weight:700;color:#eab308">$'+(w?.base||0).toLocaleString()+'</div></div>'
-      +'<div style="background:rgba(16,185,129,.08);border-radius:6px;padding:4px;text-align:center"><div style="color:var(--text3)">📈 Bull</div><div style="font-weight:700;color:#10b981">$'+(w?.bull||0).toLocaleString()+'</div></div>'
-      +'</div>'
-      +outcomeHTML
-      +'<div style="display:flex;justify-content:flex-end;margin-top:6px">'
-+'<button data-date="'+snap.date+'" onclick="deletePrediction(this.dataset.date).then(()=>renderTab(&quot;forecast&quot;))" style="background:none;border:none;color:var(--text3);font-size:11px;cursor:pointer;padding:0">🗑 borrar</button>'
-      +'</div>'
-      +'</div>';
+  // Agrupació per mes
+  const byMonth={};
+  pagePreds.forEach(snap=>{
+    const mk=new Date(snap.ts).toLocaleDateString('es-ES',{month:'long',year:'numeric'});
+    if(!byMonth[mk])byMonth[mk]=[];
+    byMonth[mk].push(snap);
   });
+
+  // Pre-calcular aciertos sobre TOTS els preds (no sols la pàgina)
+  preds.forEach(snap=>{
+    const age=(now-snap.ts)/dayMs;
+    if(age<horizonDays) return;
+    const range=horizon==='month'?snap.month:snap.week;
+    if(!range) return;
+    const realPrice=snapToRealPrice(snap)||S.price.usd;
+    if(!realPrice) return;
+    if(realPrice>=range.bear&&realPrice<=range.bull) hits++;
+    total++;
+  });
+
+  const rows=Object.entries(byMonth).map(([month,snaps])=>{
+    const snapRows=snaps.map(snap=>{
+      const age=(now-snap.ts)/dayMs;
+      const dateStr=new Date(snap.ts).toLocaleDateString('es-ES',{day:'2-digit',month:'short'});
+      const timeStr=new Date(snap.ts).toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'});
+      const isManual=snap.manual||snap.date.includes('_m');
+      const badge=isManual
+        ?'<span style="font-size:9px;padding:1px 5px;border-radius:4px;background:rgba(99,102,241,.15);color:#818cf8">manual</span>'
+        :'<span style="font-size:9px;padding:1px 5px;border-radius:4px;background:rgba(16,185,129,.12);color:#10b981">auto</span>';
+
+      const activeRange=horizon==='month'?snap.month:snap.week;
+      const resolvedAge=age>=horizonDays;
+      let outcomeHTML='';
+      if(resolvedAge&&activeRange){
+        const realPrice=snapToRealPrice(snap)||S.price.usd;
+        outcomeHTML='<div style="margin-top:5px;font-size:11px">'+outcomeIcon(snap,realPrice,activeRange)+'</div>';
+        if(realPrice) outcomeHTML+='<div style="font-size:9px;color:var(--text3);margin-top:2px">Preu real: $'+Math.round(realPrice).toLocaleString()+'</div>';
+      } else {
+        const daysLeft=Math.ceil(horizonDays-age);
+        outcomeHTML='<div style="margin-top:5px;font-size:10px;color:var(--text3)">⏳ '+daysLeft+'d per resolució '+(horizon==='month'?'mensual':'setmanal')+'</div>';
+      }
+
+      const scoreColor=snap.netScore>0.05?'#10b981':snap.netScore<-0.05?'#ef4444':'#eab308';
+      const w=snap.week, m=snap.month;
+      const showRange=horizon==='month'&&m?m:w;
+      const rangeLabel=horizon==='month'&&m?'📆 1 MES':'📅 1 SETMANA';
+
+      return'<div style="padding:11px;border-radius:10px;background:var(--bg);border:1px solid var(--border);margin-bottom:8px">'
+        +'<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">'
+        +'<div><div style="font-size:11px;font-weight:700;color:var(--text)">'+dateStr+' <span style="font-size:10px;color:var(--text3)">'+timeStr+'</span> '+badge+(snap.regime?' <span style="font-size:9px;padding:1px 5px;border-radius:4px;background:rgba(99,102,241,.1);color:#818cf8">'+snap.regime+'</span>':'')+'</div>'
+        +'<div style="font-size:13px;font-weight:800;color:#f97316">$'+snap.price.toLocaleString()+'</div></div>'
+        +'<div style="text-align:right"><div style="font-size:9px;color:var(--text3)">Score</div><div style="font-size:13px;font-weight:800;color:'+scoreColor+'">'+((snap.netScore||0)>=0?'+':'')+((snap.netScore||0)*100).toFixed(1)+'</div></div>'
+        +'</div>'
+        +'<div style="font-size:9px;color:var(--text3);margin-bottom:3px;font-weight:600">'+rangeLabel+(horizon==='month'&&!m?' <span style="color:#ef4444">(sense dades mensuals)</span>':'')+'</div>'
+        +(showRange?'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:3px;font-size:10px;margin-bottom:4px">'
+          +'<div style="background:rgba(239,68,68,.08);border-radius:5px;padding:3px;text-align:center"><div style="color:var(--text3)">Bear</div><div style="font-weight:700;color:#ef4444">$'+showRange.bear.toLocaleString()+'</div></div>'
+          +'<div style="background:rgba(234,179,8,.08);border-radius:5px;padding:3px;text-align:center"><div style="color:var(--text3)">Base</div><div style="font-weight:700;color:#eab308">$'+showRange.base.toLocaleString()+'</div></div>'
+          +'<div style="background:rgba(16,185,129,.08);border-radius:5px;padding:3px;text-align:center"><div style="color:var(--text3)">Bull</div><div style="font-weight:700;color:#10b981">$'+showRange.bull.toLocaleString()+'</div></div>'
+          +'</div>':'')
+        +outcomeHTML
+        +'<div style="display:flex;justify-content:flex-end;margin-top:6px">'
+        +'<button data-date="'+snap.date+'" onclick="deletePrediction(this.dataset.date).then(()=>renderTab(\'forecast\'))" style="background:none;border:none;color:var(--text3);font-size:11px;cursor:pointer;padding:0">🗑 borrar</button>'
+        +'</div></div>';
+    });
+    const showHeader=Object.keys(byMonth).length>1||filter==='90'||filter==='365'||filter==='all';
+    if(!showHeader)return snapRows.join('');
+    return'<div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin:10px 0 6px;padding-left:2px">'+month+' ('+snaps.length+')</div>'+snapRows.join('');
+  }).join('');
+
+  // Paginació
+  const pageBar=totalPages>1?'<div style="display:flex;gap:6px;justify-content:center;margin-top:12px;align-items:center">'
+    +(PAGE>0?'<button onclick="S._predPage='+(PAGE-1)+';renderTab(\'forecast\')" style="padding:6px 12px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);cursor:pointer">← Ant</button>':'')
+    +'<span style="font-size:11px;color:var(--text3)">'+(PAGE+1)+' / '+totalPages+'</span>'
+    +(PAGE<totalPages-1?'<button onclick="S._predPage='+(PAGE+1)+';renderTab(\'forecast\')" style="padding:6px 12px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);cursor:pointer">Seg →</button>':'')
+    +'</div>':'';
 
   const accuracy=total>0?Math.round(hits/total*100):null;
   const accuracyBadge=accuracy!==null
-    ?'<div style="font-size:12px;font-weight:700;color:'+(accuracy>=60?'#10b981':accuracy>=40?'#eab308':'#ef4444')+'">'+accuracy+'% acierto ('+hits+'/'+total+')</div>'
-    :'<div style="font-size:11px;color:var(--text3)">Acierto calculado tras 7 días</div>';
+    ?'<div style="font-size:12px;font-weight:700;color:'+(accuracy>=60?'#10b981':accuracy>=40?'#eab308':'#ef4444')+'">'+accuracy+'% encert ('+hits+'/'+total+') · '+(horizon==='month'?'1M':'7D')+'</div>'
+    :'<div style="font-size:11px;color:var(--text3)">Encert calculat en '+(horizon==='month'?'30':'7')+' dies</div>';
 
-  // Anàlisi de biaix del model (si hi ha prou dades resoltes)
   let biasHTML='';
   if(total>=3){
     const resolved=preds.filter(p=>{
       const age=(now-p.ts)/dayMs;
-      return age>=7&&p.week&&S.price.usd>0;
+      const range=horizon==='month'?p.month:p.week;
+      return age>=horizonDays&&range;
     });
-    const aboves=resolved.filter(p=>S.price.usd>p.week.bull).length;
-    const belows=resolved.filter(p=>S.price.usd<p.week.bear).length;
-    const inside=resolved.filter(p=>S.price.usd>=p.week.bear&&S.price.usd<=p.week.bull).length;
+    const aboves=resolved.filter(p=>{const r=horizon==='month'?p.month:p.week;const rp=snapToRealPrice(p)||S.price.usd;return rp>r?.bull;}).length;
+    const belows=resolved.filter(p=>{const r=horizon==='month'?p.month:p.week;const rp=snapToRealPrice(p)||S.price.usd;return rp<r?.bear;}).length;
+    const inside=resolved.length-aboves-belows;
     const bias=aboves>belows?'🚀 El modelo tiende a ser <b>demasiado conservador</b> (BTC supera el bull)':
                belows>aboves?'📉 El modelo tiende a ser <b>demasiado optimista</b> (BTC cae bajo el bear)':
-               '⚖️ El modelo no muestra biaix significatiu';
+               '⚖️ El modelo no muestra sesgo significativo';
     const biasColor=aboves>belows?'#f97316':belows>aboves?'#ef4444':'#10b981';
-    biasHTML='<div style="margin-top:10px;padding:10px;border-radius:10px;background:var(--bg);border:1px solid var(--border)">'
-      +'<div style="font-size:11px;font-weight:700;color:var(--text);margin-bottom:6px">📊 Anàlisi del model ('+total+' prediccions resoltes)</div>'
+    biasHTML='<div style="margin-bottom:12px;padding:10px;border-radius:10px;background:var(--bg);border:1px solid var(--border)">'
+      +'<div style="font-size:11px;font-weight:700;color:var(--text);margin-bottom:6px">📊 Análisis del modelo ('+total+' predicciones resueltas · '+(horizon==='month'?'1M':'7D')+')</div>'
       +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:8px;text-align:center">'
-      +'<div style="background:rgba(16,185,129,.1);border-radius:8px;padding:6px"><div style="font-size:18px;font-weight:800;color:#10b981">'+inside+'</div><div style="font-size:9px;color:var(--text3)">Dins rang</div></div>'
-      +'<div style="background:rgba(249,115,22,.1);border-radius:8px;padding:6px"><div style="font-size:18px;font-weight:800;color:#f97316">'+aboves+'</div><div style="font-size:9px;color:var(--text3)">Per sobre bull</div></div>'
-      +'<div style="background:rgba(239,68,68,.1);border-radius:8px;padding:6px"><div style="font-size:18px;font-weight:800;color:#ef4444">'+belows+'</div><div style="font-size:9px;color:var(--text3)">Per sota bear</div></div>'
+      +'<div style="background:rgba(16,185,129,.1);border-radius:8px;padding:6px"><div style="font-size:18px;font-weight:800;color:#10b981">'+inside+'</div><div style="font-size:9px;color:var(--text3)">Dentro rango</div></div>'
+      +'<div style="background:rgba(249,115,22,.1);border-radius:8px;padding:6px"><div style="font-size:18px;font-weight:800;color:#f97316">'+aboves+'</div><div style="font-size:9px;color:var(--text3)">Sobre bull</div></div>'
+      +'<div style="background:rgba(239,68,68,.1);border-radius:8px;padding:6px"><div style="font-size:18px;font-weight:800;color:#ef4444">'+belows+'</div><div style="font-size:9px;color:var(--text3)">Bajo bear</div></div>'
       +'</div>'
       +'<div style="font-size:11px;color:'+biasColor+'">'+bias+'</div>'
       +'</div>';
   }
 
-  return'<div class="card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">'
+  return'<div class="card">'
+    +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">'
     +'<div style="font-size:15px;font-weight:700">📜 Historial de predicciones</div>'
     +'<div style="text-align:right">'+accuracyBadge+'</div>'
     +'</div>'
+    +filterBar
+    +horizonBar
+    +chartHTML
     +biasHTML
-    +'<div style="margin-top:10px;margin-bottom:10px;display:flex;gap:8px;flex-wrap:wrap">'
+    +'<div style="margin-bottom:10px;display:flex;gap:8px;flex-wrap:wrap">'
     +'<button class="btn-orange" style="font-size:12px;padding:7px 12px" onclick="saveSnapshotIfNeeded(true)">📸 Guardar ahora</button>'
     +'<button onclick="purgeInvalidSnapshots()" style="font-size:11px;padding:7px 10px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text3);cursor:pointer">🧹 Limpiar $0</button>'
     +'<button onclick="clearAllPredictions()" style="font-size:11px;padding:7px 10px;border-radius:8px;border:1px solid rgba(239,68,68,.3);background:rgba(239,68,68,.06);color:#ef4444;cursor:pointer">🗑 Borrar todo</button>'
-    +'<div style="font-size:10px;color:var(--text3);align-self:center">Auto: 9:00 cada día</div>'
     +'</div>'
-    +rows.join('')
+    +rows
+    +pageBar
     +'</div>';
 }
 if('serviceWorker' in navigator){
