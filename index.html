@@ -202,7 +202,48 @@ const T={
     rsiOverbought:'RSI > 70 sobrecomprado → posible corrección',
     rsiNeutral:'RSI 30–70 zona neutral',
     rsiOversold:'RSI < 30 sobrevendido → posible rebote',
-    rsiOverboughtLabel:'Sobrecomprado',rsiOversoldLabel:'Sobrevendido',rsiNeutralLabel:'Neutral'
+    rsiOverboughtLabel:'Sobrecomprado',rsiOversoldLabel:'Sobrevendido',rsiNeutralLabel:'Neutral',
+    cycles:'Ciclos', dca:'DCA',
+    loading:'Cargando...', loadingMarket:'Cargando datos de mercado...', loadingNews:'Cargando noticias...', loadingMempool:'Cargando Mempool...', loadingCorr:'Cargando S&P500 y Oro...', loadingCorr2:'Probando múltiples fuentes en paralelo', loadingCorr3:'Máx. 10 segundos',
+    technicalAnalysis:'Análisis Técnico', marketSignal:'Señal del mercado', bullish:'Alcista', bearish:'Bajista',
+    macdBullish:'↑ Alcista', macdBearish:'↓ Bajista', goldenCross:'Golden Cross', deathCross:'Death Cross',
+    inRange:'En rango', overbought:'Sobrecomprado', oversold:'Sobrevendido',
+    srTitle:'Soporte & Resistencia', currentPriceLbl:'Precio actual',
+    rsiDesc:'RSI <30 sobrevendido · RSI >70 sobrecomprado', macdDesc:'MACD cruza arriba = alcista · Cruza abajo = bajista',
+    noHistoryMsg:'Necesita historial de 30+ días.<br>Cambia el periodo a 30D en Inicio.',
+    noFinancialAdvice:'⚠️ No garantiza resultados futuros. No es un consejo financiero.',
+    priceSources:'Precios', noFinancialAdvice2:'No es un consejo financiero.',
+    thisPeriod:'en este periodo', updated:'Actualizado', marketCap:'Cap. Mercado',
+    chartArea:'Área', chartCandle:'Velas',
+    fearGreedTitle:'Miedo & Codicia', fearGreedSource:'Fuente: alternative.me · Actualización diaria',
+    dominanceTitle:'Dominancia BTC', dominanceEvolution:'Evolución (sesión actual)',
+    dominanceBull:'BTC dominante — mercado en acumulación', dominanceAlt:'Altcoins ganan terreno — posible alt season',
+    rainbowTitle:'Rainbow Chart', rainbowDesc:'Valoración histórica del precio de Bitcoin',
+    rainbowSignal:'Señal actual', rainbowModel:'Modelo: regresión logarítmica histórica (bloque génesis 2009)',
+    rainbowDisclaimer:'⚠️ Solo orientativo. No es consejo financiero.',
+    miningTitle:'Minería', hashrate:'Hashrate', diffChange:'Cambio dificultad', nextAdjust:'Próximo ajuste', blocks:'bloques', completed:'completado',
+    newsTitle:'Noticias Bitcoin', newsSentiment:'Sentimiento de noticias', sentBullish:'📈 Alcistas', sentNeutral:'➖ Neutras', sentBearish:'📉 Bajistas', sentGlobalBull:'📈 Sentimiento alcista', sentGlobalBear:'📉 Sentimiento bajista — precaución',
+    mempoolTitle:'Mempool & Fees', congestion:'Congestión', congLow:'🟢 Baja', congMed:'🟡 Media', congHigh:'🟠 Alta', congVHigh:'🔴 Muy alta',
+    calcTitle:'Calculadora', priority:'Prioridad', feefast:'⚡ Rápido', fee30m:'🟠 30 min', fee1h:'🕐 1 hora', feeEco:'💤 Eco', feeMin:'🐢 Mínima', bytes:'Bytes', hours:'Horas',
+    atmTitle:'Cajeros Bitcoin cercanos', atmFind:'Encuentra cajeros Bitcoin cerca de ti', atmRadius:'Usaremos tu ubicación para buscar en un radio de ~50 km', atmBtn:'🗺️ Buscar cerca de mí', atmFound:'cajeros/comercios encontrados', atmNone:'No se encontraron cajeros Bitcoin en esta zona', atmTip:'🟠 Cajeros/comercios Bitcoin · 📍 Tu posición · Datos: BTCMap.org', atmRefresh:'🔄 Actualizar', atmRetry:'🔄 Reintentar', atmLocation:'Obteniendo tu ubicación...', atmSearching:'Buscando cajeros Bitcoin...', atmErrPerm:'Permiso de ubicación denegado. Ve a los ajustes del navegador y activa la ubicación para esta página.', atmErrTimeout:'Tiempo de espera agotado. Comprueba tu conexión.', atmErrMap:'No se pudo cargar el mapa. Inténtalo de nuevo.', myLocation:'📍 Tu ubicación',
+    notifEnable:'Activa las notificaciones', notifEnableDesc:'Para recibir alertas con la app cerrada.', notifActive:'Notificaciones activas. Recibirás avisos aunque la app esté cerrada.',
+    alertsTitle2:'Alertas', fixedPrice:'💰 Precio fijo', pctChange:'📊 % Cambio', priceTarget:'Precio objetivo', refPrice:'Precio de referencia', triggerDesc:'Se dispara cuando BTC sube/baja ese % desde ahora.', rises:'Sube ↑', falls:'Baja ↓',
+    corrTitle:'Correlación BTC vs Mercados', corrDesc:'Compara el rendimiento de Bitcoin con el S&P500 y el Oro', corrLoad:'📊 Cargar datos', corrWeekend:'Puede ser que los mercados estén cerrados (fin de semana) o la API esté temporalmente no disponible.', corrHigh:'Alta positiva', corrMod:'Moderada', corrLow:'Baja / Nula', corrInvMod:'Inversa moderada', corrInvHigh:'Alta inversa', corrMovSame:'BTC se mueve igual que este activo', corrMovPos:'Cierta correlación positiva', corrMovInd:'Movimientos independientes', corrMovOpp:'Tienden a moverse en sentidos opuestos', corrMovOpposite:'Típico activo refugio vs BTC', corrCacheBanner:'📦 Datos en caché del $1 — los mercados están cerrados (fin de semana / festivo). Se actualizará el próximo día laborable.', corrTimeoutFull:'Tiempo de espera superado. El S&P500 solo está disponible en días laborables (lun–vier). Pruébalo de nuevo.', corrTimeout:'Tiempo de espera superado. Pruébalo en un día laborable.',
+    backupTitle:'Backup de configuració', backupExport:'📤 Exportar', backupImport:'📥 Importar', backupDesc:"Exporta alertes i ajustos a JSON. Importa'l per recuperar-los.",
+    histPredTitle:'Historial de predicciones', histPredEmpty:'Sin predicciones guardadas aún.\nSe guardará automáticamente a las 9:00 cada día.', histSave:'📸 Guardar ahora', histPurge:'🧹 Limpiar $0', histClear:'🗑 Borrar todo', histBiasTitle:'Análisis del modelo', histInsideRange:'Dentro rango', histAboveBull:'Sobre bull', histBelowBear:'Bajo bear', histConservative:'🚀 El modelo tiende a ser <b>demasiado conservador</b> (BTC supera el bull)', histPessimistic:'📉 El modelo tiende a ser <b>demasiado optimista</b> (BTC cae bajo el bear)', histNoBias:'⚖️ El modelo no muestra sesgo significativo', histDelete:'🗑 borrar', histResWeek:'7D', histResMonth:'1M', histShow:'Mostra:', histEval:'Avalua rang:',
+    forecastDisclaimer:'Esto no es consejo financiero. Son rangos probabilísticos. Bitcoin es extremadamente volátil.',
+    purgeMsg1:'registros inválidos eliminados', purgeMsg2:'No hay registros inválidos', clearConfirm:'¿Borrar todo el historial de predicciones?', snapSaved:'Predicción guardada: BTC $',
+    installTitle:'⬇️ Instalar SatsFlow', installStep1:'Pulsa el menú del navegador (⋮ o compartir).', installStep2:'Selecciona <b>"Instalar aplicación"</b> o <b>"Añadir a pantalla de inicio"</b>.', installStep3:'Funciona con notificaciones aunque esté cerrada.', installOk:'Entendido',
+    errorLoad:'Error al cargar', errorRetry:'🔄 Reintentar',
+    importOk:'✅ Config importada correctamente!', importErr:'❌ Error: archivo no válido',
+    domAccum:'Los datos se acumularán mientras la app está abierta...', now:'AHORA',
+    alertAbove:'ha subido sobre', alertBelow:'ha bajado de',
+    rb_maxSell:'Zona de venta máxima', rb_veryCostly:'Muy caro — vende', rb_fomo:'FOMO intenso', rb_costly:'Caro', rb_fair:'Precio justo', rb_cheap:'Todavía barato', rb_accum:'Acumula', rb_histOffer:'Oferta histórica', rb_maxBuy:'Compra máximo',
+    cyclesTitle:'Comparador de Ciclos BTC', cyclesSubtitle:'Precio normalizado desde el halving (halving = 1x)', cyclesCurrent:'2024 (actual)', cyclesDayLabel:'Día del ciclo', cyclesMultLabel:'Multiplicador', cyclesSinceHalving:'Desde halving', cyclesHalvingPrice:'Precio halving', cyclesPosition:'Posición actual', cyclesDayOf:'Precio en día', cyclesEachCycle:'de cada ciclo', cyclesAthTitle:'Proyección ATH ciclo 2024', cyclesAthModel:'ATH proyectado (modelo histórico)', cyclesAthMult:'Multiplicador esperado', cyclesAthDate:'Fecha estimada', cyclesAthDays:'Días restantes estimados', cyclesAthPassed:'Ya pasó o muy cerca', cyclesDaysLeft:'~$1 días', cyclesAbove20:'Por encima del ciclo 2020', cyclesInLine20:'En línea con ciclo 2020', cyclesBelow20:'Por debajo del ciclo 2020', cyclesFarBelow:'Muy por debajo del histórico', cyclesDisclaimer:'⚠️ Basado en patrones históricos. Cada ciclo es diferente. No es consejo financiero.',
+    globalEventsTitle:'Próximos eventos', globalEventsDesc:'Eventos macro y crypto que impactan a Bitcoin', globalPast:'Pasado', globalToday:'HOY', globalInDays:'En $1 días', globalDomTitle:'Dominancia BTC histórica', globalDomDesc:'2020 – hoy · Con marcadores de halving', globalDomNote:'Por encima del 50%: Bitcoin dominante. Por encima del 60%: mercado en acumulación / bear market altcoins.', globalMapTitle:'Mapa de adopción Bitcoin', globalMapDesc:'Estado legal por país — toca los puntos para ver detalles', globalMapSrc:'Fuentes: Library of Congress, CoinDesk, Bitcoin.org · Datos 2024-2025', globalLoadingMap:'Cargando mapa...', globalLegal:'Curso legal', globalETF:'ETF aprobados', globalRegulated:'Regulado', globalRestricted:'Restrictivo', globalBanned:'Prohibido', globalStatusLegal:'🟢 Curso Legal', globalStatusETF:'🔵 ETF Aprobados', globalStatusReg:'🟡 Regulado', globalStatusRes:'🟠 Restrictivo', globalStatusBan:'🔴 Prohibido',
+    forecastWaiting:'Esperando precio...', forecastLoading:'Cargando datos...', forecastWaitHist:'Esperando historial de precio', forecastMostLikely:'MÁS PROBABLE (estimado)', forecastBullish:'📈 Alcista', forecastBase:'📊 Base', forecastBearish:'📉 Bajista', forecastBiasLabel_bull:'Alcista', forecastBiasLabel_slbull:'Lev. alcista', forecastBiasLabel_bear:'Bajista', forecastBiasLabel_slbear:'Lev. bajista', forecastBiasLabel_neutral:'Neutral',
+    dcaTitle:'Calculadora DCA', dcaDesc:'Dollar Cost Averaging — inversión periódica en Bitcoin', dcaMonthly:'Inversión mensual (€)', dcaMonthsAgo:'Hace cuántos meses', dcaStartPrice:'Precio inicial BTC (€)', dcaUseNow:'usar actual', dcaInfoTitle:'¿Qué es DCA?', dcaInfoText:'<b>Dollar Cost Averaging</b> es invertir una cantidad fija periódicamente, independientemente del precio.<br><br>✅ Elimina el estrés de "comprar en el momento perfecto"<br>✅ Promedia el precio de entrada automáticamente<br>✅ Estrategia recomendada por la mayoría de Bitcoiners a largo plazo', dcaInfoNote:'Los cálculos asumen un precio de entrada lineal desde el precio inicial hasta el precio actual.',
+    dcaTotalInvested:'TOTAL INVERTIDO', dcaBTCAccum:'BTC ACUMULADO', dcaCurrentVal:'VALOR ACTUAL', dcaProfitLoss:'GANANCIA/PÉRDIDA', dcaAvgEntry:'Precio medio de entrada', dcaCurrentPrice:'Precio actual', dcaDiff:'Diferencia'
   },
   ca:{
     home:'Inici',analysis:'Anàlisi',market:'Mercat',mempool:'Mempool',
@@ -241,7 +282,48 @@ const T={
     rsiOverbought:'RSI > 70 sobrecomprat → possible correcció',
     rsiNeutral:'RSI 30–70 zona neutral',
     rsiOversold:'RSI < 30 sobrevenut → possible rebot',
-    rsiOverboughtLabel:'Sobrecomprat',rsiOversoldLabel:'Sobrevenut',rsiNeutralLabel:'Neutral'
+    rsiOverboughtLabel:'Sobrecomprat',rsiOversoldLabel:'Sobrevenut',rsiNeutralLabel:'Neutral',
+    cycles:'Cicles', dca:'DCA',
+    loading:'Carregant...', loadingMarket:'Carregant dades de mercat...', loadingNews:'Carregant notícies...', loadingMempool:'Carregant Mempool...', loadingCorr:'Carregant S&P500 i Or...', loadingCorr2:'Provant múltiples fonts en paral·lel', loadingCorr3:'Màx. 10 segons',
+    technicalAnalysis:'Anàlisi Tècnica', marketSignal:'Senyal del mercat', bullish:'Alcista', bearish:'Baixista',
+    macdBullish:'↑ Alcista', macdBearish:'↓ Baixista', goldenCross:'Golden Cross', deathCross:'Death Cross',
+    inRange:'En rang', overbought:'Sobrecomprat', oversold:'Sobrevenut',
+    srTitle:'Suport & Resistència', currentPriceLbl:'Preu actual',
+    rsiDesc:'RSI <30 sobrevenut · RSI >70 sobrecomprat', macdDesc:'MACD creua amunt = alcista · Creua avall = baixista',
+    noHistoryMsg:"Necessita historial de 30+ dies.<br>Canvia el període a 30D a l'Inici.",
+    noFinancialAdvice:'⚠️ No garanteix resultats futurs. No és un consell financer.',
+    priceSources:'Preus', noFinancialAdvice2:'No és un consell financer.',
+    thisPeriod:'en aquest període', updated:'Actualitzat', marketCap:'Cap. Mercat',
+    chartArea:'Àrea', chartCandle:'Espelmes',
+    fearGreedTitle:'Por & Cobdícia', fearGreedSource:'Font: alternative.me · Actualització diària',
+    dominanceTitle:'Dominància BTC', dominanceEvolution:'Evolució (sessió actual)',
+    dominanceBull:'BTC dominant — mercat en acumulació', dominanceAlt:"Les Altcoins guanyen terreny — possible alt season",
+    rainbowTitle:'Rainbow Chart', rainbowDesc:'Valoració històrica del preu de Bitcoin',
+    rainbowSignal:'Senyal actual', rainbowModel:'Model: regressió logarítmica històrica (bloc gènesi 2009)',
+    rainbowDisclaimer:'⚠️ Només orientatiu. No és un consell financer.',
+    miningTitle:'Mineria', hashrate:'Hashrate', diffChange:'Canvi dificultat', nextAdjust:'Proper ajust', blocks:'blocs', completed:'completat',
+    newsTitle:'Notícies Bitcoin', newsSentiment:'Sentiment de notícies', sentBullish:'📈 Alcistes', sentNeutral:'➖ Neutres', sentBearish:'📉 Baixistes', sentGlobalBull:'📈 Sentiment alcista', sentGlobalBear:'📉 Sentiment baixista — precaució',
+    mempoolTitle:'Mempool & Fees', congestion:'Congestió', congLow:'🟢 Baixa', congMed:'🟡 Mitja', congHigh:'🟠 Alta', congVHigh:'🔴 Molt alta',
+    calcTitle:'Calculadora', priority:'Prioritat', feefast:'⚡ Ràpid', fee30m:'🟠 30 min', fee1h:'🕐 1 hora', feeEco:'💤 Eco', feeMin:'🐢 Mínima', bytes:'Bytes', hours:'Hores',
+    atmTitle:'Caixers Bitcoin propers', atmFind:'Troba caixers Bitcoin a prop teu', atmRadius:"Usarem la teva ubicació per cercar en un radi de ~50 km", atmBtn:'🗺️ Cercar prop meu', atmFound:'caixers/comerços trobats', atmNone:"No s'han trobat caixers Bitcoin en aquesta zona", atmTip:'🟠 Caixers/comerços Bitcoin · 📍 La teva posició · Dades: BTCMap.org', atmRefresh:'🔄 Actualitzar', atmRetry:'🔄 Reintentar', atmLocation:'Obtenint la teva ubicació...', atmSearching:'Cercant caixers Bitcoin...', atmErrPerm:"Permís d'ubicació denegat. Ves als ajustos del navegador i activa la ubicació per a aquesta pàgina.", atmErrTimeout:"Temps d'espera esgotat. Comprova la teva connexió.", atmErrMap:"No s'ha pogut carregar el mapa. Torna-ho a provar.", myLocation:'📍 La teva ubicació',
+    notifEnable:'Activa les notificacions', notifEnableDesc:"Per rebre alertes amb l'app tancada.", notifActive:"Notificacions actives. Rebràs avisos encara que l'app estigui tancada.",
+    alertsTitle2:'Alertes', fixedPrice:'💰 Preu fix', pctChange:'📊 % Canvi', priceTarget:'Preu objectiu', refPrice:'Preu de referència', triggerDesc:"Es dispara quan BTC puja/baixa aquest % des d'ara.", rises:'Puja ↑', falls:'Baixa ↓',
+    corrTitle:'Correlació BTC vs Mercats', corrDesc:"Compara el rendiment de Bitcoin amb el S&P500 i l'Or", corrLoad:'📊 Carregar dades', corrWeekend:"Pot ser que els mercats estiguin tancats (cap de setmana) o l'API estigui temporalment no disponible.", corrHigh:'Alta positiva', corrMod:'Moderada', corrLow:'Baixa / Nul·la', corrInvMod:'Inversa moderada', corrInvHigh:'Alta inversa', corrMovSame:'BTC es mou igual que aquest actiu', corrMovPos:'Certa correlació positiva', corrMovInd:'Moviments independents', corrMovOpp:"Tendeixen a moure's en sentits oposats", corrMovOpposite:'Típic actiu refugi vs BTC', corrCacheBanner:"📦 Dades en memòria cau del $1 — els mercats estan tancats (cap de setmana / festiu). S'actualitzarà el proper dia laborable.", corrTimeoutFull:"Temps d'espera superat. El S&P500 només està disponible en dies laborables (dl–dv). Torna-ho a provar.", corrTimeout:"Temps d'espera superat. Prova-ho en un dia laborable.",
+    backupTitle:'Còpia de seguretat', backupExport:'📤 Exportar', backupImport:'📥 Importar', backupDesc:"Exporta alertes i ajustos a JSON. Importa'l per recuperar-los.",
+    histPredTitle:'Historial de prediccions', histPredEmpty:"Sense prediccions guardades encara.\nEs guardarà automàticament a les 9:00 cada dia.", histSave:'📸 Guardar ara', histPurge:'🧹 Netejar $0', histClear:'🗑 Esborrar tot', histBiasTitle:'Anàlisi del model', histInsideRange:'Dins del rang', histAboveBull:'Sobre bull', histBelowBear:'Sota bear', histConservative:'🚀 El model tendeix a ser <b>massa conservador</b> (BTC supera el bull)', histPessimistic:'📉 El model tendeix a ser <b>massa optimista</b> (BTC cau sota el bear)', histNoBias:'⚖️ El model no mostra biaix significatiu', histDelete:'🗑 esborrar', histResWeek:'7D', histResMonth:'1M', histShow:'Mostra:', histEval:'Avalua rang:',
+    forecastDisclaimer:'Això no és un consell financer. Són rangs probabilístics. El Bitcoin és extremadament volàtil.',
+    purgeMsg1:'registres no vàlids eliminats', purgeMsg2:'No hi ha registres no vàlids', clearConfirm:"Voleu esborrar tot l'historial de prediccions?", snapSaved:'Predicció guardada: BTC $',
+    installTitle:'⬇️ Instal·lar SatsFlow', installStep1:'Prem el menú del navegador (⋮ o compartir).', installStep2:'Selecciona <b>"Instal·lar aplicació"</b> o <b>"Afegir a la pantalla d\'inici"</b>.', installStep3:'Funciona amb notificacions encara que estigui tancada.', installOk:'Entès',
+    errorLoad:'Error en carregar', errorRetry:'🔄 Reintentar',
+    importOk:'✅ Configuració importada correctament!', importErr:'❌ Error: fitxer no vàlid',
+    domAccum:"Les dades s'acumularan mentre l'app estigui oberta...", now:'ARA',
+    alertAbove:'ha pujat per sobre', alertBelow:'ha baixat de',
+    rb_maxSell:'Zona de venda màxima', rb_veryCostly:'Molt car — ven', rb_fomo:'FOMO intens', rb_costly:'Car', rb_fair:'Preu just', rb_cheap:'Encara barat', rb_accum:'Acumula', rb_histOffer:'Oferta històrica', rb_maxBuy:'Compra màxim',
+    cyclesTitle:'Comparador de Cicles BTC', cyclesSubtitle:'Preu normalitzat des del halving (halving = 1x)', cyclesCurrent:'2024 (actual)', cyclesDayLabel:'Dia del cicle', cyclesMultLabel:'Multiplicador', cyclesSinceHalving:'Des del halving', cyclesHalvingPrice:'Preu halving', cyclesPosition:'Posició actual', cyclesDayOf:'Preu al dia', cyclesEachCycle:'de cada cicle', cyclesAthTitle:'Projecció ATH cicle 2024', cyclesAthModel:'ATH projectat (model històric)', cyclesAthMult:'Multiplicador esperat', cyclesAthDate:'Data estimada', cyclesAthDays:'Dies restants estimats', cyclesAthPassed:'Ja va passar o molt a prop', cyclesDaysLeft:'~$1 dies', cyclesAbove20:'Per sobre del cicle 2020', cyclesInLine20:'En línia amb el cicle 2020', cyclesBelow20:'Per sota del cicle 2020', cyclesFarBelow:'Molt per sota de l\'històric', cyclesDisclaimer:'⚠️ Basat en patrons històrics. Cada cicle és diferent. No és un consell financer.',
+    globalEventsTitle:'Propers esdeveniments', globalEventsDesc:'Esdeveniments macro i crypto que impacten Bitcoin', globalPast:'Passat', globalToday:'AVUI', globalInDays:'En $1 dies', globalDomTitle:'Dominància BTC històrica', globalDomDesc:'2020 – avui · Amb marcadors de halving', globalDomNote:'Per sobre del 50%: Bitcoin dominant. Per sobre del 60%: mercat en acumulació / bear market altcoins.', globalMapTitle:'Mapa d\'adopció Bitcoin', globalMapDesc:'Estat legal per país — toca els punts per veure detalls', globalMapSrc:'Fonts: Library of Congress, CoinDesk, Bitcoin.org · Dades 2024-2025', globalLoadingMap:'Carregant mapa...', globalLegal:'Curs legal', globalETF:'ETF aprovats', globalRegulated:'Regulat', globalRestricted:'Restrictiu', globalBanned:'Prohibit', globalStatusLegal:'🟢 Curs Legal', globalStatusETF:'🔵 ETF Aprovats', globalStatusReg:'🟡 Regulat', globalStatusRes:'🟠 Restrictiu', globalStatusBan:'🔴 Prohibit',
+    forecastWaiting:'Esperant preu...', forecastLoading:'Carregant dades...', forecastWaitHist:'Esperant historial de preu', forecastMostLikely:'MÉS PROBABLE (estimat)', forecastBullish:'📈 Alcista', forecastBase:'📊 Base', forecastBearish:'📉 Baixista', forecastBiasLabel_bull:'Alcista', forecastBiasLabel_slbull:'Lleu. alcista', forecastBiasLabel_bear:'Baixista', forecastBiasLabel_slbear:'Lleu. baixista', forecastBiasLabel_neutral:'Neutral',
+    dcaTitle:'Calculadora DCA', dcaDesc:"Dollar Cost Averaging — inversió periòdica en Bitcoin", dcaMonthly:'Inversió mensual (€)', dcaMonthsAgo:'Fa quants mesos', dcaStartPrice:'Preu inicial BTC (€)', dcaUseNow:'usar actual', dcaInfoTitle:'Què és DCA?', dcaInfoText:"<b>Dollar Cost Averaging</b> és invertir una quantitat fixa periòdicament, independentment del preu.<br><br>✅ Elimina l'estrès de \"comprar al moment perfecte\"<br>✅ Promitja el preu d'entrada automàticament<br>✅ Estratègia recomanada per la majoria de Bitcoiners a llarg termini", dcaInfoNote:"Els càlculs assumeixen un preu d'entrada lineal des del preu inicial fins al preu actual.",
+    dcaTotalInvested:'TOTAL INVERTIT', dcaBTCAccum:'BTC ACUMULAT', dcaCurrentVal:'VALOR ACTUAL', dcaProfitLoss:'GUANY/PÈRDUA', dcaAvgEntry:"Preu mig d'entrada", dcaCurrentPrice:'Preu actual', dcaDiff:'Diferència'
   }
 };
 const t=()=>T[S.lang]||T.es;
@@ -250,8 +332,8 @@ function setLang(lang,silent){
   S.lang=lang;
   localStorage.setItem('sf-lang',lang);
   document.documentElement.lang=lang;
-  const tabKeys=['home','analysis','market','mempool','atm','news','alerts','corr','global','forecast'];
-  const tabIcons={home:'🏠',analysis:'🧠',market:'📊',mempool:'⛓️',atm:'🏧',news:'📰',alerts:'🔔',corr:'📈',global:'🌍',forecast:'🔮'};
+  const tabKeys=['home','analysis','market','mempool','atm','news','alerts','corr','global','forecast','cycles','dca'];
+  const tabIcons={home:'🏠',analysis:'🧠',market:'📊',mempool:'⛓️',atm:'🏧',news:'📰',alerts:'🔔',corr:'📈',global:'🌍',forecast:'🔮',cycles:'🔄',dca:'📐'};
   tabKeys.forEach(tab=>{
     const btn=document.querySelector('[data-tab="'+tab+'"]');
     if(btn)btn.innerHTML='<span class="tab-icon">'+tabIcons[tab]+'</span>'+(t()[tab]||tab);
@@ -352,12 +434,12 @@ function renderSettings(){
     +'<button onclick="disableMorningAlert();renderTab(\'alerts\')" style="padding:8px 12px;border-radius:10px;border:1px solid rgba(239,68,68,.3);background:rgba(239,68,68,.08);color:#ef4444;font-size:12px;cursor:pointer">✕ '+tr.morningDisable+'</button>':'')
     +'</div></div>'
     +'<div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">'
-    +'<div style="font-size:13px;font-weight:700;margin-bottom:10px">💾 Backup de configuració</div>'
+    +'<div style="font-size:13px;font-weight:700;margin-bottom:10px">💾 '+tr.backupTitle+'</div>'
     +'<div style="display:flex;gap:8px">'
-    +'<button class="btn-ghost" style="flex:1;padding:10px" onclick="exportConfig()">📤 Exportar</button>'
-    +'<button class="btn-ghost" style="flex:1;padding:10px" onclick="importConfig()">📥 Importar</button>'
+    +'<button class="btn-ghost" style="flex:1;padding:10px" onclick="exportConfig()">'+tr.backupExport+'</button>'
+    +'<button class="btn-ghost" style="flex:1;padding:10px" onclick="importConfig()">'+tr.backupImport+'</button>'
     +'</div>'
-    +'<div style="font-size:10px;color:var(--text3);margin-top:6px">Exporta alertes i ajustos a JSON. Importa\'l per recuperar-los.</div>'
+    +'<div style="font-size:10px;color:var(--text3);margin-top:6px">'+tr.backupDesc+'</div>'
     +'</div>'
     +'</div>';
 }
@@ -411,12 +493,13 @@ async function purgeInvalidSnapshots(){
     console.log('[purge] deleting',p.date,'bear=',p.week?.bear);
     await deletePrediction(p.date);
   }
-  const msg=invalid.length>0?invalid.length+' registros inválidos eliminados':'No hay registros inválidos';
+  const tr=t();
+  const msg=invalid.length>0?invalid.length+' '+tr.purgeMsg1:tr.purgeMsg2;
   showNotif('🧹 SatsFlow',msg);
   renderTab('forecast');
 }
 async function clearAllPredictions(){
-  if(!confirm('¿Borrar todo el historial de predicciones?'))return;
+  if(!confirm(t().clearConfirm))return;
   const preds=await loadPredictions();
   for(const p of preds)await deletePrediction(p.date);
   renderTab('forecast');
@@ -475,7 +558,7 @@ async function saveSnapshotIfNeeded(manual=false){
     snap.date=snap.date+'_m'+Date.now(); // evitar sobreescribir el auto del mismo día
     await savePrediction(snap);
     if(S.currentTab==='forecast')renderTab('forecast');
-    showNotif('📸 SatsFlow','Predicción guardada: BTC $'+snap.price.toLocaleString());
+    showNotif('📸 SatsFlow',t().snapSaved+snap.price.toLocaleString());
     return;
   }
   // Auto: solo guardar si no existe ya una entrada de hoy
@@ -570,10 +653,11 @@ function outcomeIcon(snap,realPrice,range){
 }
 
 async function renderPredictionHistory(){
+  const tr=t();
   const allPreds=await loadPredictions();
   if(allPreds.length===0){
-    return'<div class="card"><div style="font-size:15px;font-weight:700;margin-bottom:10px">📜 Historial de predicciones</div>'
-      +'<div style="text-align:center;padding:20px;color:var(--text3);font-size:13px">Sin predicciones guardadas aún.<br>Se guardará automáticamente a las 9:00 cada día.</div></div>';
+    return'<div class="card"><div style="font-size:15px;font-weight:700;margin-bottom:10px">📜 '+tr.histPredTitle+'</div>'
+      +'<div style="text-align:center;padding:20px;color:var(--text3);font-size:13px">'+tr.histPredEmpty.replace('\n','<br>')+'</div></div>';
   }
   const now=Date.now();
   const dayMs=86400000;
@@ -598,12 +682,12 @@ async function renderPredictionHistory(){
   const horizonBtn=(v,label)=>'<button onclick="S._predHorizon=\''+v+'\';renderTab(\'forecast\')" style="padding:5px 10px;border-radius:7px;border:1px solid var(--border);background:'+(horizon===v?'#3b82f6':'var(--bg)')+';color:'+(horizon===v?'#fff':'var(--text2)')+';font-size:11px;font-weight:'+(horizon===v?'700':'400')+';cursor:pointer">'+label+'</button>';
 
   const filterBar='<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px">'
-    +'<span style="font-size:10px;color:var(--text3);align-self:center;margin-right:2px">Mostra:</span>'
+    +'<span style="font-size:10px;color:var(--text3);align-self:center;margin-right:2px">'+tr.histShow+'</span>'
     +filterBtn('7','7D')+filterBtn('30','1M')+filterBtn('90','3M')+filterBtn('365','1A')+filterBtn('all','Tot')
     +'<span style="font-size:10px;color:var(--text3);align-self:center;margin-left:4px">'+preds.length+'/'+allPreds.length+'</span></div>';
 
   const horizonBar='<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:12px;align-items:center">'
-    +'<span style="font-size:10px;color:var(--text3);margin-right:2px">Avalua rang:</span>'
+    +'<span style="font-size:10px;color:var(--text3);margin-right:2px">'+tr.histEval+'</span>'
     +horizonBtn('week','📅 Setmanal (7d)')+horizonBtn('month','📆 Mensual (30d)')
     +'</div>';
 
@@ -636,9 +720,9 @@ async function renderPredictionHistory(){
       }).join('')
       +'</svg>'
       +'<div style="display:flex;justify-content:space-between;font-size:9px;color:var(--text3);padding:0 2px">'
-      +'<span>'+new Date(chartPreds[0].ts).toLocaleDateString('es-ES',{day:'2-digit',month:'short'})+'</span>'
+      +'<span>'+new Date(chartPreds[0].ts).toLocaleDateString(S.lang==='ca'?'ca-ES':'es-ES',{day:'2-digit',month:'short'})+'</span>'
       +'<span style="color:#10b981">— Bull</span><span style="color:#f97316">— Preu real</span><span style="color:#ef4444">— Bear</span>'
-      +'<span>'+new Date(chartPreds[chartPreds.length-1].ts).toLocaleDateString('es-ES',{day:'2-digit',month:'short'})+'</span>'
+      +'<span>'+new Date(chartPreds[chartPreds.length-1].ts).toLocaleDateString(S.lang==='ca'?'ca-ES':'es-ES',{day:'2-digit',month:'short'})+'</span>'
       +'</div></div>';
   }
 
@@ -656,7 +740,7 @@ async function renderPredictionHistory(){
   // Agrupació per mes
   const byMonth={};
   pagePreds.forEach(snap=>{
-    const mk=new Date(snap.ts).toLocaleDateString('es-ES',{month:'long',year:'numeric'});
+    const mk=new Date(snap.ts).toLocaleDateString(S.lang==='ca'?'ca-ES':'es-ES',{month:'long',year:'numeric'});
     if(!byMonth[mk])byMonth[mk]=[];
     byMonth[mk].push(snap);
   });
@@ -676,8 +760,8 @@ async function renderPredictionHistory(){
   const rows=Object.entries(byMonth).map(([month,snaps])=>{
     const snapRows=snaps.map(snap=>{
       const age=(now-snap.ts)/dayMs;
-      const dateStr=new Date(snap.ts).toLocaleDateString('es-ES',{day:'2-digit',month:'short'});
-      const timeStr=new Date(snap.ts).toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'});
+      const dateStr=new Date(snap.ts).toLocaleDateString(S.lang==='ca'?'ca-ES':'es-ES',{day:'2-digit',month:'short'});
+      const timeStr=new Date(snap.ts).toLocaleTimeString(S.lang==='ca'?'ca-ES':'es-ES',{hour:'2-digit',minute:'2-digit'});
       const isManual=snap.manual||snap.date.includes('_m');
       const badge=isManual
         ?'<span style="font-size:9px;padding:1px 5px;border-radius:4px;background:rgba(99,102,241,.15);color:#818cf8">manual</span>'
@@ -714,7 +798,7 @@ async function renderPredictionHistory(){
           +'</div>':'')
         +outcomeHTML
         +'<div style="display:flex;justify-content:flex-end;margin-top:6px">'
-        +'<button data-date="'+snap.date+'" onclick="deletePrediction(this.dataset.date).then(()=>renderTab(\'forecast\'))" style="background:none;border:none;color:var(--text3);font-size:11px;cursor:pointer;padding:0">🗑 borrar</button>'
+        +'<button data-date="'+snap.date+'" onclick="deletePrediction(this.dataset.date).then(()=>renderTab(\'forecast\'))" style="background:none;border:none;color:var(--text3);font-size:11px;cursor:pointer;padding:0">'+tr.histDelete+'</button>'
         +'</div></div>';
     });
     const showHeader=Object.keys(byMonth).length>1||filter==='90'||filter==='365'||filter==='all';
@@ -744,16 +828,16 @@ async function renderPredictionHistory(){
     const aboves=resolved.filter(p=>{const r=horizon==='month'?p.month:p.week;const rp=snapToRealPrice(p)||S.price.usd;return rp>r?.bull;}).length;
     const belows=resolved.filter(p=>{const r=horizon==='month'?p.month:p.week;const rp=snapToRealPrice(p)||S.price.usd;return rp<r?.bear;}).length;
     const inside=resolved.length-aboves-belows;
-    const bias=aboves>belows?'🚀 El modelo tiende a ser <b>demasiado conservador</b> (BTC supera el bull)':
-               belows>aboves?'📉 El modelo tiende a ser <b>demasiado optimista</b> (BTC cae bajo el bear)':
-               '⚖️ El modelo no muestra sesgo significativo';
+    const bias=aboves>belows?tr.histConservative:
+               belows>aboves?tr.histPessimistic:
+               tr.histNoBias;
     const biasColor=aboves>belows?'#f97316':belows>aboves?'#ef4444':'#10b981';
     biasHTML='<div style="margin-bottom:12px;padding:10px;border-radius:10px;background:var(--bg);border:1px solid var(--border)">'
-      +'<div style="font-size:11px;font-weight:700;color:var(--text);margin-bottom:6px">📊 Análisis del modelo ('+total+' predicciones resueltas · '+(horizon==='month'?'1M':'7D')+')</div>'
+      +'<div style="font-size:11px;font-weight:700;color:var(--text);margin-bottom:6px">📊 '+tr.histBiasTitle+' ('+total+' predicciones resueltas · '+(horizon==='month'?'1M':'7D')+')</div>'
       +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:8px;text-align:center">'
-      +'<div style="background:rgba(16,185,129,.1);border-radius:8px;padding:6px"><div style="font-size:18px;font-weight:800;color:#10b981">'+inside+'</div><div style="font-size:9px;color:var(--text3)">Dentro rango</div></div>'
-      +'<div style="background:rgba(249,115,22,.1);border-radius:8px;padding:6px"><div style="font-size:18px;font-weight:800;color:#f97316">'+aboves+'</div><div style="font-size:9px;color:var(--text3)">Sobre bull</div></div>'
-      +'<div style="background:rgba(239,68,68,.1);border-radius:8px;padding:6px"><div style="font-size:18px;font-weight:800;color:#ef4444">'+belows+'</div><div style="font-size:9px;color:var(--text3)">Bajo bear</div></div>'
+      +'<div style="background:rgba(16,185,129,.1);border-radius:8px;padding:6px"><div style="font-size:18px;font-weight:800;color:#10b981">'+inside+'</div><div style="font-size:9px;color:var(--text3)">'+tr.histInsideRange+'</div></div>'
+      +'<div style="background:rgba(249,115,22,.1);border-radius:8px;padding:6px"><div style="font-size:18px;font-weight:800;color:#f97316">'+aboves+'</div><div style="font-size:9px;color:var(--text3)">'+tr.histAboveBull+'</div></div>'
+      +'<div style="background:rgba(239,68,68,.1);border-radius:8px;padding:6px"><div style="font-size:18px;font-weight:800;color:#ef4444">'+belows+'</div><div style="font-size:9px;color:var(--text3)">'+tr.histBelowBear+'</div></div>'
       +'</div>'
       +'<div style="font-size:11px;color:'+biasColor+'">'+bias+'</div>'
       +'</div>';
@@ -761,7 +845,7 @@ async function renderPredictionHistory(){
 
   return'<div class="card">'
     +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">'
-    +'<div style="font-size:15px;font-weight:700">📜 Historial de predicciones</div>'
+    +'<div style="font-size:15px;font-weight:700">📜 '+tr.histPredTitle+'</div>'
     +'<div style="text-align:right">'+accuracyBadge+'</div>'
     +'</div>'
     +filterBar
@@ -769,9 +853,9 @@ async function renderPredictionHistory(){
     +chartHTML
     +biasHTML
     +'<div style="margin-bottom:10px;display:flex;gap:8px;flex-wrap:wrap">'
-    +'<button class="btn-orange" style="font-size:12px;padding:7px 12px" onclick="saveSnapshotIfNeeded(true)">📸 Guardar ahora</button>'
-    +'<button onclick="purgeInvalidSnapshots()" style="font-size:11px;padding:7px 10px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text3);cursor:pointer">🧹 Limpiar $0</button>'
-    +'<button onclick="clearAllPredictions()" style="font-size:11px;padding:7px 10px;border-radius:8px;border:1px solid rgba(239,68,68,.3);background:rgba(239,68,68,.06);color:#ef4444;cursor:pointer">🗑 Borrar todo</button>'
+    +'<button class="btn-orange" style="font-size:12px;padding:7px 12px" onclick="saveSnapshotIfNeeded(true)">'+tr.histSave+'</button>'
+    +'<button onclick="purgeInvalidSnapshots()" style="font-size:11px;padding:7px 10px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text3);cursor:pointer">'+tr.histPurge+'</button>'
+    +'<button onclick="clearAllPredictions()" style="font-size:11px;padding:7px 10px;border-radius:8px;border:1px solid rgba(239,68,68,.3);background:rgba(239,68,68,.06);color:#ef4444;cursor:pointer">'+tr.histClear+'</button>'
     +'</div>'
     +rows
     +pageBar
@@ -817,8 +901,9 @@ let deferredPrompt=null;
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredPrompt=e;document.getElementById('install-btn').style.display='flex';});
 async function handleInstall(){if(deferredPrompt){deferredPrompt.prompt();await deferredPrompt.userChoice;deferredPrompt=null;document.getElementById('install-btn').style.display='none';}else showInstallModal();}
 function showInstallModal(){
+  const tr=t();
   const o=document.createElement('div');o.className='modal-overlay';
-  o.innerHTML=`<div class="modal-box"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px"><div style="font-size:16px;font-weight:700">⬇️ Instalar SatsFlow</div><button onclick="this.closest('.modal-overlay').remove()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--text2)">✕</button></div><div class="modal-step"><div class="step-num">1</div><div style="font-size:13px;color:var(--text2)">Pulsa el menú del navegador (⋮ o compartir).</div></div><div class="modal-step"><div class="step-num">2</div><div style="font-size:13px;color:var(--text2)">Selecciona <b>"Instalar aplicación"</b> o <b>"Añadir a pantalla de inicio"</b>.</div></div><div class="modal-step"><div class="step-num">3</div><div style="font-size:13px;color:var(--text2)">Funciona con notificaciones aunque esté cerrada.</div></div><button class="btn-orange" style="width:100%;margin-top:14px" onclick="this.closest('.modal-overlay').remove()">Entendido</button></div>`;
+  o.innerHTML=`<div class="modal-box"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px"><div style="font-size:16px;font-weight:700">${tr.installTitle}</div><button onclick="this.closest('.modal-overlay').remove()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--text2)">✕</button></div><div class="modal-step"><div class="step-num">1</div><div style="font-size:13px;color:var(--text2)">${tr.installStep1}</div></div><div class="modal-step"><div class="step-num">2</div><div style="font-size:13px;color:var(--text2)">${tr.installStep2}</div></div><div class="modal-step"><div class="step-num">3</div><div style="font-size:13px;color:var(--text2)">${tr.installStep3}</div></div><button class="btn-orange" style="width:100%;margin-top:14px" onclick="this.closest('.modal-overlay').remove()">${tr.installOk}</button></div>`;
   document.body.appendChild(o);
 }
 async function requestNotifPerm(){if(!window.Notification)return'unsupported';const r=await Notification.requestPermission();S.notifPerm=r;return r;}
@@ -1021,14 +1106,15 @@ async function fetchPrice(){
     if(!Array.isArray(klines))throw new Error('klines vacíos (duplicado)');
     S.history=klines.map(k=>{
       const d=new Date(k[0]);
-      const label=S.days==='1'?d.toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'}):
-        S.days==='7'||S.days==='30'?d.toLocaleDateString('es-ES',{month:'numeric',day:'numeric'}):
-        d.toLocaleDateString('es-ES',{month:'short',year:'2-digit'});
+      const _loc=S.lang==='ca'?'ca-ES':'es-ES';
+      const label=S.days==='1'?d.toLocaleTimeString(_loc,{hour:'2-digit',minute:'2-digit'}):
+        S.days==='7'||S.days==='30'?d.toLocaleDateString(_loc,{month:'numeric',day:'numeric'}):
+        d.toLocaleDateString(_loc,{month:'short',year:'2-digit'});
       return{date:label,price:parseFloat(k[4]),time:k[0],open:parseFloat(k[1]),high:parseFloat(k[2]),low:parseFloat(k[3])}; // close price
     });
     S.ohlc=klines.map(k=>({
       ts:k[0],
-      date:new Date(k[0]).toLocaleDateString('es-ES',{month:'numeric',day:'numeric'}),
+      date:new Date(k[0]).toLocaleDateString(S.lang==='ca'?'ca-ES':'es-ES',{month:'numeric',day:'numeric'}),
       open:parseFloat(k[1]),high:parseFloat(k[2]),low:parseFloat(k[3]),close:parseFloat(k[4])
     }));
     // Historial de 60 velas diarias para análisis técnico (independiente del período del gráfico)
@@ -1463,6 +1549,7 @@ function renderCyclesChart(){
 }
 
 function renderCycles(){
+  const tr=t();
   const day=getCycleDay2024();
   const halvingPrice=S.halvingPrice2024||63800;
   const currentMult=(S.price.usd/halvingPrice);
@@ -1489,9 +1576,9 @@ function renderCycles(){
 
   // Comparativa en día actual
   const compCards=[
-    {label:'Ciclo 2016 (día '+day+')',val:proj16?'$'+proj16.toLocaleString():'—',mult:mult2016?mult2016.toFixed(1)+'x':'—',color:'#818cf8'},
-    {label:'Ciclo 2020 (día '+day+')',val:proj20?'$'+proj20.toLocaleString():'—',mult:mult2020?mult2020.toFixed(1)+'x':'—',color:'#10b981'},
-    {label:'Actual (ciclo 2024)',val:'$'+S.price.usd.toLocaleString(),mult:currentMult.toFixed(2)+'x',color:'#f97316'},
+    {label:'2016 ('+tr.cyclesDayLabel+' '+day+')',val:proj16?'$'+proj16.toLocaleString():'—',mult:mult2016?mult2016.toFixed(1)+'x':'—',color:'#818cf8'},
+    {label:'2020 ('+tr.cyclesDayLabel+' '+day+')',val:proj20?'$'+proj20.toLocaleString():'—',mult:mult2020?mult2020.toFixed(1)+'x':'—',color:'#10b981'},
+    {label:tr.cyclesCurrent,val:'$'+S.price.usd.toLocaleString(),mult:currentMult.toFixed(2)+'x',color:'#f97316'},
   ].map(r=>`
     <div style="background:#1e293b;border-radius:10px;padding:12px;border-left:3px solid ${r.color}">
       <div style="font-size:10px;color:#64748b;margin-bottom:4px">${r.label}</div>
@@ -1503,10 +1590,10 @@ function renderCycles(){
 
   // Posición del ciclo actual vs histórico
   let posLabel='', posColor='', posIcon='';
-  if(mult2020&&currentMult>mult2020*1.2){posLabel='Por encima del ciclo 2020';posColor='#10b981';posIcon='🚀';}
-  else if(mult2020&&currentMult>mult2020*0.9){posLabel='En línea con ciclo 2020';posColor='#eab308';posIcon='📊';}
-  else if(mult2020&&currentMult>mult2020*0.6){posLabel='Por debajo del ciclo 2020';posColor='#f97316';posIcon='📉';}
-  else{posLabel='Muy por debajo del histórico';posColor='#ef4444';posIcon='⚠️';}
+  if(mult2020&&currentMult>mult2020*1.2){posLabel=tr.cyclesAbove20;posColor='#10b981';posIcon='🚀';}
+  else if(mult2020&&currentMult>mult2020*0.9){posLabel=tr.cyclesInLine20;posColor='#eab308';posIcon='📊';}
+  else if(mult2020&&currentMult>mult2020*0.6){posLabel=tr.cyclesBelow20;posColor='#f97316';posIcon='📉';}
+  else{posLabel=tr.cyclesFarBelow;posColor='#ef4444';posIcon='⚠️';}
 
   // Datos técnicos
   const halvingDate='20 Abr 2024';
@@ -1514,8 +1601,8 @@ function renderCycles(){
 
   return `<div class="space-y">
   <div class="card">
-    <div style="font-size:15px;font-weight:700;margin-bottom:4px">🔄 Comparador de Ciclos BTC</div>
-    <div style="font-size:11px;color:#64748b;margin-bottom:14px">Precio normalizado desde el halving (halving = 1x)</div>
+    <div style="font-size:15px;font-weight:700;margin-bottom:4px">🔄 ${tr.cyclesTitle}</div>
+    <div style="font-size:11px;color:#64748b;margin-bottom:14px">${tr.cyclesSubtitle}</div>
     ${renderCyclesChart()}
     <div style="display:flex;gap:12px;margin-top:10px;flex-wrap:wrap">
       <div style="display:flex;align-items:center;gap:5px"><div style="width:16px;height:3px;background:#818cf8;border-radius:2px"></div><span style="font-size:10px;color:#94a3b8">2016–2017</span></div>
@@ -1525,17 +1612,17 @@ function renderCycles(){
   </div>
 
   <div class="card">
-    <div style="font-size:14px;font-weight:700;margin-bottom:10px">📍 Posición actual</div>
+    <div style="font-size:14px;font-weight:700;margin-bottom:10px">📍 ${tr.cyclesPosition}</div>
     <div style="background:#1e293b;border-radius:10px;padding:12px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center">
       <div>
-        <div style="font-size:12px;color:#64748b">Día del ciclo</div>
+        <div style="font-size:12px;color:#64748b">${tr.cyclesDayLabel}</div>
         <div style="font-size:26px;font-weight:800;color:#f97316">${day}</div>
-        <div style="font-size:10px;color:#64748b">Desde halving ${halvingDate}</div>
+        <div style="font-size:10px;color:#64748b">${tr.cyclesSinceHalving} ${halvingDate}</div>
       </div>
       <div style="text-align:right">
-        <div style="font-size:12px;color:#64748b">Multiplicador</div>
+        <div style="font-size:12px;color:#64748b">${tr.cyclesMultLabel}</div>
         <div style="font-size:26px;font-weight:800;color:#f97316">${currentMult.toFixed(2)}x</div>
-        <div style="font-size:10px;color:#64748b">Precio halving ${halvingPriceStr}</div>
+        <div style="font-size:10px;color:#64748b">${tr.cyclesHalvingPrice} ${halvingPriceStr}</div>
       </div>
     </div>
     <div style="background:#263045;border-radius:10px;padding:10px;text-align:center">
@@ -1545,31 +1632,31 @@ function renderCycles(){
   </div>
 
   <div class="card">
-    <div style="font-size:14px;font-weight:700;margin-bottom:10px">📊 Precio en día ${day} de cada ciclo</div>
+    <div style="font-size:14px;font-weight:700;margin-bottom:10px">📊 ${tr.cyclesDayOf} ${day} ${tr.cyclesEachCycle}</div>
     <div style="display:flex;flex-direction:column;gap:8px">${compCards}</div>
   </div>
 
   <div class="card">
-    <div style="font-size:14px;font-weight:700;margin-bottom:10px">🎯 Proyección ATH ciclo 2024</div>
+    <div style="font-size:14px;font-weight:700;margin-bottom:10px">🎯 ${tr.cyclesAthTitle}</div>
     <div style="background:#1e293b;border-radius:10px;padding:12px">
       <div style="display:flex;justify-content:space-between;margin-bottom:8px">
-        <span style="font-size:11px;color:#94a3b8">ATH proyectado (modelo histórico)</span>
+        <span style="font-size:11px;color:#94a3b8">${tr.cyclesAthModel}</span>
         <span style="font-size:14px;font-weight:700;color:#eab308">$${projATH.toLocaleString()}</span>
       </div>
       <div style="display:flex;justify-content:space-between;margin-bottom:8px">
-        <span style="font-size:11px;color:#94a3b8">Multiplicador esperado</span>
+        <span style="font-size:11px;color:#94a3b8">${tr.cyclesAthMult}</span>
         <span style="font-size:13px;font-weight:700;color:#eab308">${projATHMult.toFixed(1)}x</span>
       </div>
       <div style="display:flex;justify-content:space-between;margin-bottom:8px">
-        <span style="font-size:11px;color:#94a3b8">Fecha estimada</span>
-        <span style="font-size:12px;font-weight:600;color:#94a3b8">${dateATH.toLocaleDateString('es-ES',{month:'long',year:'numeric'})}</span>
+        <span style="font-size:11px;color:#94a3b8">${tr.cyclesAthDate}</span>
+        <span style="font-size:12px;font-weight:600;color:#94a3b8">${dateATH.toLocaleDateString(S.lang==='ca'?'ca-ES':'es-ES',{month:'long',year:'numeric'})}</span>
       </div>
       <div style="display:flex;justify-content:space-between">
-        <span style="font-size:11px;color:#94a3b8">Días restantes estimados</span>
-        <span style="font-size:13px;font-weight:700;color:${daysToATH>0?'#10b981':'#ef4444'}">${daysToATH>0?'~'+daysToATH+' días':'Ya pasó o muy cerca'}</span>
+        <span style="font-size:11px;color:#94a3b8">${tr.cyclesAthDays}</span>
+        <span style="font-size:13px;font-weight:700;color:${daysToATH>0?'#10b981':'#ef4444'}">${daysToATH>0?'~'+daysToATH+(S.lang==='ca'?' dies':' días'):tr.cyclesAthPassed}</span>
       </div>
     </div>
-    <div style="font-size:10px;color:#475569;margin-top:8px">⚠️ Basado en patrones históricos. Cada ciclo es diferente. No es consejo financiero.</div>
+    <div style="font-size:10px;color:#475569;margin-top:8px">${tr.cyclesDisclaimer}</div>
   </div>
 </div>`;
 }
@@ -1732,23 +1819,24 @@ function renderTab(tab){
     try{el.innerHTML=map[tab]();if(afterRender[tab])afterRender[tab]();}
     catch(e){
       console.error('renderTab error ['+tab+']:',e);
-      el.innerHTML='<div style="padding:30px;text-align:center"><div style="font-size:32px">⚠️</div><br><b style="color:#f97316">Error al carregar</b><br><small style="color:#999">'+e.message+'</small><br><br><button onclick="location.reload()" style="margin-top:12px;padding:10px 20px;background:#f97316;color:white;border:none;border-radius:10px;cursor:pointer">🔄 Reintentar</button></div>';
+      el.innerHTML='<div style="padding:30px;text-align:center"><div style="font-size:32px">⚠️</div><br><b style="color:#f97316">'+t().errorLoad+'</b><br><small style="color:#999">'+e.message+'</small><br><br><button onclick="location.reload()" style="margin-top:12px;padding:10px 20px;background:#f97316;color:white;border:none;border-radius:10px;cursor:pointer">'+t().errorRetry+'</button></div>';
     }
   }
   if(tab==='atm'&&!S.atmLoaded)initATM();
 }
 function renderHome(){
+  const tr=t();
   const pos=S.change24h>=0;
   const pct=S.days==='1'?S.change24h.toFixed(2):S.history.length>1?((S.history[S.history.length-1].price-S.history[0].price)/S.history[0].price*100).toFixed(2):'0.00';
   const pctColor=parseFloat(pct)>=0?'#10b981':'#ef4444';
   // Max i min del període actual
   const _high=S.history.length?Math.max(...S.history.map(h=>h.high||h.price).filter(v=>v>0)):0;
   const _low=S.history.length?Math.min(...S.history.map(h=>h.low||h.price).filter(v=>v>0)):0;
-  const upd=S.lastUpdated?S.lastUpdated.toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'}):'—';
+  const upd=S.lastUpdated?S.lastUpdated.toLocaleTimeString(S.lang==='ca'?'ca-ES':'es-ES',{hour:'2-digit',minute:'2-digit'}):'—';
   const chart=S.chartType==='area'?areaSVG(S.history):candleSVG(S.ohlc);
   return`<div class="space-y">
   <div class="card">
-    <div style="font-size:15px;font-weight:700;margin-bottom:12px">↔ Conversor</div>
+    <div style="font-size:15px;font-weight:700;margin-bottom:12px">${tr.converter}</div>
     <div class="grid-2">
       <div><div style="font-size:10px;color:var(--text3);margin-bottom:4px;text-transform:uppercase">Bitcoin (BTC)</div><div style="position:relative"><span style="position:absolute;left:10px;top:9px;color:#f97316;font-weight:700">₿</span><input id="inp-btc" type="number" style="padding-left:28px" value="${S.conv_btc||1}" oninput="calcConv('btc',this.value)" placeholder="0"/></div></div>
       <div><div style="font-size:10px;color:var(--text3);margin-bottom:4px;text-transform:uppercase">Satoshis</div><div style="position:relative"><span style="position:absolute;left:10px;top:9px;color:#eab308;font-weight:700">⚡</span><input id="inp-sats" type="number" style="padding-left:28px" value="${S.conv_sats||100000000}" oninput="calcConv('sats',this.value)" placeholder="0"/></div></div>
@@ -1759,23 +1847,23 @@ function renderHome(){
   </div>
   <div class="card">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
-      <div><div style="font-size:15px;font-weight:700">📈 Historial</div><span style="font-size:11px;font-weight:600;color:${pctColor}">${parseFloat(pct)>=0?'+':''}${pct}%</span><span style="font-size:10px;color:var(--text3);margin-left:4px">en este periodo</span></div>
+      <div><div style="font-size:15px;font-weight:700">📈 Historial</div><span style="font-size:11px;font-weight:600;color:${pctColor}">${parseFloat(pct)>=0?'+':''}${pct}%</span><span style="font-size:10px;color:var(--text3);margin-left:4px">${tr.thisPeriod}</span></div>
       <div style="display:flex;gap:14px;margin-top:5px;margin-bottom:2px">
         <span style="font-size:11px;color:#10b981;font-weight:700">▲ $${_high>=1000?(_high/1000).toFixed(1)+'k':Math.round(_high).toLocaleString()}</span>
         <span style="font-size:11px;color:#ef4444;font-weight:700">▼ $${_low>=1000?(_low/1000).toFixed(1)+'k':Math.round(_low).toLocaleString()}</span>
       </div>
-      <div class="chart-type-wrap"><button class="chart-type-btn ${S.chartType==='area'?'active':''}" onclick="setChartType('area')">Área</button><button class="chart-type-btn ${S.chartType==='candle'?'active':''}" onclick="setChartType('candle')">Velas</button><button class="chart-type-btn ${S.showRSI?'active':''}" onclick="S.showRSI=!S.showRSI;renderTab('home')" style="color:${S.showRSI?'#fff':'#a855f7'}">RSI</button></div>
+      <div class="chart-type-wrap"><button class="chart-type-btn ${S.chartType==='area'?'active':''}" onclick="setChartType('area')">${tr.chartArea}</button><button class="chart-type-btn ${S.chartType==='candle'?'active':''}" onclick="setChartType('candle')">${tr.chartCandle}</button><button class="chart-type-btn ${S.showRSI?'active':''}" onclick="S.showRSI=!S.showRSI;renderTab('home')" style="color:${S.showRSI?'#fff':'#a855f7'}">RSI</button></div>
     </div>
     <div class="period-wrap">${['1','7','30','90','365'].map(d=>`<button class="period-btn ${S.days===d?'active':''}" onclick="setPeriod('${d}')">${d==='1'?'24h':d==='365'?'1A':d+'D'}</button>`).join('')}</div>
-    <div id="chart-wrap" style="background:#0a1628;border-radius:12px;padding:6px 4px 2px;margin:0 -4px;cursor:crosshair" onmousemove="chartHover(event)" ontouchmove="chartHover(event.touches[0])" onmouseleave="chartLeave()" ontouchend="chartLeave()">${chart||'<div style="text-align:center;color:var(--text3);padding:40px">Carregant dades...</div>'}</div>
+    <div id="chart-wrap" style="background:#0a1628;border-radius:12px;padding:6px 4px 2px;margin:0 -4px;cursor:crosshair" onmousemove="chartHover(event)" ontouchmove="chartHover(event.touches[0])" onmouseleave="chartLeave()" ontouchend="chartLeave()">${chart||'<div style="text-align:center;color:var(--text3);padding:40px">'+tr.loading+'</div>'}</div>
     ${S.showRSI&&S.history.length>=14?renderRSIChart():''}
   </div>
   <div class="grid-3">
-    <div class="stat-box"><div class="stat-label">Cap. Mercado</div><div class="stat-val" style="color:#3b82f6">${fmtBig(S.marketData?.totalMcap||S.marketCap)}</div></div>
+    <div class="stat-box"><div class="stat-label">${tr.marketCap}</div><div class="stat-val" style="color:#3b82f6">${fmtBig(S.marketData?.totalMcap||S.marketCap)}</div></div>
     <div class="stat-box"><div class="stat-label">24h</div><div class="stat-val" style="color:${pos?'#10b981':'#ef4444'}">${pos?'+':''}${S.change24h.toFixed(2)}%</div></div>
-    <div class="stat-box"><div class="stat-label">Actualizado</div><div class="stat-val" style="font-size:12px;color:var(--text2)">${upd}</div></div>
+    <div class="stat-box"><div class="stat-label">${tr.updated}</div><div class="stat-val" style="font-size:12px;color:var(--text2)">${upd}</div></div>
   </div>
-  <div style="font-size:10px;color:var(--text3);text-align:center">Precios: ${S.priceSource||'—'} · Mempool: mempool.space · No es un consejo financiero.</div>
+  <div style="font-size:10px;color:var(--text3);text-align:center">${tr.priceSources}: ${S.priceSource||'—'} · Mempool: mempool.space · ${tr.noFinancialAdvice2}</div>
 </div>`;
 }
 function updateChartPriceTag(){} // deprecated
@@ -1794,47 +1882,51 @@ function setI(id,val){const e=document.getElementById('inp-'+id);if(e&&document.
 function setChartType(t){S.chartType=t;renderTab('home');}
 function setPeriod(d){S.days=d;Promise.all([fetchPrice(),fetchOHLC()]).then(()=>renderTab('home'));}
 function renderAnalysis(){
+  const tr=t();
   const a=analyze();
-  if(!a)return`<div class="card" style="text-align:center;padding:40px;color:var(--text3)">Necesita historial de 30+ días.<br>Cambia el periodo a 30D en Inicio.</div>`;
+  if(!a)return`<div class="card" style="text-align:center;padding:40px;color:var(--text3)">${tr.noHistoryMsg}</div>`;
   const sigClass=a.signal==='COMPRAR'?'signal-buy':a.signal==='VENDER'?'signal-sell':'signal-neutral';
   const sigColor=a.signal==='COMPRAR'?'#10b981':a.signal==='VENDER'?'#ef4444':'#eab308';
   const sigIcon=a.signal==='COMPRAR'?'↑':a.signal==='VENDER'?'↓':'→';
+  const sigText=a.signal==='COMPRAR'?tr.buy:a.signal==='VENDER'?tr.sell:tr.neutral;
   const rsiColor=a.lastRSI<30?'#10b981':a.lastRSI>70?'#ef4444':'#eab308';
-  const rsiLabel=a.lastRSI<30?'Sobrevendido':a.lastRSI>70?'Sobrecomprado':'Neutral';
+  const rsiLabel=a.lastRSI<30?tr.rsiOversoldLabel:a.lastRSI>70?tr.rsiOverboughtLabel:tr.rsiNeutralLabel;
   const macdBull=a.lMACD>a.lSig,smaBull=a.sma7>a.sma30;
-  const bbPos=a.last>a.bbU?'Sobrecomprado':a.last<a.bbL?'Sobrevendido':'En rango';
+  const bbPos=a.last>a.bbU?tr.overbought:a.last<a.bbL?tr.oversold:tr.inRange;
+  const bbPosColor=a.last>a.bbU||a.last<a.bbL?'#eab308':'#3b82f6';
   return`<div class="space-y">
   <div class="card">
-    <div style="font-size:15px;font-weight:700;margin-bottom:12px">🧠 Análisis Técnico</div>
+    <div style="font-size:15px;font-weight:700;margin-bottom:12px">🧠 ${tr.technicalAnalysis}</div>
     <div class="signal-banner ${sigClass}">
       <div style="display:flex;justify-content:space-between;align-items:center">
-        <div><div style="font-size:10px;color:var(--text3);text-transform:uppercase;margin-bottom:4px">Señal del mercado</div><div style="font-size:24px;font-weight:800;color:${sigColor}">${a.signal}</div></div>
+        <div><div style="font-size:10px;color:var(--text3);text-transform:uppercase;margin-bottom:4px">${tr.marketSignal}</div><div style="font-size:24px;font-weight:800;color:${sigColor}">${sigText}</div></div>
         <div style="font-size:40px;font-weight:900;color:${sigColor}">${sigIcon}</div>
       </div>
       <div style="margin-top:10px">
-        <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px"><span style="color:#10b981;font-weight:600">Alcista ${a.bullPct}%</span><span style="color:#ef4444;font-weight:600">${a.bearPct}% Bajista</span></div>
+        <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px"><span style="color:#10b981;font-weight:600">${tr.bullish} ${a.bullPct}%</span><span style="color:#ef4444;font-weight:600">${a.bearPct}% ${tr.bearish}</span></div>
         <div style="display:flex;border-radius:999px;overflow:hidden;height:6px"><div style="width:${a.bullPct}%;background:#10b981"></div><div style="width:${a.bearPct}%;background:#ef4444"></div></div>
       </div>
     </div>
     <div class="grid-2" style="gap:8px">
       <div class="stat-box"><div class="stat-label">RSI (14)</div><div class="stat-val" style="color:${rsiColor}">${a.lastRSI.toFixed(1)}</div><div style="font-size:9px;color:var(--text3)">${rsiLabel}</div></div>
-      <div class="stat-box"><div class="stat-label">MACD</div><div class="stat-val" style="color:${macdBull?'#10b981':'#ef4444'}">${a.lMACD?.toFixed(0)}</div><div style="font-size:9px;color:var(--text3)">${macdBull?'↑ Alcista':'↓ Bajista'}</div></div>
-      <div class="stat-box"><div class="stat-label">MA7 vs MA30</div><div class="stat-val" style="font-size:11px;color:${smaBull?'#10b981':'#ef4444'}">${smaBull?'Golden Cross':'Death Cross'}</div><div style="font-size:9px;color:var(--text3)">${smaBull?'Alcista':'Bajista'}</div></div>
-      <div class="stat-box"><div class="stat-label">Bollinger</div><div class="stat-val" style="font-size:11px;color:${bbPos==='En rango'?'#3b82f6':'#eab308'}">${bbPos}</div></div>
+      <div class="stat-box"><div class="stat-label">MACD</div><div class="stat-val" style="color:${macdBull?'#10b981':'#ef4444'}">${a.lMACD?.toFixed(0)}</div><div style="font-size:9px;color:var(--text3)">${macdBull?tr.macdBullish:tr.macdBearish}</div></div>
+      <div class="stat-box"><div class="stat-label">MA7 vs MA30</div><div class="stat-val" style="font-size:11px;color:${smaBull?'#10b981':'#ef4444'}">${smaBull?tr.goldenCross:tr.deathCross}</div><div style="font-size:9px;color:var(--text3)">${smaBull?tr.bullish:tr.bearish}</div></div>
+      <div class="stat-box"><div class="stat-label">Bollinger</div><div class="stat-val" style="font-size:11px;color:${bbPosColor}">${bbPos}</div></div>
     </div>
   </div>
   <div class="card">
-    <div style="font-size:14px;font-weight:600;margin-bottom:10px">Soporte &amp; Resistencia</div>
-    <div class="sr-row" style="background:rgba(239,68,68,.06);border-color:rgba(239,68,68,.3)"><span style="font-size:12px;color:var(--text2)">🔴 Resistencia</span><span style="font-size:13px;font-weight:700;color:#ef4444;font-family:monospace">$${fmtN(a.resistance,0)}</span></div>
-    <div class="sr-row" style="background:rgba(249,115,22,.06);border-color:rgba(249,115,22,.3)"><span style="font-size:12px;color:var(--text2)">🟠 Precio actual</span><span style="font-size:13px;font-weight:700;color:#f97316;font-family:monospace">$${fmtN(a.last,0)}</span></div>
-    <div class="sr-row" style="background:rgba(16,185,129,.06);border-color:rgba(16,185,129,.3)"><span style="font-size:12px;color:var(--text2)">🟢 Soporte</span><span style="font-size:13px;font-weight:700;color:#10b981;font-family:monospace">$${fmtN(a.support,0)}</span></div>
+    <div style="font-size:14px;font-weight:600;margin-bottom:10px">${tr.srTitle}</div>
+    <div class="sr-row" style="background:rgba(239,68,68,.06);border-color:rgba(239,68,68,.3)"><span style="font-size:12px;color:var(--text2)">🔴 ${tr.resistance}</span><span style="font-size:13px;font-weight:700;color:#ef4444;font-family:monospace">$${fmtN(a.resistance,0)}</span></div>
+    <div class="sr-row" style="background:rgba(249,115,22,.06);border-color:rgba(249,115,22,.3)"><span style="font-size:12px;color:var(--text2)">🟠 ${tr.currentPriceLbl}</span><span style="font-size:13px;font-weight:700;color:#f97316;font-family:monospace">$${fmtN(a.last,0)}</span></div>
+    <div class="sr-row" style="background:rgba(16,185,129,.06);border-color:rgba(16,185,129,.3)"><span style="font-size:12px;color:var(--text2)">🟢 ${tr.support}</span><span style="font-size:13px;font-weight:700;color:#10b981;font-family:monospace">$${fmtN(a.support,0)}</span></div>
   </div>
-  <div class="card"><div style="font-size:13px;font-weight:600;margin-bottom:6px;color:var(--text2)">RSI (últimos períodos)</div>${miniLine(a.rsiData,'#a855f7',65,[{val:70,color:'#ef4444'},{val:30,color:'#10b981'}])}<div style="font-size:10px;color:var(--text3);margin-top:4px">RSI &lt;30 sobrevendido · RSI &gt;70 sobrecomprado</div></div>
-  <div class="card"><div style="font-size:13px;font-weight:600;margin-bottom:6px;color:var(--text2)">MACD</div>${miniLine(a.macdData,'#3b82f6',65,[])}<div style="font-size:10px;color:var(--text3);margin-top:4px">MACD cruza arriba = alcista · Cruza abajo = bajista</div></div>
-  <div style="font-size:10px;color:var(--text3);text-align:center">⚠️ No garantiza resultados futuros. No es un consejo financiero.</div>
+  <div class="card"><div style="font-size:13px;font-weight:600;margin-bottom:6px;color:var(--text2)">RSI (últimos períodos)</div>${miniLine(a.rsiData,'#a855f7',65,[{val:70,color:'#ef4444'},{val:30,color:'#10b981'}])}<div style="font-size:10px;color:var(--text3);margin-top:4px">${tr.rsiDesc}</div></div>
+  <div class="card"><div style="font-size:13px;font-weight:600;margin-bottom:6px;color:var(--text2)">MACD</div>${miniLine(a.macdData,'#3b82f6',65,[])}<div style="font-size:10px;color:var(--text3);margin-top:4px">${tr.macdDesc}</div></div>
+  <div style="font-size:10px;color:var(--text3);text-align:center">${tr.noFinancialAdvice}</div>
 </div>`;
 }
 function calcRainbow(price){
+  const tr=t();
   const genesis=new Date('2009-01-03').getTime();
   const days=(Date.now()-genesis)/(1000*60*60*24);
   const log10Days=Math.log10(days); // IMPORTANTE: log10, no logaritmo natural
@@ -1842,15 +1934,15 @@ function calcRainbow(price){
   const center=Math.pow(10,a*log10Days+b);
   const step=0.38;
   const bands=[
-    {label:'Zona de venta máxima',color:'#ef4444',mult:Math.pow(10,step*4)},
-    {label:'Muy caro — vende',color:'#f97316',mult:Math.pow(10,step*3)},
-    {label:'FOMO intenso',color:'#fb923c',mult:Math.pow(10,step*2)},
-    {label:'Caro',color:'#eab308',mult:Math.pow(10,step*1)},
-    {label:'Precio justo',color:'#84cc16',mult:1},
-    {label:'Todavía barato',color:'#22c55e',mult:Math.pow(10,-step*1)},
-    {label:'Acumula',color:'#10b981',mult:Math.pow(10,-step*2)},
-    {label:'Oferta histórica',color:'#06b6d4',mult:Math.pow(10,-step*3)},
-    {label:'Compra máximo',color:'#3b82f6',mult:Math.pow(10,-step*4)},
+    {label:tr.rb_maxSell,color:'#ef4444',mult:Math.pow(10,step*4)},
+    {label:tr.rb_veryCostly,color:'#f97316',mult:Math.pow(10,step*3)},
+    {label:tr.rb_fomo,color:'#fb923c',mult:Math.pow(10,step*2)},
+    {label:tr.rb_costly,color:'#eab308',mult:Math.pow(10,step*1)},
+    {label:tr.rb_fair,color:'#84cc16',mult:1},
+    {label:tr.rb_cheap,color:'#22c55e',mult:Math.pow(10,-step*1)},
+    {label:tr.rb_accum,color:'#10b981',mult:Math.pow(10,-step*2)},
+    {label:tr.rb_histOffer,color:'#06b6d4',mult:Math.pow(10,-step*3)},
+    {label:tr.rb_maxBuy,color:'#3b82f6',mult:Math.pow(10,-step*4)},
   ];
   const priceBands=bands.map(b=>({...b,price:center*b.mult}));
   let currentBand=priceBands[priceBands.length-1];
@@ -1866,15 +1958,16 @@ function analyzeSentiment(title){
   let score=0;
   bull.forEach(w=>{if(t.includes(w))score++;});
   bear.forEach(w=>{if(t.includes(w))score--;});
-  if(score>0)return{label:'Alcista',color:'#10b981',icon:'📈',score};
-  if(score<0)return{label:'Bajista',color:'#ef4444',icon:'📉',score};
-  return{label:'Neutral',color:'#94a3b8',icon:'➖',score};
+  if(score>0)return{label:t().bullish,color:'#10b981',icon:'📈',score};
+  if(score<0)return{label:t().bearish,color:'#ef4444',icon:'📉',score};
+  return{label:t().neutral,color:'#94a3b8',icon:'➖',score};
 }
 function renderMarket(){
-  if(!S.marketData)return'<div class="card" style="text-align:center;padding:40px;color:var(--text3)"><span class="spin">⏳</span><br><br>Cargando datos de mercado...</div>';
+  const tr=t();
+  if(!S.marketData)return'<div class="card" style="text-align:center;padding:40px;color:var(--text3)"><span class="spin">⏳</span><br><br>'+tr.loadingMarket+'</div>';
   const m=S.marketData,mi=S.miningData,fg=m.fearGreed,dom=m.dominance;
   const fgColor=fg.value<=25?'#ef4444':fg.value<=45?'#f97316':fg.value<=55?'#eab308':fg.value<=75?'#84cc16':'#10b981';
-  const fgLabel=fg.value<=25?'Miedo extremo':fg.value<=45?'Miedo':fg.value<=55?'Neutral':fg.value<=75?'Codicia':'Codicia extrema';
+  const fgLabel=fg.value<=25?tr.extreme_fear:fg.value<=45?tr.fear:fg.value<=55?tr.neutral2:fg.value<=75?tr.greed:tr.extreme_greed;
   const toRad=d=>(d*Math.PI)/180,r=65,cx=90,cy=88,angle=-90+(fg.value/100)*180;
   const nx=cx+r*Math.cos(toRad(angle)),ny=cy+r*Math.sin(toRad(angle));
   const segs=[{c:'#ef4444',s:-90,e:-54},{c:'#f97316',s:-54,e:-18},{c:'#eab308',s:-18,e:18},{c:'#84cc16',s:18,e:54},{c:'#10b981',s:54,e:90}];
@@ -1885,7 +1978,7 @@ function renderMarket(){
   };
   const others=(100-parseFloat(dom.btc||0)-parseFloat(dom.eth||0)).toFixed(1);
   const rainbow=S.price.usd>0?calcRainbow(S.price.usd):null;
-  let domHistHTML='<div style="font-size:11px;color:var(--text3);text-align:center;padding:12px">Los datos se acumularán mientras la app está abierta...</div>';
+  let domHistHTML='<div style="font-size:11px;color:var(--text3);text-align:center;padding:12px">'+tr.domAccum+'</div>';
   const hist=S.dominanceHistory;
   if(hist.length>=2){
     const W=280,H=60,P=4;
@@ -1901,14 +1994,14 @@ function renderMarket(){
       +'</svg>';
   }
   const domTag=parseFloat(dom.btc)>50
-    ?'<span style="color:#10b981">BTC dominante — mercado en acumulación</span>'
-    :'<span style="color:#3b82f6">Altcoins ganan terreno — posible alt season</span>';
+    ?'<span style="color:#10b981">'+tr.dominanceBull+'</span>'
+    :'<span style="color:#3b82f6">'+tr.dominanceAlt+'</span>';
   let rainbowHTML='';
   if(rainbow){
     const bandRows=rainbow.bands.map(function(b){
       const isCur=b.label===rainbow.currentBand.label;
       const priceStr='$'+(b.price>=1e9?(b.price/1e9).toFixed(1)+'B':b.price>=1e6?(b.price/1e6).toFixed(1)+'M':b.price>=1000?Math.round(b.price/1000)+'K':Math.round(b.price));
-      const nowBadge=isCur?'<span style="font-size:9px;background:'+b.color+';color:white;padding:1px 6px;border-radius:999px;font-weight:700">AHORA</span>':'';
+      const nowBadge=isCur?'<span style="font-size:9px;background:'+b.color+';color:white;padding:1px 6px;border-radius:999px;font-weight:700">'+tr.now+'</span>':'';
       return '<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:8px;margin-bottom:3px;'
         +'background:'+(isCur?b.color+'22':'transparent')+';border:1px solid '+(isCur?b.color+'66':'transparent')+'">'
         +'<div style="width:12px;height:12px;border-radius:3px;background:'+b.color+';flex-shrink:0"></div>'
@@ -1917,14 +2010,14 @@ function renderMarket(){
         +nowBadge+'</div>';
     }).join('');
     rainbowHTML='<div class="card">'
-      +'<div style="font-size:15px;font-weight:700;margin-bottom:4px">🌈 Rainbow Chart</div>'
-      +'<div style="font-size:11px;color:var(--text3);margin-bottom:14px">Valoración histórica del precio de Bitcoin</div>'
+      +'<div style="font-size:15px;font-weight:700;margin-bottom:4px">🌈 '+tr.rainbowTitle+'</div>'
+      +'<div style="font-size:11px;color:var(--text3);margin-bottom:14px">'+tr.rainbowDesc+'</div>'
       +'<div style="margin-bottom:14px">'+bandRows+'</div>'
       +'<div style="background:rgba(249,115,22,.08);border:1px solid rgba(249,115,22,.3);border-radius:10px;padding:10px">'
-      +'<div style="font-size:12px;font-weight:700;margin-bottom:4px">Señal actual: <span style="color:'+rainbow.currentBand.color+'">'+rainbow.currentBand.label+'</span></div>'
-      +'<div style="font-size:11px;color:var(--text2)">Precio actual <b style="color:var(--text)">$'+S.price.usd.toLocaleString()+'</b> · Modelo: regresión logarítmica histórica (bloque génesis 2009)</div>'
+      +'<div style="font-size:12px;font-weight:700;margin-bottom:4px">'+tr.rainbowSignal+': <span style="color:'+rainbow.currentBand.color+'">'+rainbow.currentBand.label+'</span></div>'
+      +'<div style="font-size:11px;color:var(--text2)">'+tr.currentPriceLbl+' <b style="color:var(--text)">$'+S.price.usd.toLocaleString()+'</b> · '+tr.rainbowModel+'</div>'
       +'</div>'
-      +'<div style="font-size:10px;color:var(--text3);margin-top:8px">⚠️ Solo orientativo. No es consejo financiero.</div>'
+      +'<div style="font-size:10px;color:var(--text3);margin-top:8px">'+tr.rainbowDisclaimer+'</div>'
       +'</div>';
   }
   const gaugeSegs=segs.map(function(s){return '<path d="'+arc(s.s,s.e)+'" stroke="'+s.c+'" stroke-width="13" fill="none" stroke-linecap="round" opacity=".4"/>';}).join('');
@@ -1943,25 +2036,25 @@ function renderMarket(){
     }).join('');
   let miningHTML='';
   if(mi){
-    miningHTML='<div class="card"><div style="font-size:15px;font-weight:700;margin-bottom:12px">⛏️ Minería</div>'
+    miningHTML='<div class="card"><div style="font-size:15px;font-weight:700;margin-bottom:12px">⛏️ '+tr.miningTitle+'</div>'
       +'<div class="grid-2" style="margin-bottom:12px">'
-      +'<div class="stat-box"><div class="stat-label">Hashrate</div><div class="stat-val" style="color:#10b981">'+mi.hashrate+'</div><div style="font-size:9px;color:var(--text3)">EH/s</div></div>'
-      +'<div class="stat-box"><div class="stat-label">Cambio dificultad</div><div class="stat-val" style="color:'+(mi.difficultyChange>=0?'#ef4444':'#10b981')+'">'+(mi.difficultyChange>=0?'+':'')+(mi.difficultyChange||0).toFixed(2)+'%</div></div>'
+      +'<div class="stat-box"><div class="stat-label">'+tr.hashrate+'</div><div class="stat-val" style="color:#10b981">'+mi.hashrate+'</div><div style="font-size:9px;color:var(--text3)">EH/s</div></div>'
+      +'<div class="stat-box"><div class="stat-label">'+tr.diffChange+'</div><div class="stat-val" style="color:'+(mi.difficultyChange>=0?'#ef4444':'#10b981')+'">'+(mi.difficultyChange>=0?'+':'')+(mi.difficultyChange||0).toFixed(2)+'%</div></div>'
       +'</div>'
-      +'<div style="font-size:12px;color:var(--text2);margin-bottom:6px;display:flex;justify-content:space-between"><span>Próximo ajuste</span><span style="color:var(--text3)">'+mi.remainingBlocks+' bloques</span></div>'
+      +'<div style="font-size:12px;color:var(--text2);margin-bottom:6px;display:flex;justify-content:space-between"><span>'+tr.nextAdjust+'</span><span style="color:var(--text3)">'+mi.remainingBlocks+' '+tr.blocks+'</span></div>'
       +'<div class="prog-track"><div class="prog-bar" style="width:'+(mi.progressPercent||0)+'%;background:#22c55e"></div></div>'
-      +'<div style="font-size:10px;color:var(--text3);text-align:right;margin-top:2px">'+(mi.progressPercent||0).toFixed(1)+'% completado</div></div>';
+      +'<div style="font-size:10px;color:var(--text3);text-align:right;margin-top:2px">'+(mi.progressPercent||0).toFixed(1)+'% '+tr.completed+'</div></div>';
   }
   return '<div class="space-y">'
-    +'<div class="card"><div style="font-size:15px;font-weight:700;margin-bottom:12px">📊 Miedo &amp; Codicia</div>'
+    +'<div class="card"><div style="font-size:15px;font-weight:700;margin-bottom:12px">📊 '+tr.fearGreedTitle+'</div>'
     +'<div style="display:flex;justify-content:center">'+gaugeSVG+'</div>'
-    +'<div style="font-size:10px;color:var(--text3);text-align:center;margin-top:4px">Fuente: alternative.me · Actualización diaria</div></div>'
+    +'<div style="font-size:10px;color:var(--text3);text-align:center;margin-top:4px">'+tr.fearGreedSource+'</div></div>'
     +'<div class="card">'
     +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">'
-    +'<div style="font-size:15px;font-weight:700">🌍 Dominancia BTC</div>'
+    +'<div style="font-size:15px;font-weight:700">🌍 '+tr.dominanceTitle+'</div>'
     +'<div style="font-size:20px;font-weight:800;color:#f97316">'+dom.btc+'%</div></div>'
     +domBars
-    +'<div style="font-size:11px;color:var(--text3);font-weight:600;margin:10px 0 4px">Evolución (sesión actual)</div>'
+    +'<div style="font-size:11px;color:var(--text3);font-weight:600;margin:10px 0 4px">'+tr.dominanceEvolution+'</div>'
     +domHistHTML
     +'<div style="font-size:10px;color:var(--text3);margin-top:4px">Cap. total: '+fmtBig(m.totalMcap)+' · '+domTag+'</div>'
     +'</div>'
@@ -1970,26 +2063,27 @@ function renderMarket(){
     +'</div>';
 }
 function renderNews(){
-  if(!S.news.length)return'<div class="card" style="text-align:center;padding:40px;color:var(--text3)"><span class="spin">📰</span><br><br>Cargando noticias...</div>';
+  const tr=t();
+  if(!S.news.length)return'<div class="card" style="text-align:center;padding:40px;color:var(--text3)"><span class="spin">📰</span><br><br>'+tr.loadingNews+'</div>';
   const sentiments=S.news.map(function(n){return analyzeSentiment(n.title);});
   const bullCount=sentiments.filter(function(s){return s.score>0;}).length;
   const bearCount=sentiments.filter(function(s){return s.score<0;}).length;
   const neutCount=sentiments.filter(function(s){return s.score===0;}).length;
   const total=sentiments.length||1;
   const globalColor=bullCount>bearCount?'#10b981':bearCount>bullCount?'#ef4444':'#94a3b8';
-  const globalLabel=bullCount>bearCount?'📈 Sentimiento alcista':'📉 Sentimiento bajista — precaución';
+  const globalLabel=bullCount>bearCount?tr.sentGlobalBull:tr.sentGlobalBear;
   const summaryCard='<div class="card">'
-    +'<div style="font-size:15px;font-weight:700;margin-bottom:10px">🧠 Sentimiento de noticias</div>'
+    +'<div style="font-size:15px;font-weight:700;margin-bottom:10px">🧠 '+tr.newsSentiment+'</div>'
     +'<div style="display:flex;gap:8px;margin-bottom:10px">'
     +'<div style="flex:1;text-align:center;padding:10px;background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.3);border-radius:10px">'
     +'<div style="font-size:20px;font-weight:800;color:#10b981">'+bullCount+'</div>'
-    +'<div style="font-size:10px;color:#10b981;font-weight:600">📈 Alcistas</div></div>'
+    +'<div style="font-size:10px;color:#10b981;font-weight:600">'+tr.sentBullish+'</div></div>'
     +'<div style="flex:1;text-align:center;padding:10px;background:rgba(148,163,184,.1);border:1px solid rgba(148,163,184,.2);border-radius:10px">'
     +'<div style="font-size:20px;font-weight:800;color:#94a3b8">'+neutCount+'</div>'
-    +'<div style="font-size:10px;color:#94a3b8;font-weight:600">➖ Neutras</div></div>'
+    +'<div style="font-size:10px;color:#94a3b8;font-weight:600">'+tr.sentNeutral+'</div></div>'
     +'<div style="flex:1;text-align:center;padding:10px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);border-radius:10px">'
     +'<div style="font-size:20px;font-weight:800;color:#ef4444">'+bearCount+'</div>'
-    +'<div style="font-size:10px;color:#ef4444;font-weight:600">📉 Bajistas</div></div>'
+    +'<div style="font-size:10px;color:#ef4444;font-weight:600">'+tr.sentBearish+'</div></div>'
     +'</div>'
     +'<div style="background:var(--bg3);border-radius:999px;height:8px;overflow:hidden;margin-bottom:4px">'
     +'<div style="height:100%;border-radius:999px;background:'+globalColor+';width:'+(bullCount/total*100)+'%;transition:width .8s ease"></div></div>'
@@ -2007,31 +2101,32 @@ function renderNews(){
       +'<span style="color:'+sent.color+';font-weight:600;background:'+sent.color+'22;padding:1px 6px;border-radius:999px">'+sent.label+'</span>'
       +'</div></a>';
   }).join('');
-  return '<div class="space-y">'+summaryCard+'<div class="card"><div style="font-size:15px;font-weight:700;margin-bottom:12px">📰 Noticias Bitcoin</div>'+newsItems+'</div></div>';
+  return '<div class="space-y">'+summaryCard+'<div class="card"><div style="font-size:15px;font-weight:700;margin-bottom:12px">📰 '+tr.newsTitle+'</div>'+newsItems+'</div></div>';
 }
 function renderMempool(){
-  if(!S.mempool)return`<div class="card" style="text-align:center;padding:40px;color:var(--text3)">Cargando Mempool...</div>`;
+  const tr=t();
+  if(!S.mempool)return`<div class="card" style="text-align:center;padding:40px;color:var(--text3)">${tr.loadingMempool}</div>`;
   const{fees,mempool,network}=S.mempool,cong=mempool.congestion;
-  const congLabel=cong<20?'🟢 Baja':cong<50?'🟡 Media':cong<80?'🟠 Alta':'🔴 Muy alta';
+  const congLabel=cong<20?tr.congLow:cong<50?tr.congMed:cong<80?tr.congHigh:tr.congVHigh;
   const congColor=cong<20?'#10b981':cong<50?'#eab308':cong<80?'#f97316':'#ef4444';
   const feeColor=f=>f<=5?'#10b981':f<=30?'#eab308':f<=80?'#f97316':'#ef4444';
   const selRate=fees[S.feeLevel]||fees.hour,totSats=selRate*S.txSize;
   const totUsd=S.price.usd>0?((totSats/1e8)*S.price.usd).toFixed(4):'—';
   const daysHalv=network.blocksToHalving>0?Math.round((network.blocksToHalving*10)/1440):null;
-  const cards=[{l:'Rápido',f:fees.fastest,t:'~10m',ic:'⚡'},{l:'30 min',f:fees.halfHour,t:'~30m',ic:'🟠'},{l:'1 hora',f:fees.hour,t:'~60m',ic:'🕐'},{l:'Eco',f:fees.economy,t:'Horas',ic:'💤'}];
+  const cards=[{l:tr.feefast,f:fees.fastest,tm:'~10m',ic:'⚡'},{l:tr.fee30m,f:fees.halfHour,tm:'~30m',ic:'🟠'},{l:tr.fee1h,f:fees.hour,tm:'~60m',ic:'🕐'},{l:tr.feeEco,f:fees.economy,tm:tr.hours,ic:'💤'}];
   return`<div class="space-y">
   <div class="card">
-    <div style="font-size:15px;font-weight:700;margin-bottom:12px">⛓️ Mempool &amp; Fees</div>
-    <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:6px"><span style="color:var(--text2)">Congestión</span><span style="font-weight:600">${congLabel}</span></div>
+    <div style="font-size:15px;font-weight:700;margin-bottom:12px">⛓️ ${tr.mempoolTitle}</div>
+    <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:6px"><span style="color:var(--text2)">${tr.congestion}</span><span style="font-weight:600">${congLabel}</span></div>
     <div class="cong-track"><div class="cong-bar" style="width:${cong}%;background:${congColor}"></div></div>
     <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text3);margin-top:4px;margin-bottom:14px"><span>${mempool.txCount.toLocaleString()} tx</span><span>${mempool.vsize} MB</span></div>
-    <div class="grid-4">${cards.map(({l,f,t,ic})=>`<div class="fee-card"><span style="font-size:15px">${ic}</span><span style="font-size:9px;color:var(--text3);text-transform:uppercase">${l}</span><span style="font-size:16px;font-weight:700;font-family:monospace;color:${feeColor(f)}">${f}</span><span style="font-size:9px;color:var(--text3)">s/vB</span><span style="font-size:9px;color:var(--text2)">${t}</span></div>`).join('')}</div>
+    <div class="grid-4">${cards.map(({l,f,tm,ic})=>`<div class="fee-card"><span style="font-size:15px">${ic}</span><span style="font-size:9px;color:var(--text3);text-transform:uppercase">${l}</span><span style="font-size:16px;font-weight:700;font-family:monospace;color:${feeColor(f)}">${f}</span><span style="font-size:9px;color:var(--text3)">s/vB</span><span style="font-size:9px;color:var(--text2)">${tm}</span></div>`).join('')}</div>
   </div>
   <div class="card">
-    <div style="font-size:15px;font-weight:700;margin-bottom:12px">⚡ Calculadora</div>
+    <div style="font-size:15px;font-weight:700;margin-bottom:12px">⚡ ${tr.calcTitle}</div>
     <div class="grid-2" style="margin-bottom:10px">
-      <div><div style="font-size:10px;color:var(--text3);margin-bottom:4px">Bytes</div><input id="tx-size" type="number" value="${S.txSize}" min="1" oninput="S.txSize=Math.max(1,parseInt(this.value)||250);renderTab('mempool')"/></div>
-      <div><div style="font-size:10px;color:var(--text3);margin-bottom:4px">Prioridad</div><select id="fee-level" onchange="S.feeLevel=this.value;renderTab('mempool')"><option value="fastest" ${S.feeLevel==='fastest'?'selected':''}>⚡ Rápido</option><option value="halfHour" ${S.feeLevel==='halfHour'?'selected':''}>🟠 30 min</option><option value="hour" ${S.feeLevel==='hour'?'selected':''}>🕐 1 hora</option><option value="economy" ${S.feeLevel==='economy'?'selected':''}>💤 Eco</option><option value="minimum" ${S.feeLevel==='minimum'?'selected':''}>🐢 Mínima</option></select></div>
+      <div><div style="font-size:10px;color:var(--text3);margin-bottom:4px">${tr.bytes}</div><input id="tx-size" type="number" value="${S.txSize}" min="1" oninput="S.txSize=Math.max(1,parseInt(this.value)||250);renderTab('mempool')"/></div>
+      <div><div style="font-size:10px;color:var(--text3);margin-bottom:4px">${tr.priority}</div><select id="fee-level" onchange="S.feeLevel=this.value;renderTab('mempool')"><option value="fastest" ${S.feeLevel==='fastest'?'selected':''}>${tr.feefast}</option><option value="halfHour" ${S.feeLevel==='halfHour'?'selected':''}>${tr.fee30m}</option><option value="hour" ${S.feeLevel==='hour'?'selected':''}>${tr.fee1h}</option><option value="economy" ${S.feeLevel==='economy'?'selected':''}>${tr.feeEco}</option><option value="minimum" ${S.feeLevel==='minimum'?'selected':''}>${tr.feeMin}</option></select></div>
     </div>
     <div class="grid-3"><div class="stat-box"><div class="stat-label">sat/vByte</div><div class="stat-val" style="color:#eab308">${selRate}</div></div><div class="stat-box"><div class="stat-label">Sats</div><div class="stat-val" style="color:#f97316;font-size:12px">${totSats.toLocaleString()}</div></div><div class="stat-box"><div class="stat-label">USD</div><div class="stat-val" style="color:#10b981;font-size:12px">$${totUsd}</div></div></div>
     <div style="font-size:10px;color:var(--text3);text-align:center;margin-top:8px">P2PKH≈250B · SegWit≈140B · Taproot≈110B</div>
@@ -2040,21 +2135,22 @@ function renderMempool(){
 </div>`;
 }
 function renderATM(){
+  const tr=t();
   const alreadyLoaded=S.atmLoaded;
   return`<div class="space-y"><div class="card">
-    <div style="font-size:15px;font-weight:700;margin-bottom:12px">🏧 Cajeros Bitcoin cercanos</div>
+    <div style="font-size:15px;font-weight:700;margin-bottom:12px">🏧 ${tr.atmTitle}</div>
     <div id="atm-status" style="text-align:center;padding:20px;${alreadyLoaded?'display:none':''}">
       <div style="font-size:40px;margin-bottom:12px">📍</div>
-      <div style="font-weight:600;margin-bottom:6px">Encuentra cajeros Bitcoin cerca de ti</div>
-      <div style="font-size:12px;color:var(--text3);margin-bottom:16px">Usaremos tu ubicación para buscar en un radio de ~50 km</div>
-      <button class="btn-orange" onclick="loadATM()">🗺️ Buscar cerca de mí</button>
+      <div style="font-weight:600;margin-bottom:6px">${tr.atmFind}</div>
+      <div style="font-size:12px;color:var(--text3);margin-bottom:16px">${tr.atmRadius}</div>
+      <button class="btn-orange" onclick="loadATM()">${tr.atmBtn}</button>
     </div>
     <div id="atm-count" style="font-size:12px;color:#10b981;margin-bottom:8px;font-weight:600;${alreadyLoaded?'':'display:none'}"></div>
     <div id="map-wrapper" style="height:360px;border-radius:12px;position:relative;${alreadyLoaded?'':'display:none'};clip-path:inset(0 round 12px)">
       <div id="map-container" style="position:absolute;inset:0;"></div>
     </div>
-    <div id="atm-tip" style="font-size:10px;color:var(--text3);text-align:center;margin-top:6px;${alreadyLoaded?'':'display:none'}">🟠 Cajeros/comercios Bitcoin · 📍 Tu posición · Datos: BTCMap.org</div>
-    ${alreadyLoaded?'<button class="btn-ghost" style="width:100%;margin-top:8px" onclick="reloadATM()">🔄 Actualizar</button>':''}
+    <div id="atm-tip" style="font-size:10px;color:var(--text3);text-align:center;margin-top:6px;${alreadyLoaded?'':'display:none'}">${tr.atmTip}</div>
+    ${alreadyLoaded?`<button class="btn-ghost" style="width:100%;margin-top:8px" onclick="reloadATM()">${tr.atmRefresh}</button>`:''}
   </div></div>`;
 }
 function initATM(){
@@ -2071,11 +2167,12 @@ async function reloadATM(){
 async function loadATM(){
   const st=document.getElementById('atm-status');
   if(!st)return;
-  st.innerHTML=`<div style="font-size:13px;color:var(--text3)"><span class="spin">📍</span> Obteniendo tu ubicación...</div>`;
+  const tr=t();
+  st.innerHTML=`<div style="font-size:13px;color:var(--text3)"><span class="spin">📍</span> ${tr.atmLocation}</div>`;
   try{
     const pos=await new Promise((res,rej)=>navigator.geolocation.getCurrentPosition(res,rej,{timeout:15000,enableHighAccuracy:false}));
     const{latitude:lat,longitude:lng}=pos.coords;
-    st.innerHTML=`<div style="font-size:13px;color:var(--text3)"><span class="spin">🔍</span> Buscando cajeros Bitcoin...</div>`;
+    st.innerHTML=`<div style="font-size:13px;color:var(--text3)"><span class="spin">🔍</span> ${tr.atmSearching}</div>`;
 
     // Destruir mapa anterior si existe
     if(S.leafletMap){S.leafletMap.remove();S.leafletMap=null;}
@@ -2111,7 +2208,7 @@ async function loadATM(){
     S.leafletMap.invalidateSize({animate:false});
 
     const uIcon=L.divIcon({html:`<div style="background:#f97316;width:16px;height:16px;border-radius:50%;border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,.5)"></div>`,iconSize:[16,16],iconAnchor:[8,8],className:''});
-    L.marker([lat,lng],{icon:uIcon}).addTo(S.leafletMap).bindPopup('<b>📍 Tu ubicación</b>').openPopup();
+    L.marker([lat,lng],{icon:uIcon}).addTo(S.leafletMap).bindPopup('<b>'+tr.myLocation+'</b>').openPopup();
     let atms=[];
     try{
       const delta=0.5;
@@ -2174,7 +2271,7 @@ async function loadATM(){
       }
     },400);
     const cnt=document.getElementById('atm-count');
-    if(cnt){cnt.textContent=atms.length>0?`✅ ${atms.length} cajeros/comercios encontrados`:'ℹ️ No se encontraron cajeros Bitcoin en esta zona';cnt.style.display='block';}
+    if(cnt){cnt.textContent=atms.length>0?`✅ ${atms.length} ${tr.atmFound}`:'ℹ️ '+tr.atmNone;cnt.style.display='block';}
     const tip=document.getElementById('atm-tip');if(tip)tip.style.display='block';
     st.style.display='none';
     S.atmLoaded=true;
@@ -2182,19 +2279,20 @@ async function loadATM(){
     if(card&&!card.querySelector('.btn-ghost')){
       const btn=document.createElement('button');
       btn.className='btn-ghost';btn.style.cssText='width:100%;margin-top:8px';
-      btn.textContent='🔄 Actualizar';btn.onclick=reloadATM;
+      btn.textContent=tr.atmRefresh;btn.onclick=reloadATM;
       card.appendChild(btn);
     }
   }catch(e){
-    const msg=e.code===1?'Permiso de ubicación denegado. Ve a los ajustes del navegador y activa la ubicación para esta página.':e.name==='TimeoutError'?'Tiempo de espera agotado. Comprueba tu conexión.':'No se pudo cargar el mapa. Inténtalo de nuevo.';
-    if(st)st.innerHTML=`<div style="color:#ef4444;font-size:13px;margin-bottom:14px;line-height:1.5">${msg}</div><button class="btn-orange" onclick="loadATM()">🔄 Reintentar</button>`;
+    const msg=e.code===1?tr.atmErrPerm:e.name==='TimeoutError'?tr.atmErrTimeout:tr.atmErrMap;
+    if(st)st.innerHTML=`<div style="color:#ef4444;font-size:13px;margin-bottom:14px;line-height:1.5">${msg}</div><button class="btn-orange" onclick="loadATM()">${tr.atmRetry}</button>`;
   }
 }
 function renderAlerts(){
+  const tr=t();
   let settingsHTML='';
   try{settingsHTML=renderSettings();}catch(e){console.warn('renderSettings:',e);settingsHTML='';}
   const perm=S.notifPerm;
-  const banner=perm!=='granted'&&perm!=='unsupported'?`<div class="notif-banner"><span style="font-size:18px">🔔</span><div style="flex:1"><div style="font-size:12px;font-weight:600;color:#f97316">Activa las notificaciones</div><div style="font-size:11px;color:var(--text3);margin-top:2px">Para recibir alertas con la app cerrada.</div></div><button class="btn-orange" style="padding:6px 12px;font-size:12px" onclick="activateNotifs()">Activar</button></div>`:perm==='granted'?`<div class="notif-ok"><span>✅</span><div style="font-size:12px;color:#10b981">Notificaciones activas. Recibirás avisos aunque la app esté cerrada.</div></div>`:'';
+  const banner=perm!=='granted'&&perm!=='unsupported'?`<div class="notif-banner"><span style="font-size:18px">🔔</span><div style="flex:1"><div style="font-size:12px;font-weight:600;color:#f97316">${tr.notifEnable}</div><div style="font-size:11px;color:var(--text3);margin-top:2px">${tr.notifEnableDesc}</div></div><button class="btn-orange" style="padding:6px 12px;font-size:12px" onclick="activateNotifs()">Activar</button></div>`:perm==='granted'?`<div class="notif-ok"><span>✅</span><div style="font-size:12px;color:#10b981">${tr.notifActive}</div></div>`:'';
   // Render alert list
   const alertMode=S._alertMode||'price';
   const alertList=S.alerts.length===0
@@ -2219,7 +2317,7 @@ function renderAlerts(){
   const priceForm=`<div class="input-row">
     <div style="position:relative;flex:1">
       <span id="curr-sym" style="position:absolute;left:10px;top:9px;color:var(--text3);font-size:13px">$</span>
-      <input id="alert-target" type="number" style="padding-left:26px" placeholder="Precio objetivo" onkeydown="if(event.key==='Enter')addAlert()"/>
+      <input id="alert-target" type="number" style="padding-left:26px" placeholder="${tr.priceTarget}" onkeydown="if(event.key==='Enter')addAlert()"/>
     </div>
     <select id="alert-curr" style="width:80px" onchange="document.getElementById('curr-sym').textContent=this.value==='eur'?'€':'$'">
       <option value="usd">USD</option><option value="eur">EUR</option>
@@ -2227,26 +2325,26 @@ function renderAlerts(){
     <button class="btn-orange" style="padding:8px 14px;flex-shrink:0" onclick="addAlert()">+</button>
   </div>`;
 
-  const pctForm=`<div style="margin-bottom:8px;font-size:11px;color:var(--text3)">Precio de referencia: <b style="color:var(--text)">$${Math.round(S.price.usd).toLocaleString()}</b> (precio actual)</div>
+  const pctForm=`<div style="margin-bottom:8px;font-size:11px;color:var(--text3)">${tr.refPrice}: <b style="color:var(--text)">$${Math.round(S.price.usd).toLocaleString()}</b></div>
   <div class="input-row">
     <div style="position:relative;flex:1">
       <span style="position:absolute;left:10px;top:9px;color:var(--text3);font-size:13px">%</span>
       <input id="alert-pct" type="number" step="0.5" min="0.1" style="padding-left:28px" placeholder="Ej: 5 para ±5%" onkeydown="if(event.key==='Enter')addPctAlert()"/>
     </div>
     <select id="alert-pct-dir" style="width:90px">
-      <option value="above">Sube ↑</option>
-      <option value="below">Baja ↓</option>
+      <option value="above">${tr.rises}</option>
+      <option value="below">${tr.falls}</option>
     </select>
     <button class="btn-orange" style="padding:8px 14px;flex-shrink:0" onclick="addPctAlert()">+</button>
   </div>
-  <div style="font-size:10px;color:var(--text3);margin-top:6px">Se dispara cuando BTC sube/baja ese % desde ahora.</div>`;
+  <div style="font-size:10px;color:var(--text3);margin-top:6px">${tr.triggerDesc}</div>`;
 
   return`<div class="space-y">${settingsHTML}<div class="card">
-    <div style="font-size:15px;font-weight:700;margin-bottom:12px">🔔 Alertas</div>
+    <div style="font-size:15px;font-weight:700;margin-bottom:12px">🔔 ${tr.alertsTitle2}</div>
     ${banner}
     <div style="display:flex;gap:6px;margin-bottom:12px">
-      ${modeBtn('price','💰 Precio fijo')}
-      ${modeBtn('pct','📊 % Cambio')}
+      ${modeBtn('price',tr.fixedPrice)}
+      ${modeBtn('pct',tr.pctChange)}
     </div>
     ${alertMode==='pct'?pctForm:priceForm}
     <div id="alert-list" style="margin-top:12px">${alertList}</div>
@@ -2256,7 +2354,7 @@ async function activateNotifs(){const r=await requestNotifPerm();if(r==='granted
 function addAlert(){const t=document.getElementById('alert-target'),cur=document.getElementById('alert-curr');if(!t||!cur)return;const val=parseFloat(t.value);if(isNaN(val)||val<=0)return;const curr=cur.value,price=curr==='usd'?S.price.usd:S.price.eur;S.alerts.push({id:Date.now().toString(),type:'price',targetPrice:val,currency:curr,condition:val>price?'above':'below',triggered:false});saveAlerts();navigator.serviceWorker?.ready.then(reg=>reg.active?.postMessage({type:'CHECK_ALERTS',alerts:S.alerts}));t.value='';renderTab('alerts');}
 function addPctAlert(){const t=document.getElementById('alert-pct'),d=document.getElementById('alert-pct-dir');if(!t||!d)return;const pct=parseFloat(t.value);if(isNaN(pct)||pct<=0)return;const dir=d.value;S.alerts.push({id:Date.now().toString(),type:'pct',targetPct:dir==='above'?pct:-pct,condition:dir,refPrice:S.price.usd,triggered:false});saveAlerts();t.value='';renderTab('alerts');}
 function removeAlert(id){S.alerts=S.alerts.filter(a=>a.id!==id);saveAlerts();renderTab('alerts');}
-function checkAlerts(){if(!S.price.usd)return;let changed=false;S.alerts=S.alerts.map(a=>{if(a.triggered)return a;const p=a.currency==='usd'?S.price.usd:S.price.eur,hit=a.condition==='above'?p>=a.targetPrice:p<=a.targetPrice;if(hit){const sym=a.currency==='usd'?'$':'€';showNotif('⚡ Alerta SatsFlow',`BTC ha ${a.condition==='above'?'subido sobre':'bajado de'} ${sym}${a.targetPrice.toLocaleString()} — $${S.price.usd.toLocaleString()}`);changed=true;return{...a,triggered:true};}return a;});if(changed){saveAlerts();if(S.currentTab==='alerts')renderTab('alerts');}}
+function checkAlerts(){if(!S.price.usd)return;let changed=false;S.alerts=S.alerts.map(a=>{if(a.triggered)return a;const p=a.currency==='usd'?S.price.usd:S.price.eur,hit=a.condition==='above'?p>=a.targetPrice:p<=a.targetPrice;if(hit){const sym=a.currency==='usd'?'$':'€';const tr=t();showNotif('⚡ Alerta SatsFlow',`BTC ${a.condition==='above'?tr.alertAbove:tr.alertBelow} ${sym}${a.targetPrice.toLocaleString()} — $${S.price.usd.toLocaleString()}`);changed=true;return{...a,triggered:true};}return a;});if(changed){saveAlerts();if(S.currentTab==='alerts')renderTab('alerts');}}
 async function fetchCorr(){
   S.corrError=null;
   const days=parseInt(S.corrPeriod)||30;
@@ -2416,7 +2514,7 @@ async function fetchCorr(){
   try{
     localStorage.setItem('sf-corrData',JSON.stringify({
       data:S.corrData,
-      savedAt:new Date().toLocaleDateString('es-ES',{weekday:'short',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})
+      savedAt:new Date().toLocaleDateString(S.lang==='ca'?'ca-ES':'es-ES',{weekday:'short',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})
     }));
   }catch{}
 }
@@ -2424,38 +2522,39 @@ async function fetchCorrFallback(){
   // Ja no s'usa — fetchCorr ja té múltiples fallbacks interns
 }
 function renderCorr(){
+  const tr=t();
   if(S.corrLoading){
     return`<div class="card" style="text-align:center;padding:40px;color:var(--text3)">
       <div class="spin" style="font-size:28px">📊</div>
-      <div style="margin-top:16px;font-size:13px;color:var(--text)">Cargando S&P500 y Oro...</div>
-      <div style="margin-top:6px;font-size:11px;color:var(--text3)">Probando múltiples fuentes en paralelo</div>
-      <div style="margin-top:4px;font-size:11px;color:var(--text3)">Máx. 10 segundos</div>
+      <div style="margin-top:16px;font-size:13px;color:var(--text)">${tr.loadingCorr}</div>
+      <div style="margin-top:6px;font-size:11px;color:var(--text3)">${tr.loadingCorr2}</div>
+      <div style="margin-top:4px;font-size:11px;color:var(--text3)">${tr.loadingCorr3}</div>
     </div>`;
   }
   if(!S.corrData){
     return`<div class="space-y">
       <div class="card" style="text-align:center;padding:30px">
         <div style="font-size:36px;margin-bottom:12px">📈</div>
-        <div style="font-weight:700;margin-bottom:8px">Correlación BTC vs Mercados</div>
-        <div style="font-size:13px;color:var(--text3);margin-bottom:20px">Compara el rendimiento de Bitcoin con el S&P500 y el Oro</div>
-        ${S.corrError?`<div style="font-size:12px;color:#ef4444;margin-bottom:14px;padding:10px;background:rgba(239,68,68,.1);border-radius:8px">⚠️ ${S.corrError}<br><span style="color:var(--text3);font-size:11px">Puede ser que los mercados estén cerrados (fin de semana) o la API esté temporalmente no disponible.</span></div>`:''}
-        <button class="btn-orange" onclick="loadCorr()">📊 Cargar datos</button>
+        <div style="font-weight:700;margin-bottom:8px">${tr.corrTitle}</div>
+        <div style="font-size:13px;color:var(--text3);margin-bottom:20px">${tr.corrDesc}</div>
+        ${S.corrError?`<div style="font-size:12px;color:#ef4444;margin-bottom:14px;padding:10px;background:rgba(239,68,68,.1);border-radius:8px">⚠️ ${S.corrError}<br><span style="color:var(--text3);font-size:11px">${tr.corrWeekend}</span></div>`:''}
+        <button class="btn-orange" onclick="loadCorr()">${tr.corrLoad}</button>
       </div>
     </div>`;
   }
   const d=S.corrData;
   const cacheBanner=S.corrCached
     ?`<div style="font-size:11px;background:rgba(234,179,8,.1);border:1px solid rgba(234,179,8,.3);border-radius:8px;padding:8px 12px;margin-bottom:12px;color:#eab308">
-        📦 Dades en caché del <b>${S.corrCached}</b> — els mercats estan tancats (cap de setmana / festiu). S'actualitzarà el proper dia laborable.
+        ${tr.corrCacheBanner.replace('$1','<b>'+S.corrCached+'</b>')}
       </div>`
     :'';
   const corrInfo=r=>{
     const v=parseFloat(r.toFixed(2));
-    if(v>=0.7) return{color:'#ef4444',label:'Alta positiva',icon:'🔴',desc:'BTC se mueve igual que este activo'};
-    if(v>=0.3) return{color:'#f97316',label:'Moderada',icon:'🟠',desc:'Cierta correlación positiva'};
-    if(v>=-0.3) return{color:'#eab308',label:'Baja / Nula',icon:'🟡',desc:'Movimientos independientes'};
-    if(v>=-0.7) return{color:'#84cc16',label:'Inversa moderada',icon:'🟢',desc:'Tienden a moverse en sentidos opuestos'};
-    return{color:'#10b981',label:'Inversa fuerte',icon:'💚',desc:'BTC actúa como cobertura'};
+    if(v>=0.7) return{color:'#ef4444',label:tr.corrHigh,icon:'🔴',desc:tr.corrMovSame};
+    if(v>=0.3) return{color:'#f97316',label:tr.corrMod,icon:'🟠',desc:tr.corrMovPos};
+    if(v>=-0.3) return{color:'#eab308',label:tr.corrLow,icon:'🟡',desc:tr.corrMovInd};
+    if(v>=-0.7) return{color:'#84cc16',label:tr.corrInvMod,icon:'🟢',desc:tr.corrMovOpp};
+    return{color:'#10b981',label:tr.corrInvHigh,icon:'💚',desc:tr.corrMovOpposite};
   };
   const btcSpy=corrInfo(d.corrBtcSpy);
   const btcGold=corrInfo(d.corrBtcGold);
@@ -2581,7 +2680,7 @@ function renderCorr(){
       <b style="color:#a855f7">MicroStrategy (MSTR)</b> → Empresa con el mayor tesoro corporativo en BTC. Actúa como <b>Bitcoin apalancado</b>: cuando BTC sube, MSTR tiende a subir más; cuando cae, cae más. La <b>Beta</b> mide exactamente cuánto amplifica los movimientos de BTC.
     </div>
   </div>
-  <div style="font-size:10px;color:var(--text3);text-align:center">Datos: Binance (BTC) · Yahoo Finance (SPY, GLD, MSTR) · No es un consejo financiero.</div>
+  <div style="font-size:10px;color:var(--text3);text-align:center">Datos: Binance (BTC) · Yahoo Finance (SPY, GLD, MSTR) · ${tr.noFinancialAdvice2}</div>
   <button class="btn-ghost" style="width:100%" onclick="loadCorr()">🔄 Actualizar datos</button>
 </div>`;
 }
@@ -2596,8 +2695,8 @@ async function loadCorr(){
     try{
       const cached=localStorage.getItem('sf-corrData');
       if(cached){const p=JSON.parse(cached);S.corrData=p.data;S.corrCached=p.savedAt;S.corrError=null;}
-      else S.corrError='Tiempo de espera superado. El S&P500 solo está disponible en días laborables (lun–vier). Pruébalo de nuevo.';
-    }catch{S.corrError='Tiempo de espera superado. Pruébalo en un día laborable.';}
+      else S.corrError=t().corrTimeoutFull;
+    }catch{S.corrError=t().corrTimeout;}
   }
   S.corrLoading=false;
   S.corrLoadMsg=null;
@@ -2668,6 +2767,7 @@ async function fetchDominanceHistory(){
   }
 }
 function renderGlobal(){
+  const tr=t();
   const today=new Date();
   const upcomingEvents=EVENTS
     .map(e=>({...e,dateObj:new Date(e.date.replace('xx','01'))}))
@@ -2677,10 +2777,10 @@ function renderGlobal(){
   const typeColors={macro:'#3b82f6',crypto:'#f97316',btc:'#f97316',event:'#8b5cf6'};
   const daysUntil=d=>{
     const diff=Math.round((new Date(d.date.replace('xx','01'))-today)/(1000*60*60*24));
-    if(diff<0)return'<span style="color:var(--text3)">Pasado</span>';
-    if(diff===0)return'<span style="color:#ef4444;font-weight:700">HOY</span>';
-    if(diff<=7)return'<span style="color:#f97316;font-weight:700">En '+diff+' días</span>';
-    return'<span style="color:var(--text2)">En '+diff+' días</span>';
+    if(diff<0)return'<span style="color:var(--text3)">'+tr.globalPast+'</span>';
+    if(diff===0)return'<span style="color:#ef4444;font-weight:700">'+tr.globalToday+'</span>';
+    if(diff<=7)return'<span style="color:#f97316;font-weight:700">'+tr.globalInDays.replace('$1',diff)+'</span>';
+    return'<span style="color:var(--text2)">'+tr.globalInDays.replace('$1',diff)+'</span>';
   };
   const eventsHTML=upcomingEvents.map(e=>{
     const tc=typeColors[e.type]||'#94a3b8';
@@ -2696,18 +2796,18 @@ function renderGlobal(){
       +'</div></div>';
   }).join('');
   const mapHTML='<div id="world-map-wrap" style="position:relative;border-radius:10px;overflow:hidden;background:#0d1b2a;min-height:200px">'
-    +'<div id="world-map-svg" style="width:100%"><div style="text-align:center;padding:30px;color:var(--text3);font-size:12px"><span class="spin">🌍</span><br>Cargando mapa...</div></div>'
+    +'<div id="world-map-svg" style="width:100%"><div style="text-align:center;padding:30px;color:var(--text3);font-size:12px"><span class="spin">🌍</span><br>'+tr.globalLoadingMap+'</div></div>'
     +'<div id="world-map-dots" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none"></div>'
     +'</div>';
   setTimeout(()=>loadWorldMap(),50);
   const legend=[
-    {color:'#10b981',label:'Curso legal'},
-    {color:'#3b82f6',label:'ETF aprobados'},
-    {color:'#84cc16',label:'Regulado'},
-    {color:'#eab308',label:'Restrictivo'},
-    {color:'#ef4444',label:'Prohibido'},
+    {color:'#10b981',label:tr.globalLegal},
+    {color:'#3b82f6',label:tr.globalETF},
+    {color:'#84cc16',label:tr.globalRegulated},
+    {color:'#eab308',label:tr.globalRestricted},
+    {color:'#ef4444',label:tr.globalBanned},
   ];
-  const statusLabels={legal:'🟢 Curso Legal',etf:'🔵 ETF Aprobados',regulated:'🟡 Regulado',restricted:'🟠 Restrictivo',banned:'🔴 Prohibido'};
+  const statusLabels={legal:tr.globalStatusLegal,etf:tr.globalStatusETF,regulated:tr.globalStatusReg,restricted:tr.globalStatusRes,banned:tr.globalStatusBan};
   const countriesByStatus={};
   COUNTRY_DATA.forEach(co=>{
     if(!countriesByStatus[co.status])countriesByStatus[co.status]=[];
@@ -2763,31 +2863,31 @@ function renderGlobal(){
   });
   return '<div class="space-y">'
     +'<div class="card">'
-    +'<div style="font-size:15px;font-weight:700;margin-bottom:4px">📅 Próximos eventos</div>'
-    +'<div style="font-size:11px;color:var(--text3);margin-bottom:12px">Eventos macro y crypto que impactan a Bitcoin</div>'
+    +'<div style="font-size:15px;font-weight:700;margin-bottom:4px">📅 '+tr.globalEventsTitle+'</div>'
+    +'<div style="font-size:11px;color:var(--text3);margin-bottom:12px">'+tr.globalEventsDesc+'</div>'
     +eventsHTML
     +'</div>'
     +'<div class="card">'
     +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">'
-    +'<div style="font-size:15px;font-weight:700">🟠 Dominancia BTC histórica</div>'
+    +'<div style="font-size:15px;font-weight:700">🟠 '+tr.globalDomTitle+'</div>'
     +'<div style="font-size:20px;font-weight:800;color:#f97316">'+(S.marketData?.dominance?.btc||'—')+'%</div>'
     +'</div>'
-    +'<div style="font-size:11px;color:var(--text3);margin-bottom:10px">2020 – hoy · Con marcadores de halving</div>'
+    +'<div style="font-size:11px;color:var(--text3);margin-bottom:10px">'+tr.globalDomDesc+'</div>'
     +domSVG
     +'<div style="display:flex;justify-content:space-between;padding:0 '+dP+'px;margin-top:2px">'
     +xLabels.join('')
     +'</div>'
-    +'<div style="font-size:10px;color:var(--text3);margin-top:8px">Por encima del 50%: Bitcoin dominante. Por encima del 60%: mercado en acumulación / bear market altcoins.</div>'
+    +'<div style="font-size:10px;color:var(--text3);margin-top:8px">'+tr.globalDomNote+'</div>'
     +'</div>'
     +'<div class="card">'
-    +'<div style="font-size:15px;font-weight:700;margin-bottom:4px">🗺️ Mapa de adopción Bitcoin</div>'
-    +'<div style="font-size:11px;color:var(--text3);margin-bottom:10px">Estado legal por país — toca los puntos para ver detalles</div>'
+    +'<div style="font-size:15px;font-weight:700;margin-bottom:4px">🗺️ '+tr.globalMapTitle+'</div>'
+    +'<div style="font-size:11px;color:var(--text3);margin-bottom:10px">'+tr.globalMapDesc+'</div>'
     +mapHTML
     +'<div style="display:flex;flex-wrap:wrap;gap:6px;margin:10px 0">'
     +legend.map(l=>'<div style="display:flex;align-items:center;gap:4px"><div style="width:8px;height:8px;border-radius:50%;background:'+l.color+'"></div><span style="font-size:10px;color:var(--text2)">'+l.label+'</span></div>').join('')
     +'</div>'
     +countryListHTML
-    +'<div style="font-size:10px;color:var(--text3);margin-top:4px">Fuentes: Library of Congress, CoinDesk, Bitcoin.org · Datos 2024-2025</div>'
+    +'<div style="font-size:10px;color:var(--text3);margin-top:4px">'+tr.globalMapSrc+'</div>'
     +'</div>'
     +'</div>';
 }
@@ -3707,9 +3807,10 @@ function calcForecast(currentPrice){
 }
 function renderForecast(){
   try{
+  const tr=t();
   const price=S.price.usd;
-  if(!price)return'<div class="card" style="text-align:center;padding:40px;color:var(--text3)"><span class="spin">⏳</span><br><br>Esperando precio...</div>';
-  if(S.history.length<10)return'<div class="card" style="text-align:center;padding:40px;color:var(--text3)"><span class="spin">📊</span><br><br>Cargando datos...<br><small style="color:var(--text3);font-size:11px">Esperando historial de precio</small></div>';
+  if(!price)return'<div class="card" style="text-align:center;padding:40px;color:var(--text3)"><span class="spin">⏳</span><br><br>'+tr.forecastWaiting+'</div>';
+  if(S.history.length<10)return'<div class="card" style="text-align:center;padding:40px;color:var(--text3)"><span class="spin">📊</span><br><br>'+tr.forecastLoading+'<br><small style="color:var(--text3);font-size:11px">'+tr.forecastWaitHist+'</small></div>';
   const{horizons,factors,netScore,taTotal,onChainTotal,macroTotal,ta,regime,regimeDesc,wTA,wOC,wMacro,asymBull,asymBear}=calcForecast(price);
   if(!OC.loaded)fetchOnChain();
   const fmt=p=>'$'+(p>=1e6?(p/1e6).toFixed(2)+'M':p>=1000?(p/1000).toFixed(0)+'K':p.toFixed(0));
@@ -3726,7 +3827,7 @@ function renderForecast(){
     const basePct=(baseMult-1)*100;
     const bearPct=(bearMult-1)*100;
     const biasColor=bias>0.05?'#10b981':bias<-0.05?'#ef4444':'#eab308';
-    const biasLabel=bias>0.1?'Alcista':bias>0.02?'Lev. alcista':bias<-0.1?'Bajista':bias<-0.02?'Lev. bajista':'Neutral';
+    const biasLabel=bias>0.1?tr.forecastBiasLabel_bull:bias>0.02?tr.forecastBiasLabel_slbull:bias<-0.1?tr.forecastBiasLabel_bear:bias<-0.02?tr.forecastBiasLabel_slbear:tr.forecastBiasLabel_neutral;
     const rawBull=Math.max(5, Math.round(30 + bias*80));
     const rawBear=Math.max(5, Math.round(25 - bias*65));
     const rawBase=Math.max(5, 100-rawBull-rawBear);
@@ -3740,7 +3841,7 @@ function renderForecast(){
     const cardBorderColor=(s)=>s===mostLikely?(s==='bull'?'#10b981':s==='base'?'#eab308':'#ef4444'):(s==='bull'?'rgba(16,185,129,.25)':s==='base'?'rgba(234,179,8,.3)':'rgba(239,68,68,.25)');
     const probBar=(pct,col)=>'<div style="background:rgba(255,255,255,.08);border-radius:999px;height:4px;margin:4px 2px 0">'
       +'<div style="height:100%;border-radius:999px;background:'+col+';width:'+pct+'%"></div></div>';
-    const mostLikelyLabel=mostLikely==='bull'?'📈 Alcista':mostLikely==='base'?'📊 Base':'📉 Bajista';
+    const mostLikelyLabel=mostLikely==='bull'?tr.forecastBullish:mostLikely==='base'?tr.forecastBase:tr.forecastBearish;
     const mostLikelyColor=mostLikely==='bull'?'#10b981':mostLikely==='base'?'#eab308':'#ef4444';
     const mostLikelyP=mostLikely==='bull'?pBull:mostLikely==='base'?pBase:pBear;
     return '<div style="background:var(--bg);border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:10px">'
@@ -3750,7 +3851,7 @@ function renderForecast(){
       +'</div>'
       +'<div style="background:'+mostLikelyColor+'18;border:1.5px solid '+mostLikelyColor+'55;border-radius:10px;padding:8px 12px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center">'
       +'<div>'
-      +'<div style="font-size:9px;color:'+mostLikelyColor+';font-weight:700;letter-spacing:.5px;margin-bottom:2px">⭐ '+' MÁS PROBABLE (estimado)</div>'
+      +'<div style="font-size:9px;color:'+mostLikelyColor+';font-weight:700;letter-spacing:.5px;margin-bottom:2px">⭐ '+tr.forecastMostLikely+'</div>'
       +'<div style="font-size:13px;font-weight:800;color:'+mostLikelyColor+'">'+mostLikelyLabel+'</div>'
       +'</div>'
       +'<div style="text-align:right">'
@@ -3828,7 +3929,7 @@ function renderForecast(){
   const html='<div class="space-y">'
     +'<div style="background:rgba(234,179,8,.08);border:1px solid rgba(234,179,8,.3);border-radius:12px;padding:12px;display:flex;gap:10px">'
     +'<div style="font-size:20px">⚠️</div>'
-    +'<div style="font-size:11px;color:var(--text2);line-height:1.5"><b style="color:#eab308"><b style=\"color:#eab308\">⚠️ Aviso:</b> Esto no es consejo financiero. Son rangos probabilísticos. Bitcoin es extremadamente volátil. Nunca inviertas más de lo que puedas perder.</div>'
+    +'<div style="font-size:11px;color:var(--text2);line-height:1.5"><b style="color:#eab308"><b style=\"color:#eab308\">⚠️</b> '+tr.forecastDisclaimer+'</div>'
     +'</div>'
     +'<div class="card">'
     +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">'
@@ -3958,10 +4059,10 @@ function importConfig(){
       if(data.days){S.days=data.days;}
       if(data.chartType){S.chartType=data.chartType;}
       if(data.corrPeriod){S.corrPeriod=data.corrPeriod;}
-      showToast('✅ Config importada correctament!');
+      showToast(t().importOk);
       renderTab(S.currentTab);
     }catch(err){
-      showToast('❌ Error: fitxer no vàlid');
+      showToast(t().importErr);
     }
   };
   inp.click();
@@ -3974,35 +4075,33 @@ function showToast(msg){
 }
 
 function renderDCA(){
+  const tr=t();
   const currentPrice=S.price.usd||70000;
   return`<div class="space-y">
     <div class="card">
-      <div style="font-size:15px;font-weight:700;margin-bottom:4px">📐 Calculadora DCA</div>
-      <div style="font-size:11px;color:var(--text3);margin-bottom:16px">Dollar Cost Averaging — inversió periòdica en Bitcoin</div>
+      <div style="font-size:15px;font-weight:700;margin-bottom:4px">📐 ${tr.dcaTitle}</div>
+      <div style="font-size:11px;color:var(--text3);margin-bottom:16px">${tr.dcaDesc}</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
         <div>
-          <div style="font-size:11px;color:var(--text3);margin-bottom:4px">Inversió mensual (€)</div>
+          <div style="font-size:11px;color:var(--text3);margin-bottom:4px">${tr.dcaMonthly}</div>
           <input type="number" id="dca-amount" value="100" min="1" oninput="calcDCA()" style="text-align:center;font-weight:700;font-size:15px">
         </div>
         <div>
-          <div style="font-size:11px;color:var(--text3);margin-bottom:4px">Fa quants mesos</div>
+          <div style="font-size:11px;color:var(--text3);margin-bottom:4px">${tr.dcaMonthsAgo}</div>
           <input type="number" id="dca-months" value="12" min="1" max="120" oninput="calcDCA()" style="text-align:center;font-weight:700;font-size:15px">
         </div>
       </div>
       <div>
-        <div style="font-size:11px;color:var(--text3);margin-bottom:4px">Preu inicial BTC (€) <span style="color:#f97316;cursor:pointer" onclick="document.getElementById('dca-start').value=${Math.round(currentPrice*0.92)};calcDCA()">usar actual</span></div>
+        <div style="font-size:11px;color:var(--text3);margin-bottom:4px">${tr.dcaStartPrice} <span style="color:#f97316;cursor:pointer" onclick="document.getElementById('dca-start').value=${Math.round(currentPrice*0.92)};calcDCA()">${tr.dcaUseNow}</span></div>
         <input type="number" id="dca-start" value="${Math.round(currentPrice*0.85)}" min="1" oninput="calcDCA()">
       </div>
       <div id="dca-result" style="margin-top:16px"></div>
     </div>
     <div class="card" style="background:rgba(249,115,22,.06);border-color:rgba(249,115,22,.3)">
-      <div style="font-size:12px;font-weight:700;color:#f97316;margin-bottom:8px">💡 Què és DCA?</div>
+      <div style="font-size:12px;font-weight:700;color:#f97316;margin-bottom:8px">💡 ${tr.dcaInfoTitle}</div>
       <div style="font-size:11px;color:var(--text2);line-height:1.6">
-        <b>Dollar Cost Averaging</b> és invertir una quantitat fixa periòdicament, independentment del preu.<br><br>
-        ✅ Elimina l'estrès de "comprar al moment perfecte"<br>
-        ✅ Promitja el preu d'entrada automàticament<br>
-        ✅ Estratègia recomanada per la majoria de Bitcoiners a llarg termini<br><br>
-        <span style="color:var(--text3);font-size:10px">Els càlculs asumeixen un preu d'entrada lineal des del preu inicial fins al preu actual.</span>
+        ${tr.dcaInfoText}<br><br>
+        <span style="color:var(--text3);font-size:10px">${tr.dcaInfoNote}</span>
       </div>
     </div>
   </div>`;
@@ -4027,30 +4126,31 @@ function calcDCA(){
   const avgPrice=totalInvested/totalBTC;
   const el=document.getElementById('dca-result');
   if(!el)return;
+  const tr=t();
   el.innerHTML=`
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
       <div style="background:var(--bg);border-radius:12px;padding:12px;text-align:center">
-        <div style="font-size:10px;color:var(--text3);margin-bottom:4px">TOTAL INVERTIT</div>
+        <div style="font-size:10px;color:var(--text3);margin-bottom:4px">${tr.dcaTotalInvested}</div>
         <div style="font-size:18px;font-weight:800;color:var(--text)">€${Math.round(totalInvested).toLocaleString()}</div>
       </div>
       <div style="background:var(--bg);border-radius:12px;padding:12px;text-align:center">
-        <div style="font-size:10px;color:var(--text3);margin-bottom:4px">BTC ACUMULAT</div>
+        <div style="font-size:10px;color:var(--text3);margin-bottom:4px">${tr.dcaBTCAccum}</div>
         <div style="font-size:18px;font-weight:800;color:#f97316">₿${totalBTC.toFixed(6)}</div>
       </div>
       <div style="background:var(--bg);border-radius:12px;padding:12px;text-align:center">
-        <div style="font-size:10px;color:var(--text3);margin-bottom:4px">VALOR ACTUAL</div>
+        <div style="font-size:10px;color:var(--text3);margin-bottom:4px">${tr.dcaCurrentVal}</div>
         <div style="font-size:18px;font-weight:800;color:#3b82f6">€${Math.round(currentValue).toLocaleString()}</div>
       </div>
       <div style="background:${profit>=0?'rgba(16,185,129,.1)':'rgba(239,68,68,.1)'};border:1px solid ${profit>=0?'rgba(16,185,129,.3)':'rgba(239,68,68,.3)'};border-radius:12px;padding:12px;text-align:center">
-        <div style="font-size:10px;color:var(--text3);margin-bottom:4px">GUANY/PÈRDUA</div>
+        <div style="font-size:10px;color:var(--text3);margin-bottom:4px">${tr.dcaProfitLoss}</div>
         <div style="font-size:18px;font-weight:800;color:${profit>=0?'#10b981':'#ef4444'}">${profit>=0?'+':''}€${Math.round(profit).toLocaleString()}</div>
         <div style="font-size:11px;color:${profit>=0?'#10b981':'#ef4444'}">${profitPct>=0?'+':''}${profitPct.toFixed(1)}%</div>
       </div>
     </div>
     <div style="background:var(--bg);border-radius:10px;padding:10px;font-size:11px;color:var(--text2)">
-      Preu mig d'entrada: <b style="color:var(--text)">€${Math.round(avgPrice).toLocaleString()}</b> · 
-      Preu actual: <b style="color:#f97316">€${Math.round(currentPrice).toLocaleString()}</b> · 
-      Diferència: <b style="color:${currentPrice>=avgPrice?'#10b981':'#ef4444'}">${((currentPrice-avgPrice)/avgPrice*100).toFixed(1)}%</b>
+      ${tr.dcaAvgEntry}: <b style="color:var(--text)">€${Math.round(avgPrice).toLocaleString()}</b> ·
+      ${tr.dcaCurrentPrice}: <b style="color:#f97316">€${Math.round(currentPrice).toLocaleString()}</b> ·
+      ${tr.dcaDiff}: <b style="color:${currentPrice>=avgPrice?'#10b981':'#ef4444'}">${((currentPrice-avgPrice)/avgPrice*100).toFixed(1)}%</b>
     </div>
   `;
 }
