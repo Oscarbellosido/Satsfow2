@@ -4608,33 +4608,38 @@ setTimeout(() => _checkZombie(0), 5000);
 // Aquí solo actualizamos el precio cuando el usuario vuelve a la app durante el día
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) { _saveTS(); return; }
-  // App visible de nuevo → refrescar precio silenciosamente
-  if (S.price?.usd > 0) {
-    fetchPrice().then(() => renderCurrentTab()).catch(() => {});
-    // Comprobar aviso matutino al volver al primer plano
-    setTimeout(()=>{try{_checkMorningNow();}catch{}},2000);
-    // Comprobar snapshot diario al volver al primer plano
-    // Captura: usuario abre la app a las 9:05 tras tenerla minimizada
-    setTimeout(()=>{
-      if(typeof scheduleDailySnapshot==='function'){
-        const now=new Date();
-        if(now.getHours()>=9&&S.price?.usd>0){
-          const dateKey=now.toISOString().slice(0,10);
-          openDB().then(db=>{
-            const tx=db.transaction('predictions','readonly');
-            const q=tx.objectStore('predictions').get(dateKey);
-            q.onsuccess=()=>{if(!q.result)saveSnapshotIfNeeded(false);};
-          }).catch(()=>{});
-        }
+  // App visible de nuevo → SIEMPRE refrescar, independientemente del estado del precio.
+  // En Android el proceso puede haber sido matado y S.price quedará a 0 aunque
+  // hayan pasado menos de 6h — sin este fetch la pantalla quedaría en blanco.
+  fetchPrice().then(() => renderCurrentTab()).catch(() => {
+    try { renderCurrentTab(); } catch {} // renderizar con datos locales si falla la red
+  });
+  // Comprobar aviso matutino al volver al primer plano
+  setTimeout(()=>{try{_checkMorningNow();}catch{}},2000);
+  // Comprobar snapshot diario al volver al primer plano
+  setTimeout(()=>{
+    if(typeof scheduleDailySnapshot==='function'){
+      const now=new Date();
+      if(now.getHours()>=9&&S.price?.usd>0){
+        const dateKey=now.toISOString().slice(0,10);
+        openDB().then(db=>{
+          const tx=db.transaction('predictions','readonly');
+          const q=tx.objectStore('predictions').get(dateKey);
+          q.onsuccess=()=>{if(!q.result)saveSnapshotIfNeeded(false);};
+        }).catch(()=>{});
       }
-    }, 5000); // 5s para que fetchPrice termine
-  }
-  // Si lleva más de 6 horas sin usar Y el precio es 0 → recargar
+    }
+  }, 5000);
+  // Si lleva más de 6 horas inactiva y el precio sigue a 0 tras el reintento → recargar
   const inactiveH = (_getTS() > 0) ? (Date.now() - _getTS()) / 3600000 : 0;
-  if (inactiveH > 6 && (!S.price || S.price.usd === 0)) {
-    console.log('[SatsFlow] >6h inactiva + precio=0 — recargando');
-    _saveTS();
-    window.location.reload();
+  if (inactiveH > 6) {
+    setTimeout(()=>{
+      if(!S.price||S.price.usd===0){
+        console.log('[SatsFlow] >6h inactiva + precio=0 tras reintento — recargando');
+        _saveTS();
+        window.location.reload();
+      }
+    }, 8000); // dar 8s a fetchPrice para recuperar el precio antes de recargar
   }
 });
 
