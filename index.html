@@ -3350,6 +3350,33 @@ async function fetchOnChain(){
   OC.loaded=true;
   if(S.currentTab==='forecast')renderTab('forecast');
 }
+// ── MEJORA 3: Calcula el sesgo histórico del modelo comparando predicciones pasadas con precio real
+async function updateForecastBias(){
+  try{
+    const log=JSON.parse(localStorage.getItem('sf-pricelog')||'{}');
+    const preds=await loadPredictions();
+    const now=Date.now();
+    const errors=[];
+    for(const p of preds){
+      if(!p.week||!p.price||!p.ts)continue;
+      if(now<p.ts+6*86400000)continue; // horizonte semanal aún no ha vencido
+      const targetDate=new Date(p.ts+7*86400000).toISOString().slice(0,10);
+      const realPrice=log[targetDate]||getPriceAtDate(targetDate);
+      if(!realPrice||realPrice<=0)continue;
+      const basePx=p.week.base||p.price;
+      if(basePx>0)errors.push((realPrice-basePx)/basePx); // error relativo
+    }
+    if(errors.length>=3){
+      const recent=errors.slice(0,Math.min(10,errors.length));
+      const avgErr=recent.reduce((a,b)=>a+b,0)/recent.length;
+      S.forecastBias=Math.max(-0.15,Math.min(0.15,avgErr)); // máx ±15% de corrección
+      console.log('[SatsFlow] Forecast bias calculado:',S.forecastBias.toFixed(3),'(n='+recent.length+')');
+    }else{
+      S.forecastBias=0;
+    }
+  }catch(e){console.warn('updateForecastBias:',e);S.forecastBias=0;}
+}
+
 function calcForecast(currentPrice){
   const ta=analyze();
   const fg=S.marketData?.fearGreed?.value||50;
@@ -3743,6 +3770,33 @@ function calcForecast(currentPrice){
     else{trendsScore=0.12;}  // nadie habla de BTC = fondo
   }else{trendsScore=0.02;trendsDesc='Interés retail: calculando proxy...';}
 
+  // ── MEJORA 5: Stock-to-Flow (señal de valoración estructural a largo plazo)
+  let s2fScore=0,s2fDesc='';
+  {
+    const halvingMs=new Date('2024-04-20').getTime();
+    const monthsPost=Math.max(0,(Date.now()-halvingMs)/(30.44*86400000));
+    const halvingPx=63000; // precio BTC en el halving abril 2024
+    const cycleTarget=300000; // objetivo conservador del ciclo según S2F histórico
+    const tS=Math.min(1.0,monthsPost/18);
+    const s2fFair=Math.round(halvingPx+(cycleTarget-halvingPx)*(tS*tS*(3-2*tS)));
+    const s2fRatio=currentPrice/s2fFair;
+    if(s2fRatio<0.40){s2fScore=0.15;s2fDesc='S2F: precio muy por debajo del modelo ('+(s2fRatio*100).toFixed(0)+'% del objetivo $'+Math.round(s2fFair/1000)+'K). Zona de máxima infravaloración del ciclo.';}
+    else if(s2fRatio<0.65){s2fScore=0.10;s2fDesc='S2F: precio infravalorado vs modelo ($'+Math.round(s2fFair/1000)+'K fair value). Buena zona de acumulación.';}
+    else if(s2fRatio<0.85){s2fScore=0.05;s2fDesc='S2F: precio moderadamente bajo respecto al modelo. Zona favorable para largo plazo.';}
+    else if(s2fRatio<1.15){s2fScore=0.01;s2fDesc='S2F: precio en zona de valor justo (~$'+Math.round(s2fFair/1000)+'K). Neutro.';}
+    else if(s2fRatio<1.50){s2fScore=-0.05;s2fDesc='S2F: precio por encima del modelo ('+(s2fRatio*100).toFixed(0)+'%). Sobrecomprado moderado.';}
+    else{s2fScore=-0.12;s2fDesc='S2F: precio significativamente sobrecomprado vs modelo histórico. Zona de distribución.';}
+  }
+
+  // ── MEJORA 4: Estacionalidad (patrón histórico de BTC por mes)
+  let seasonScore=0,seasonDesc='';
+  {
+    const mes=new Date().getMonth()+1;
+    const sm={10:{s:0.08,d:'Octubre: históricamente el mejor arranque de Q4 (+35% media en ciclos de halving).'},11:{s:0.10,d:'Noviembre: mes más alcista de Bitcoin históricamente (+40% media).'},12:{s:0.07,d:'Diciembre: cierre de año habitualmente fuerte para BTC.'},1:{s:0.05,d:'Enero: continuación del rally de Q4. Históricamente positivo.'},2:{s:0.03,d:'Febrero: moderadamente alcista según datos históricos.'},3:{s:0.01,d:'Marzo: neutro, transición de temporada.'},4:{s:0.02,d:'Abril: ligeramente positivo (zona de halvings histórica).'},5:{s:-0.03,d:'Mayo: "Sell in May" — históricamente débil para BTC.'},6:{s:-0.04,d:'Junio: verano flojo históricamente. Menor actividad de mercado.'},7:{s:-0.02,d:'Julio: verano, actividad de mercado reducida.'},8:{s:-0.03,d:'Agosto: históricamente uno de los meses más débiles de BTC.'},9:{s:0.02,d:'Septiembre: inicio de transición hacia el Q4 alcista.'}};
+    const sv=sm[mes]||{s:0,d:'Estacionalidad neutral.'};
+    seasonScore=sv.s; seasonDesc=sv.d;
+  }
+
   // ── MEJORA 2: Descorelación de factores técnicos
   // RSI, Stoch RSI y taComposite están altamente correlacionados (miden momentum)
   // MACD y OBV también solapan en tendencia
@@ -3757,7 +3811,7 @@ function calcForecast(currentPrice){
   const taTotal     = momentumAdj + trendAdj + priceAdj;
 
   const onChainTotal=hashrateScore+addressScore+volumeScore+oiScore+frScore+netflowScore+soprScore+mvrvScore+ssrScore+puellScore+lsScore+whaleScore+lightningScore;
-  const macroTotal=halvingScore+institutionalScore+macroScore+fgScore+domScore+regulationScore+riskScore+corrScore+m2Score+dxyScore+etfScore+trendsScore+rainbowScore;
+  const macroTotal=halvingScore+institutionalScore+macroScore+fgScore+domScore+regulationScore+riskScore+corrScore+m2Score+dxyScore+etfScore+trendsScore+rainbowScore+s2fScore+seasonScore;
 
   // ── MEJORA 1: Detectar régimen de mercado y ajustar pesos dinámicamente
   // Régimen basado en: precio vs SMA, dominancia, Fear&Greed, hashrate
@@ -3792,36 +3846,60 @@ function calcForecast(currentPrice){
 
   const netScore = taTotal*wTA + onChainTotal*wOC + macroTotal*wMacro;
 
+  // ── MEJORA 2: Penalización por divergencia entre categorías
+  // Si TA, on-chain y macro apuntan en direcciones distintas hay más incertidumbre real
+  const netSign=Math.sign(netScore)||1;
+  const agreements=[Math.sign(taTotal),Math.sign(onChainTotal),Math.sign(macroTotal)].filter(s=>s===netSign).length;
+  // divergenceMult amplía las bandas de volatilidad: 3 acuerdan=normal, 2=+12%, 1=+25%
+  const divergenceMult=agreements===3?1.0:agreements===2?1.12:1.25;
+  const divergenceNote=agreements===3?'Todas las categorías alineadas.':agreements===2?'⚠️ Divergencia moderada entre categorías — incertidumbre elevada.':'⚠️ Fuerte divergencia entre TA, on-chain y macro — rangos ampliados.';
+
   // ── MEJORA 3: Asimetría Bear/Bull según régimen histórico de BTC
   // BTC en bull sube más de lo que cae; en bear cae más de lo que sube
   const asymBull = regime==='bull'?1.35:regime==='bear'?0.70:regime==='trend_up'?1.20:regime==='trend_down'?0.80:1.0;
   const asymBear = regime==='bull'?0.75:regime==='bear'?1.40:regime==='trend_up'?0.80:regime==='trend_down'?1.25:1.0;
-  // Volatilidad ajustada por régimen
-  const volAdj = regime==='bull'?1.15:regime==='bear'?1.30:regime==='lateral'?0.85:1.0;
-  const volWeek=0.06*volAdj, volMonth=0.18*volAdj, vol6M=0.45*volAdj, volYear=0.75*volAdj;
+  // ── MEJORA 1: Volatilidad realizada dinámica (vs. valores fijos)
+  // Calcula la desviación estándar de retornos diarios de los últimos 14 días
+  let realVol=0.65; // fallback: ~65% anualizado (media histórica BTC)
+  if(S.history.length>=8){
+    const px=S.history.slice(-Math.min(15,S.history.length)).map(h=>h.price);
+    const rets=[];
+    for(let i=1;i<px.length;i++){if(px[i-1]>0)rets.push(Math.log(px[i]/px[i-1]));}
+    if(rets.length>=5){
+      const mn=rets.reduce((a,b)=>a+b,0)/rets.length;
+      const vr=rets.reduce((a,b)=>a+(b-mn)**2,0)/rets.length;
+      realVol=Math.max(0.25,Math.min(1.50,Math.sqrt(vr*365))); // anualizado, acotado [25%,150%]
+    }
+  }
+  // Convertir volatilidad anualizada a cada horizonte temporal (raíz del tiempo)
+  const volAdj=regime==='bull'?1.15:regime==='bear'?1.30:regime==='lateral'?0.85:1.0;
+  const volWeek=Math.max(0.03,Math.min(0.18,realVol/Math.sqrt(52)))*volAdj;
+  const volMonth=Math.max(0.08,Math.min(0.40,realVol/Math.sqrt(12)))*volAdj;
+  const vol6M=Math.max(0.20,Math.min(0.75,realVol/Math.sqrt(2)))*volAdj;
+  const volYear=Math.max(0.40,Math.min(1.20,realVol))*volAdj;
   const horizons=[
     {
       label:'1 semana', days:7, icon:'📅',
       localScore: taTotal*0.70 + (fgScore+domScore)*0.30,
-      vol: volWeek,
+      vol: volWeek*divergenceMult,
       note:'Basado principalmente en RSI, MACD y Bollinger. Horizonte muy sensible a noticias.'
     },
     {
       label:'1 mes', days:30, icon:'📆',
       localScore: taTotal*0.40 + onChainTotal*0.35 + macroTotal*0.25,
-      vol: volMonth,
+      vol: volMonth*divergenceMult,
       note:'Equilibrio entre técnico, on-chain y macro. Ciclo halving y ETFs empiezan a pesar.'
     },
     {
       label:'6 meses', days:180, icon:'🗓️',
       localScore: taTotal*0.10 + onChainTotal*0.40 + macroTotal*0.50,
-      vol: vol6M,
+      vol: vol6M*divergenceMult,
       note:'El ciclo post-halving, adopción institucional y on-chain dominan sobre el TA.'
     },
     {
       label:'1 año', days:365, icon:'📊',
       localScore: taTotal*0.05 + onChainTotal*0.35 + macroTotal*0.60,
-      vol: volYear,
+      vol: volYear*divergenceMult,
       note:'Factores estructurales y ciclo de 4 años son los determinantes principales.'
     }
   ];
@@ -3860,23 +3938,26 @@ function calcForecast(currentPrice){
     {group:'🌐 Macro/Ciclo',name:'Rainbow Chart (valoración)',score:rainbowScore,desc:rainbowDesc},
     {group:'⛓️ On-chain & Futuros',name:'Whale Activity (ballenas)',score:whaleScore,desc:whaleDesc},
     {group:'⛓️ On-chain & Futuros',name:'Lightning Network',score:lightningScore,desc:lightningDesc},
+    {group:'🌐 Macro/Ciclo',name:'Stock-to-Flow (S2F)',score:s2fScore,desc:s2fDesc},
+    {group:'🌐 Macro/Ciclo',name:'Estacionalidad mensual',score:seasonScore,desc:seasonDesc},
   ];
+  // ── MEJORA 3: Corrección histórica de sesgo
+  // S.forecastBias se calcula async en updateForecastBias() al cargar la pestaña
+  const biasFix=S.forecastBias||0; // ej: -0.08 si el modelo fue 8% optimista de media
+
   // Calcular precios bear/base/bull para cada horizonte (misma lógica que renderForecast)
   horizons.forEach(h=>{
     const bias=h.localScore;
-    const bullMult=1+h.vol*(1+bias*2);
-    const baseMult=1+h.vol*0.3*bias;
-    const bearMult=1-h.vol*(1-bias*1.5);
     const bullMultA=1+h.vol*asymBull*(1+bias*2);
     const bearMultA=1-h.vol*asymBear*(1-bias*1.5);
-    const baseMultA=1+h.vol*0.3*bias;
+    const baseMultA=(1+h.vol*0.3*bias)*(1+biasFix); // corrección histórica en base
     h.bull=Math.round(currentPrice*Math.max(bullMultA,1.01));
     h.base=Math.round(currentPrice*Math.max(Math.min(baseMultA,bullMultA*0.9),bearMultA*1.1));
     h.bear=Math.round(currentPrice*Math.min(bearMultA,0.99));
     h.mostLikely=bias>0.05?'bull':bias<-0.05?'bear':'base';
     h.signal=bias>0.1?'COMPRAR':bias<-0.1?'VENDER':'NEUTRAL';
   });
-  return{horizons,factors,netScore,taTotal,onChainTotal,macroTotal,ta,regime,regimeDesc,wTA,wOC,wMacro,asymBull,asymBear};
+  return{horizons,factors,netScore,taTotal,onChainTotal,macroTotal,ta,regime,regimeDesc,wTA,wOC,wMacro,asymBull,asymBear,divergenceMult,divergenceNote,realVol,biasFix};
 }
 // Mejora 4: barra visual de rango Bear/Base/Bull sobre el precio actual
 function renderForecastRangeBar(cur, bearP, baseP, bullP){
@@ -3912,14 +3993,16 @@ function renderForecast(){
   const price=S.price.usd;
   if(!price)return'<div class="card" style="text-align:center;padding:40px;color:var(--text3)"><span class="spin">⏳</span><br><br>'+tr.forecastWaiting+'</div>';
   if(S.history.length<10)return'<div class="card" style="text-align:center;padding:40px;color:var(--text3)"><span class="spin">📊</span><br><br>'+tr.forecastLoading+'<br><small style="color:var(--text3);font-size:11px">'+tr.forecastWaitHist+'</small></div>';
-  const{horizons,factors,netScore,taTotal,onChainTotal,macroTotal,ta,regime,regimeDesc,wTA,wOC,wMacro,asymBull,asymBear}=calcForecast(price);
+  // ── MEJORA 3: Calcular sesgo histórico de forma asíncrona si aún no está cacheado
+  if(S.forecastBias===undefined){S.forecastBias=0;updateForecastBias().then(()=>{if(S.currentTab==='forecast')renderTab('forecast');});}
+  const{horizons,factors,netScore,taTotal,onChainTotal,macroTotal,ta,regime,regimeDesc,wTA,wOC,wMacro,asymBull,asymBear,divergenceMult,divergenceNote,realVol,biasFix}=calcForecast(price);
   if(!OC.loaded)fetchOnChain();
   const fmt=p=>'$'+(p>=1e6?(p/1e6).toFixed(2)+'M':p>=1000?(p/1000).toFixed(0)+'K':p.toFixed(0));
   const fmtPct=p=>(p>=0?'+':'')+p.toFixed(1)+'%';
   const horizonCards=horizons.map(h=>{
     const bias=h.localScore;
     const bullMult=1+h.vol*asymBull*(1+bias*2);
-    const baseMult=1+h.vol*0.3*bias;
+    const baseMult=(1+h.vol*0.3*bias)*(1+biasFix);
     const bearMult=1-h.vol*asymBear*(1-bias*1.5);
     const bullP=Math.round(price*Math.max(bullMult,1.01));
     const baseP=Math.round(price*Math.max(Math.min(baseMult,bullMult*0.9),bearMult*1.1));
@@ -4065,6 +4148,9 @@ function renderForecast(){
     +'<div style="font-size:10px;color:var(--text3);margin-bottom:2px">🎯 Régimen detectado</div>'
     +'<div style="font-size:11px;color:var(--text2)">'+regimeDesc+'</div>'
     +'<div style="font-size:10px;color:var(--text3);margin-top:4px">Pesos: Técnico '+Math.round(wTA*100)+'% · On-chain '+Math.round(wOC*100)+'% · Macro '+Math.round(wMacro*100)+'%</div>'
+    +(divergenceMult>1?'<div style="font-size:10px;color:#eab308;margin-top:4px">'+divergenceNote+'</div>':'')
+    +(Math.abs(biasFix)>=0.01?'<div style="font-size:10px;color:#818cf8;margin-top:3px">🔧 Corrección histórica aplicada: '+(biasFix>=0?'+':'')+Math.round(biasFix*100)+'% sobre precio base ('+Math.abs(Math.round(biasFix*100))+'% de sesgo detectado en predicciones pasadas).</div>':'')
+    +'<div style="font-size:10px;color:var(--text3);margin-top:3px">📊 Volatilidad realizada (14d): '+(realVol*100).toFixed(1)+'% anualizada</div>'
     +'</div>'
     +'</div>'
     +'<div class="card">'
