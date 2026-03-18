@@ -2192,7 +2192,7 @@ function renderATM(){
       <button class="atm-pill${S.atmFilter==='atm'?' active':''}" onclick="filterATM('atm')">🏧 ${t().atmFilterAtm||'ATMs'}</button>
       <button class="atm-pill${S.atmFilter==='shop'?' active':''}" onclick="filterATM('shop')">🏪 ${t().atmFilterShop||'Comercios'}</button>
     </div>`:''}
-    <div id="map-wrapper" style="height:360px;border-radius:12px;position:relative;${alreadyLoaded?'':'display:none'};clip-path:inset(0 round 12px)" ontouchstart="event.stopPropagation()" ontouchend="event.stopPropagation()" ontouchmove="event.stopPropagation()">
+    <div id="map-wrapper" style="height:360px;border-radius:12px;position:relative;${alreadyLoaded?'':'display:none'};clip-path:inset(0 round 12px)">
       <div id="map-container" style="position:absolute;inset:0;"></div>
     </div>
     <div id="atm-tip" style="font-size:10px;color:var(--text3);text-align:center;margin-top:6px;${alreadyLoaded?'':'display:none'}">${tr.atmTip}</div>
@@ -4520,10 +4520,12 @@ async function init(){
     const _tabList=['home','analysis','market','mempool','atm','news','alerts','corr','global','forecast','cycles','dca'];
     const _cnt=document.getElementById('content');
     if(_cnt){
-      _cnt.addEventListener('touchstart',e=>{_tx=e.changedTouches[0].clientX;_multiTouch=e.touches.length>1||!!e.target.closest('#map-wrapper,#map-container,.leaflet-container');},{passive:true});
+      _cnt.addEventListener('touchstart',e=>{_tx=e.changedTouches[0].clientX;_multiTouch=e.touches.length>1;},{passive:true});
       _cnt.addEventListener('touchmove',e=>{if(e.touches.length>1)_multiTouch=true;},{passive:true});
       _cnt.addEventListener('touchend',e=>{
         if(_multiTouch){_multiTouch=false;return;}
+        // Ignorar toques que vienen del mapa (Leaflet intercepta el touchstart pero no el touchend)
+        if(e.target.closest&&e.target.closest('#map-wrapper'))return;
         const dx=e.changedTouches[0].clientX-_tx;
         if(Math.abs(dx)>55&&Math.abs(dx)<300){
           const idx=_tabList.indexOf(S.currentTab);
