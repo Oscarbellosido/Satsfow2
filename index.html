@@ -2192,7 +2192,7 @@ function renderATM(){
       <button class="atm-pill${S.atmFilter==='atm'?' active':''}" onclick="filterATM('atm')">🏧 ${t().atmFilterAtm||'ATMs'}</button>
       <button class="atm-pill${S.atmFilter==='shop'?' active':''}" onclick="filterATM('shop')">🏪 ${t().atmFilterShop||'Comercios'}</button>
     </div>`:''}
-    <div id="map-wrapper" style="height:360px;border-radius:12px;position:relative;${alreadyLoaded?'':'display:none'};clip-path:inset(0 round 12px)">
+    <div id="map-wrapper" style="height:360px;border-radius:12px;position:relative;${alreadyLoaded?'':'display:none'};clip-path:inset(0 round 12px)" ontouchstart="event.stopPropagation()" ontouchend="event.stopPropagation()" ontouchmove="event.stopPropagation()">
       <div id="map-container" style="position:absolute;inset:0;"></div>
     </div>
     <div id="atm-tip" style="font-size:10px;color:var(--text3);text-align:center;margin-top:6px;${alreadyLoaded?'':'display:none'}">${tr.atmTip}</div>
