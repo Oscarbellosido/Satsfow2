@@ -1,10 +1,11 @@
 // ─── SatsFlow Service Worker ─────────────────────────────────────────────────
 // Versión del caché — cambia este número para forzar actualización
-const CACHE_VERSION = 'Satsfow2-v77';
+const CACHE_VERSION = 'Satsfow2-v78';
 const CACHE_ASSETS  = [
   './',
   './index.html',
-  './manifest.json'
+  './manifest.json',
+  './style.css'
 ];
 
 // ─── Install: pre-cache shell ─────────────────────────────────────────────────

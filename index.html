@@ -19,95 +19,7 @@
   <link rel="apple-touch-icon" href="./icon-192.png">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-  <style>
-    :root{--bg:#0f172a;--bg2:#1e293b;--bg3:#334155;--text:#f1f5f9;--text2:#94a3b8;--text3:#64748b;--border:#334155;--card-bg:#1e293b;--card-bg2:#162032;--input-bg:#0f172a;--input-border:#475569;}
-    .light{--bg:#f8fafc;--bg2:#ffffff;--bg3:#e2e8f0;--text:#0f172a;--text2:#475569;--text3:#94a3b8;--border:#e2e8f0;--card-bg:#ffffff;--card-bg2:#f0f7ff;--input-bg:#f8fafc;--input-border:#cbd5e1;}
-    *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-    body{margin:0;font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom);overscroll-behavior-y:none;min-height:100vh}
-    ::-webkit-scrollbar{width:3px}::-webkit-scrollbar-thumb{background:var(--bg3);border-radius:4px}
-    input,select{font-family:'Inter',sans-serif;font-size:15px;color:var(--text);background:var(--input-bg);border:1px solid var(--input-border);border-radius:10px;padding:8px 10px;outline:none;width:100%}
-    input:focus,select:focus{border-color:#f97316}
-    button{cursor:pointer;font-family:'Inter',sans-serif}
-    @keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
-    .fade{animation:fadeIn .3s ease-out}
-    @keyframes spin2{to{transform:rotate(360deg)}}
-    .spin{animation:spin2 1s linear infinite;display:inline-block}
-    .card{background:linear-gradient(135deg,var(--card-bg) 0%,var(--card-bg2,#16213a) 100%);border:1px solid var(--border);border-radius:18px;padding:18px;box-shadow:0 4px 24px rgba(0,0,0,.25),0 1px 0 rgba(255,255,255,.04) inset}
-    #header{position:sticky;top:0;z-index:100;background:var(--bg);border-bottom:1px solid var(--border);padding:10px 16px;display:flex;align-items:center;justify-content:space-between}
-    .logo{width:34px;height:34px;background:#f97316;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;box-shadow:0 0 12px rgba(249,115,22,.3)}
-    #tabbar{position:relative;z-index:100;background:var(--bg2);border-top:1px solid var(--border);display:flex;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;-webkit-overflow-scrolling:touch;padding-bottom:env(safe-area-inset-bottom)}
-    #tabbar::-webkit-scrollbar{display:none}
-    #tabbar-wrap{position:fixed;bottom:0;left:0;right:0;z-index:100}
-    #tabbar-wrap{--fade-op:1}
-    #tab-scroll-fade{position:fixed;right:0;bottom:0;width:50px;height:56px;background:linear-gradient(to right,transparent,var(--bg2,#1e293b));pointer-events:none;z-index:200;transition:opacity .4s;display:flex;align-items:center;justify-content:flex-end;padding-right:6px;padding-bottom:env(safe-area-inset-bottom)}
-    #tab-scroll-fade::after{content:'❯';color:#f97316;font-size:16px;font-weight:900}
-    @keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
-    .skeleton{border-radius:8px;background:linear-gradient(90deg,#1e293b 25%,#263045 50%,#1e293b 75%);background-size:200% 100%;animation:shimmer 1.5s infinite;min-height:16px}
-    .sk-h1{height:32px;width:60%}
-    .sk-h2{height:18px;width:40%}
-    .sk-text{height:13px;width:80%}
-    .sk-text-sm{height:11px;width:55%}
-    .sk-chart{height:160px;width:100%;border-radius:12px}
-    .sk-card{background:#1e293b;border-radius:16px;padding:16px;margin-bottom:12px}
-    .sk-row{display:flex;gap:10px;margin-bottom:10px}
-    .sk-circle{border-radius:50%;width:48px;height:48px;flex-shrink:0}
-    .sk-box{height:80px;border-radius:10px}
-    .tab-btn{display:flex;flex-direction:column;align-items:center;gap:2px;padding:7px 0 6px;border:none;background:transparent;color:var(--text3);font-size:9px;font-weight:500;position:relative;cursor:pointer;flex:0 0 auto;width:62px;white-space:nowrap}
-    .tab-btn.active{color:#f97316}
-    .tab-btn.active::after{content:'';position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:24px;height:2px;background:#f97316;border-radius:2px}
-    .tab-icon{font-size:17px;line-height:1}
-    .tab-icon{font-size:18px;line-height:1}
-    #content{padding:14px 14px 90px;max-width:700px;margin:0 auto}
-    .space-y>*+*{margin-top:14px}
-    .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-    .grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
-    .grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
-    .stat-box{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:10px;text-align:center}
-    .stat-label{font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em}
-    .stat-val{font-size:14px;font-weight:700;margin-top:2px}
-    .fee-card{background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:8px 4px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:2px}
-    .cong-track{background:var(--bg3);border-radius:999px;height:8px;overflow:hidden}
-    .cong-bar{height:100%;border-radius:999px;transition:width 1.2s ease}
-    .btn-orange{background:#f97316;color:#fff;border:none;border-radius:10px;padding:10px 20px;font-weight:600;font-size:14px}
-    .btn-ghost{background:var(--bg2);color:var(--text2);border:1px solid var(--border);border-radius:10px;padding:6px 10px;font-size:12px}
-    .btn-icon{background:var(--bg2);color:var(--text2);border:1px solid var(--border);border-radius:8px;padding:6px 8px;display:flex;align-items:center;justify-content:center;font-size:15px}
-    .alert-item{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-radius:12px;border:1px solid var(--border);background:var(--bg2);margin-bottom:8px}
-    .alert-item.triggered{background:rgba(234,179,8,.08);border-color:rgba(234,179,8,.4)}
-    .news-item{display:block;padding:10px 12px;border-radius:12px;border:1px solid var(--border);background:var(--bg2);margin-bottom:8px;text-decoration:none;color:var(--text)}
-    .signal-banner{border-radius:14px;padding:14px;border:1px solid;margin-bottom:14px}
-    .signal-buy{background:rgba(16,185,129,.08);border-color:rgba(16,185,129,.3)}
-    .signal-sell{background:rgba(239,68,68,.08);border-color:rgba(239,68,68,.3)}
-    .signal-neutral{background:rgba(234,179,8,.08);border-color:rgba(234,179,8,.3)}
-    .sr-row{display:flex;justify-content:space-between;align-items:center;padding:8px 12px;border-radius:10px;border:1px solid;margin-bottom:6px}
-    #map-container{height:360px;border-radius:12px;margin-top:10px;position:relative;z-index:0}
-    .prog-track{background:var(--bg3);border-radius:999px;height:6px;overflow:hidden;margin:4px 0}
-    .prog-bar{height:100%;border-radius:999px;transition:width 1s ease}
-    .period-wrap{display:flex;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:3px;gap:2px;overflow-x:auto;margin-bottom:10px}
-    .period-btn{flex:1;min-width:36px;padding:5px 8px;border:none;border-radius:7px;background:transparent;color:var(--text3);font-size:11px;font-weight:500;white-space:nowrap}
-    .period-btn.active{background:var(--bg2);color:var(--text);box-shadow:0 1px 3px rgba(0,0,0,.2)}
-    .chart-type-wrap{display:flex;gap:4px;margin-bottom:8px}
-    .chart-type-btn{padding:4px 10px;border-radius:7px;border:1px solid var(--border);background:var(--bg2);color:var(--text2);font-size:11px;cursor:pointer}
-    .chart-type-btn.active{background:#f97316;color:#fff;border-color:#f97316}
-    .input-row{display:flex;gap:8px;margin-bottom:12px}
-    .input-row input{flex:1}
-    .input-row select{width:auto;min-width:70px}
-    .notif-banner{background:rgba(249,115,22,.08);border:1px solid rgba(249,115,22,.3);border-radius:12px;padding:10px 12px;display:flex;align-items:flex-start;gap:10px;margin-bottom:12px}
-    .notif-ok{background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.3);border-radius:12px;padding:10px 12px;display:flex;align-items:center;gap:8px;margin-bottom:12px}
-    .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:200;display:flex;align-items:center;justify-content:center;padding:16px;backdrop-filter:blur(4px)}
-    .modal-box{background:var(--card-bg);border:1px solid var(--border);border-radius:20px;padding:22px;max-width:360px;width:100%}
-    .modal-step{background:var(--bg3);border-radius:10px;padding:10px 12px;display:flex;gap:10px;align-items:flex-start;margin-bottom:8px}
-    .step-num{width:22px;height:22px;border-radius:50%;background:#f97316;color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-    .mini-chart{width:100%;height:70px}
-    /* Leaflet dark mode */
-    #html-root.dark-mode .leaflet-tile-pane{filter:brightness(.6) invert(1) contrast(3) hue-rotate(200deg) saturate(.3) brightness(.7)}
-    #html-root.dark-mode .leaflet-container{background:#1e293b}
-    .leaflet-container{border-radius:0!important}
-    .leaflet-tile-pane{will-change:transform}
-    #map-container .leaflet-container{position:absolute!important;top:0;left:0;right:0;bottom:0}
-    .leaflet-popup-content-wrapper{background:var(--card-bg);color:var(--text);border:1px solid var(--border);border-radius:10px}
-    .leaflet-popup-tip{background:var(--card-bg)}
-    #chart-tooltip{position:fixed;background:#1e293b;border:1px solid #f97316;border-radius:8px;padding:6px 10px;font-size:11px;font-weight:700;color:#f1f5f9;pointer-events:none;z-index:999;opacity:0;transition:opacity .15s;white-space:nowrap;box-shadow:0 4px 16px rgba(0,0,0,.4)}
-  </style>
+  <link rel="stylesheet" href="./style.css"/>
 </head>
 <body>
 <div id="chart-tooltip"></div><div id="app">
@@ -161,7 +73,17 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 const BUILD_TS='202603111906';
-const S={price:{usd:0,eur:0},change24h:0,marketCap:0,history:[],ohlc:[],mempool:null,marketData:null,miningData:null,news:[],alerts:[],days:'30',chartType:'area',dark:localStorage.getItem('sf-theme')!=='light',notifPerm:window.Notification?.permission||'unsupported',atmLoaded:false,leafletMap:null,lastUpdated:null,feeLevel:'hour',txSize:250,currentTab:'home',corrData:null,corrPeriod:'30',dominanceHistory:[],rainbowData:null,dominanceYearData:null,historyTA:[],lang:localStorage.getItem('sf-lang')||'es',morningAlert:JSON.parse(localStorage.getItem('sf-morning')||'null'),blockHeight:null,blocksToHalving:null,halvingPct:null,corrCached:null};
+const S={price:{usd:0,eur:0},change24h:0,marketCap:0,history:[],ohlc:[],mempool:null,marketData:null,miningData:null,news:[],alerts:[],days:'30',chartType:'area',dark:localStorage.getItem('sf-theme')!=='light',notifPerm:window.Notification?.permission||'unsupported',atmLoaded:false,leafletMap:null,lastUpdated:null,feeLevel:'hour',txSize:250,currentTab:'home',corrData:null,corrPeriod:'30',dominanceHistory:[],rainbowData:null,dominanceYearData:null,historyTA:[],lang:localStorage.getItem('sf-lang')||'es',morningAlert:JSON.parse(localStorage.getItem('sf-morning')||'null'),blockHeight:null,blocksToHalving:null,halvingPct:null,corrCached:null,
+  // Mejora 7: seguimiento de datos obsoletos
+  dataAge:{},
+  // Mejora 8: control de peticiones en vuelo
+  fetchError:{},
+  // Mejora 13: filtros ATM
+  atmFilter:'all',atmData:[],atmMarkers:[]
+};
+// Mejora 8: throttle de APIs — previene llamadas duplicadas concurrentes
+const _fetching=new Set();
+async function _once(key,fn){if(_fetching.has(key))return;_fetching.add(key);try{await fn();}finally{_fetching.delete(key);}}
 
 /* ══════ TRADUCCIONS / TRADUCCIONES ══════ */
 const T={
@@ -243,7 +165,19 @@ const T={
     globalEventsTitle:'Próximos eventos', globalEventsDesc:'Eventos macro y crypto que impactan a Bitcoin', globalPast:'Pasado', globalToday:'HOY', globalInDays:'En $1 días', globalDomTitle:'Dominancia BTC histórica', globalDomDesc:'2020 – hoy · Con marcadores de halving', globalDomNote:'Por encima del 50%: Bitcoin dominante. Por encima del 60%: mercado en acumulación / bear market altcoins.', globalMapTitle:'Mapa de adopción Bitcoin', globalMapDesc:'Estado legal por país — toca los puntos para ver detalles', globalMapSrc:'Fuentes: Library of Congress, CoinDesk, Bitcoin.org · Datos 2024-2025', globalLoadingMap:'Cargando mapa...', globalLegal:'Curso legal', globalETF:'ETF aprobados', globalRegulated:'Regulado', globalRestricted:'Restrictivo', globalBanned:'Prohibido', globalStatusLegal:'🟢 Curso Legal', globalStatusETF:'🔵 ETF Aprobados', globalStatusReg:'🟡 Regulado', globalStatusRes:'🟠 Restrictivo', globalStatusBan:'🔴 Prohibido',
     forecastWaiting:'Esperando precio...', forecastLoading:'Cargando datos...', forecastWaitHist:'Esperando historial de precio', forecastMostLikely:'MÁS PROBABLE (estimado)', forecastBullish:'📈 Alcista', forecastBase:'📊 Base', forecastBearish:'📉 Bajista', forecastBiasLabel_bull:'Alcista', forecastBiasLabel_slbull:'Lev. alcista', forecastBiasLabel_bear:'Bajista', forecastBiasLabel_slbear:'Lev. bajista', forecastBiasLabel_neutral:'Neutral',
     dcaTitle:'Calculadora DCA', dcaDesc:'Dollar Cost Averaging — inversión periódica en Bitcoin', dcaMonthly:'Inversión mensual (€)', dcaMonthsAgo:'Hace cuántos meses', dcaStartPrice:'Precio inicial BTC (€)', dcaUseNow:'usar actual', dcaInfoTitle:'¿Qué es DCA?', dcaInfoText:'<b>Dollar Cost Averaging</b> es invertir una cantidad fija periódicamente, independientemente del precio.<br><br>✅ Elimina el estrés de "comprar en el momento perfecto"<br>✅ Promedia el precio de entrada automáticamente<br>✅ Estrategia recomendada por la mayoría de Bitcoiners a largo plazo', dcaInfoNote:'Los cálculos asumen un precio de entrada lineal desde el precio inicial hasta el precio actual.',
-    dcaTotalInvested:'TOTAL INVERTIDO', dcaBTCAccum:'BTC ACUMULADO', dcaCurrentVal:'VALOR ACTUAL', dcaProfitLoss:'GANANCIA/PÉRDIDA', dcaAvgEntry:'Precio medio de entrada', dcaCurrentPrice:'Precio actual', dcaDiff:'Diferencia'
+    dcaTotalInvested:'TOTAL INVERTIDO', dcaBTCAccum:'BTC ACUMULADO', dcaCurrentVal:'VALOR ACTUAL', dcaProfitLoss:'GANANCIA/PÉRDIDA', dcaAvgEntry:'Precio medio de entrada', dcaCurrentPrice:'Precio actual', dcaDiff:'Diferencia',
+    // Mejora 13: filtros ATM
+    atmFilterAll:'Todos', atmFilterAtm:'ATMs', atmFilterShop:'Comercios',
+    // Mejora 10: onboarding
+    onboardTitle:'¡Bienvenido a SatsFlow! 🟠', onboardSub:'Tu tracker de Bitcoin. Esto hace cada pestaña:',
+    onboardStart:'¡Vamos!',
+    // Mejora 16: tooltips educativos
+    tooltipRSI:'RSI (0–100): por debajo de 30 = sobrevendido (posible rebote alcista). Por encima de 70 = sobrecomprado (posible corrección). Mide la velocidad de los cambios de precio.',
+    tooltipMACD:'MACD: diferencia entre EMA(12) y EMA(26). Cuando cruza por encima de la señal → alcista. Por debajo → bajista. Identifica cambios de tendencia.',
+    tooltipMA:'MA7 vs MA30: Golden Cross (MA7 sobre MA30) = tendencia alcista. Death Cross (MA7 bajo MA30) = tendencia bajista. Muestra el momentum a medio plazo.',
+    tooltipBollinger:'Bandas de Bollinger: canal de precio basado en media móvil ± 2 desviaciones estándar. Cerca de la banda superior = sobrecomprado. Cerca de la inferior = sobrevendido. Bandas anchas = alta volatilidad.',
+    // Mejora 7: datos obsoletos
+    staleData:'Datos desactualizados · última actualización hace'
   },
   ca:{
     home:'Inici',analysis:'Anàlisi',market:'Mercat',mempool:'Mempool',
@@ -323,7 +257,96 @@ const T={
     globalEventsTitle:'Propers esdeveniments', globalEventsDesc:'Esdeveniments macro i crypto que impacten Bitcoin', globalPast:'Passat', globalToday:'AVUI', globalInDays:'En $1 dies', globalDomTitle:'Dominància BTC històrica', globalDomDesc:'2020 – avui · Amb marcadors de halving', globalDomNote:'Per sobre del 50%: Bitcoin dominant. Per sobre del 60%: mercat en acumulació / bear market altcoins.', globalMapTitle:'Mapa d\'adopció Bitcoin', globalMapDesc:'Estat legal per país — toca els punts per veure detalls', globalMapSrc:'Fonts: Library of Congress, CoinDesk, Bitcoin.org · Dades 2024-2025', globalLoadingMap:'Carregant mapa...', globalLegal:'Curs legal', globalETF:'ETF aprovats', globalRegulated:'Regulat', globalRestricted:'Restrictiu', globalBanned:'Prohibit', globalStatusLegal:'🟢 Curs Legal', globalStatusETF:'🔵 ETF Aprovats', globalStatusReg:'🟡 Regulat', globalStatusRes:'🟠 Restrictiu', globalStatusBan:'🔴 Prohibit',
     forecastWaiting:'Esperant preu...', forecastLoading:'Carregant dades...', forecastWaitHist:'Esperant historial de preu', forecastMostLikely:'MÉS PROBABLE (estimat)', forecastBullish:'📈 Alcista', forecastBase:'📊 Base', forecastBearish:'📉 Baixista', forecastBiasLabel_bull:'Alcista', forecastBiasLabel_slbull:'Lleu. alcista', forecastBiasLabel_bear:'Baixista', forecastBiasLabel_slbear:'Lleu. baixista', forecastBiasLabel_neutral:'Neutral',
     dcaTitle:'Calculadora DCA', dcaDesc:"Dollar Cost Averaging — inversió periòdica en Bitcoin", dcaMonthly:'Inversió mensual (€)', dcaMonthsAgo:'Fa quants mesos', dcaStartPrice:'Preu inicial BTC (€)', dcaUseNow:'usar actual', dcaInfoTitle:'Què és DCA?', dcaInfoText:"<b>Dollar Cost Averaging</b> és invertir una quantitat fixa periòdicament, independentment del preu.<br><br>✅ Elimina l'estrès de \"comprar al moment perfecte\"<br>✅ Promitja el preu d'entrada automàticament<br>✅ Estratègia recomanada per la majoria de Bitcoiners a llarg termini", dcaInfoNote:"Els càlculs assumeixen un preu d'entrada lineal des del preu inicial fins al preu actual.",
-    dcaTotalInvested:'TOTAL INVERTIT', dcaBTCAccum:'BTC ACUMULAT', dcaCurrentVal:'VALOR ACTUAL', dcaProfitLoss:'GUANY/PÈRDUA', dcaAvgEntry:"Preu mig d'entrada", dcaCurrentPrice:'Preu actual', dcaDiff:'Diferència'
+    dcaTotalInvested:'TOTAL INVERTIT', dcaBTCAccum:'BTC ACUMULAT', dcaCurrentVal:'VALOR ACTUAL', dcaProfitLoss:'GUANY/PÈRDUA', dcaAvgEntry:"Preu mig d'entrada", dcaCurrentPrice:'Preu actual', dcaDiff:'Diferència',
+    atmFilterAll:'Tots', atmFilterAtm:'ATMs', atmFilterShop:'Comerços',
+    onboardTitle:'Benvingut a SatsFlow! 🟠', onboardSub:'El teu tracker de Bitcoin. Això fa cada pestanya:',
+    onboardStart:'Anem!',
+    tooltipRSI:'RSI (0–100): per sota de 30 = sobrevenut (possible rebot alcista). Per sobre de 70 = sobrecomprat (possible correcció). Mesura la velocitat dels canvis de preu.',
+    tooltipMACD:'MACD: diferència entre EMA(12) i EMA(26). Quan creua per sobre del senyal → alcista. Per sota → baixista. Identifica canvis de tendència.',
+    tooltipMA:'MA7 vs MA30: Golden Cross (MA7 sobre MA30) = tendència alcista. Death Cross (MA7 sota MA30) = tendència baixista. Mostra el momentum a mig termini.',
+    tooltipBollinger:"Bandes de Bollinger: canal de preu basat en mitjana mòbil ± 2 desviacions estàndard. A prop de la banda superior = sobrecomprat. A prop de la inferior = sobrevenut. Bandes amples = alta volatilitat.",
+    staleData:'Dades desactualitzades · darrera actualització fa'
+  },
+  en:{
+    home:'Home',analysis:'Analysis',market:'Market',mempool:'Mempool',
+    atm:'ATMs',news:'News',alerts:'Alerts',corr:'Correl.',
+    global:'Global',forecast:'Forecast',
+    price:'Price',change24h:'24h Change',fearGreed:'Fear & Greed',dominance:'Dominance',
+    settings:'Settings',language:'Language',morningBriefing:'Morning briefing',
+    morningBriefingDesc:'Daily notification with market status when you wake up',
+    morningHour:'Briefing time',morningEnable:'Enable morning briefing',
+    morningDisable:'Disable',morningTest:'Test now',
+    morningActive:'Active',morningInactive:'Inactive',
+    notifRequired:'Enable notifications first',
+    buy:'BUY',sell:'SELL',neutral:'NEUTRAL',
+    morningMsg:(p,ch,fg,sig)=>`BTC $${p.toLocaleString()} (${ch>=0?'+':''}${ch.toFixed(1)}%) · Fear&Greed: ${fg}/100 · Signal: ${sig}`,
+    morningDetail:(dom,ch)=>`BTC Dominance: ${dom.toFixed(1)}% · ${ch>=0?'📈':'📉'} ${Math.abs(ch).toFixed(1)}% today`,
+    converter:'↔ Converter',price24h:'24h Price',high:'High',low:'Low',
+    lastUpdate:'Last update',period:'Period',
+    alertsTitle:'Price alerts',noAlerts:'No active alerts.\nEnter a price and tap +.',
+    triggered:'TRIGGERED!',pending:'Pending',
+    fearGreedIndex:'Fear & Greed Index',extreme_fear:'Extreme fear',fear:'Fear',
+    neutral2:'Neutral',greed:'Greed',extreme_greed:'Extreme greed',
+    technicalSignal:'Technical signal',support:'Support',resistance:'Resistance',
+    recommendedFees:'Recommended fees',fast:'Fast',medium:'Medium',slow:'Slow',
+    latestNews:'Latest news',
+    globalSignal:'Global signal',horizons:'Ranges by time horizon',
+    currentPrice:'Current price',mostLikely:'MOST LIKELY (estimated)',
+    bearish2:'BEARISH',base:'BASE',bullish2:'BULLISH',
+    disclaimer:'This is not financial advice. These are probabilistic ranges. Bitcoin is extremely volatile.',
+    rsiOverbought:'RSI > 70 overbought → possible correction',
+    rsiNeutral:'RSI 30–70 neutral zone',
+    rsiOversold:'RSI < 30 oversold → possible bounce',
+    rsiOverboughtLabel:'Overbought',rsiOversoldLabel:'Oversold',rsiNeutralLabel:'Neutral',
+    cycles:'Cycles',dca:'DCA',
+    loading:'Loading...',loadingMarket:'Loading market data...',loadingNews:'Loading news...',loadingMempool:'Loading Mempool...',loadingCorr:'Loading S&P500 and Gold...',loadingCorr2:'Testing multiple sources in parallel',loadingCorr3:'Max. 10 seconds',
+    technicalAnalysis:'Technical Analysis',marketSignal:'Market signal',bullish:'Bullish',bearish:'Bearish',
+    macdBullish:'↑ Bullish',macdBearish:'↓ Bearish',goldenCross:'Golden Cross',deathCross:'Death Cross',
+    inRange:'In range',overbought:'Overbought',oversold:'Oversold',
+    srTitle:'Support & Resistance',currentPriceLbl:'Current price',
+    rsiDesc:'RSI <30 oversold · RSI >70 overbought',macdDesc:'MACD crosses up = bullish · Crosses down = bearish',
+    noHistoryMsg:'Needs 30+ days of history.<br>Change period to 30D in Home.',
+    noFinancialAdvice:'⚠️ Does not guarantee future results. Not financial advice.',
+    priceSources:'Prices',noFinancialAdvice2:'Not financial advice.',
+    thisPeriod:'in this period',updated:'Updated',marketCap:'Market Cap',
+    chartArea:'Area',chartCandle:'Candles',
+    fearGreedTitle:'Fear & Greed',fearGreedSource:'Source: alternative.me · Daily update',
+    dominanceTitle:'BTC Dominance',dominanceEvolution:'Evolution (current session)',
+    dominanceBull:'BTC dominant — market in accumulation',dominanceAlt:'Altcoins gaining ground — possible alt season',
+    rainbowTitle:'Rainbow Chart',rainbowDesc:'Historical valuation of Bitcoin price',
+    rainbowSignal:'Current signal',rainbowModel:'Model: historical log regression (genesis block 2009)',
+    rainbowDisclaimer:'⚠️ Indicative only. Not financial advice.',
+    miningTitle:'Mining',hashrate:'Hashrate',diffChange:'Difficulty change',nextAdjust:'Next adjustment',blocks:'blocks',completed:'completed',
+    newsTitle:'Bitcoin News',newsSentiment:'News sentiment',sentBullish:'📈 Bullish',sentNeutral:'➖ Neutral',sentBearish:'📉 Bearish',sentGlobalBull:'📈 Bullish sentiment',sentGlobalBear:'📉 Bearish sentiment — caution',
+    mempoolTitle:'Mempool & Fees',congestion:'Congestion',congLow:'🟢 Low',congMed:'🟡 Medium',congHigh:'🟠 High',congVHigh:'🔴 Very high',
+    calcTitle:'Calculator',priority:'Priority',feefast:'⚡ Fast',fee30m:'🟠 30 min',fee1h:'🕐 1 hour',feeEco:'💤 Eco',feeMin:'🐢 Minimum',bytes:'Bytes',hours:'Hours',
+    atmTitle:'Nearby Bitcoin ATMs',atmFind:'Find Bitcoin ATMs near you',atmRadius:'We will use your location to search within ~50 km',atmBtn:'🗺️ Search near me',atmFound:'ATMs/merchants found',atmNone:'No Bitcoin ATMs found in this area',atmTip:'🟠 Bitcoin ATMs/merchants · 📍 Your position · Data: BTCMap.org',atmRefresh:'🔄 Refresh',atmRetry:'🔄 Retry',atmLocation:'Getting your location...',atmSearching:'Searching for Bitcoin ATMs...',atmErrPerm:'Location permission denied. Go to browser settings and enable location for this page.',atmErrTimeout:'Request timed out. Check your connection.',atmErrMap:'Could not load the map. Please try again.',myLocation:'📍 Your location',
+    notifEnable:'Enable notifications',notifEnableDesc:'To receive alerts with the app closed.',notifActive:'Notifications active. You will receive alerts even when the app is closed.',
+    alertsTitle2:'Alerts',fixedPrice:'💰 Fixed price',pctChange:'📊 % Change',priceTarget:'Target price',refPrice:'Reference price',triggerDesc:'Triggers when BTC rises/falls that % from now.',rises:'Rises ↑',falls:'Falls ↓',
+    corrTitle:'BTC vs Markets Correlation',corrDesc:'Compare Bitcoin performance with S&P500 and Gold',corrLoad:'📊 Load data',corrWeekend:'Markets may be closed (weekend) or the API may be temporarily unavailable.',corrHigh:'High positive',corrMod:'Moderate',corrLow:'Low / None',corrInvMod:'Moderate inverse',corrInvHigh:'High inverse',corrMovSame:'BTC moves the same as this asset',corrMovPos:'Some positive correlation',corrMovInd:'Independent movements',corrMovOpp:'Tend to move in opposite directions',corrMovOpposite:'Typical safe-haven asset vs BTC',corrCacheBanner:'📦 Cached data from $1 — markets are closed (weekend / holiday). Will update next business day.',corrTimeoutFull:'Timeout exceeded. S&P500 is only available on business days (Mon–Fri). Try again.',corrTimeout:'Timeout exceeded. Try on a business day.',
+    backupTitle:'Settings backup',backupExport:'📤 Export',backupImport:'📥 Import',backupDesc:'Export alerts and settings to JSON. Import to restore them.',
+    histPredTitle:'Prediction history',histPredEmpty:'No predictions saved yet.\nWill save automatically at 9:00 each day.',histSave:'📸 Save now',histPurge:'🧹 Clean $0',histClear:'🗑 Clear all',histBiasTitle:'Model analysis',histInsideRange:'Within range',histAboveBull:'Above bull',histBelowBear:'Below bear',histConservative:'🚀 Model tends to be <b>too conservative</b> (BTC exceeds bull)',histPessimistic:'📉 Model tends to be <b>too optimistic</b> (BTC falls below bear)',histNoBias:'⚖️ Model shows no significant bias',histDelete:'🗑 delete',histResWeek:'7D',histResMonth:'1M',histShow:'Show:',histEval:'Evaluate range:',
+    forecastDisclaimer:'This is not financial advice. These are probabilistic ranges. Bitcoin is extremely volatile.',
+    purgeMsg1:'invalid records removed',purgeMsg2:'No invalid records',clearConfirm:'Delete all prediction history?',snapSaved:'Prediction saved: BTC $',
+    installTitle:'⬇️ Install SatsFlow',installStep1:'Tap the browser menu (⋮ or share).',installStep2:'Select <b>"Install app"</b> or <b>"Add to home screen"</b>.',installStep3:'Works with notifications even when closed.',installOk:'Got it',
+    errorLoad:'Error loading',errorRetry:'🔄 Retry',
+    importOk:'✅ Config imported successfully!',importErr:'❌ Error: invalid file',
+    domAccum:'Data will accumulate while the app is open...',now:'NOW',
+    alertAbove:'has risen above',alertBelow:'has fallen below',
+    rb_maxSell:'Maximum sell zone',rb_veryCostly:'Very expensive — sell',rb_fomo:'Intense FOMO',rb_costly:'Expensive',rb_fair:'Fair price',rb_cheap:'Still cheap',rb_accum:'Accumulate',rb_histOffer:'Historical offer',rb_maxBuy:'Maximum buy',
+    cyclesTitle:'BTC Cycles Comparator',cyclesSubtitle:'Price normalized since halving (halving = 1x)',cyclesCurrent:'2024 (current)',cyclesDayLabel:'Cycle day',cyclesMultLabel:'Multiplier',cyclesSinceHalving:'Since halving',cyclesHalvingPrice:'Halving price',cyclesPosition:'Current position',cyclesDayOf:'Price on day',cyclesEachCycle:'of each cycle',cyclesAthTitle:'2024 Cycle ATH Projection',cyclesAthModel:'Projected ATH (historical model)',cyclesAthMult:'Expected multiplier',cyclesAthDate:'Estimated date',cyclesAthDays:'Estimated days remaining',cyclesAthPassed:'Already passed or very close',cyclesDaysLeft:'~$1 days',cyclesAbove20:'Above 2020 cycle',cyclesInLine20:'In line with 2020 cycle',cyclesBelow20:'Below 2020 cycle',cyclesFarBelow:'Well below historical',cyclesDisclaimer:'⚠️ Based on historical patterns. Each cycle is different. Not financial advice.',
+    globalEventsTitle:'Upcoming events',globalEventsDesc:'Macro and crypto events impacting Bitcoin',globalPast:'Past',globalToday:'TODAY',globalInDays:'In $1 days',globalDomTitle:'Historical BTC Dominance',globalDomDesc:'2020 – today · With halving markers',globalDomNote:'Above 50%: Bitcoin dominant. Above 60%: market in accumulation / altcoin bear market.',globalMapTitle:'Bitcoin Adoption Map',globalMapDesc:'Legal status by country — tap points to see details',globalMapSrc:'Sources: Library of Congress, CoinDesk, Bitcoin.org · Data 2024-2025',globalLoadingMap:'Loading map...',globalLegal:'Legal tender',globalETF:'Approved ETFs',globalRegulated:'Regulated',globalRestricted:'Restrictive',globalBanned:'Banned',globalStatusLegal:'🟢 Legal Tender',globalStatusETF:'🔵 Approved ETFs',globalStatusReg:'🟡 Regulated',globalStatusRes:'🟠 Restrictive',globalStatusBan:'🔴 Banned',
+    forecastWaiting:'Waiting for price...',forecastLoading:'Loading data...',forecastWaitHist:'Waiting for price history',forecastMostLikely:'MOST LIKELY (estimated)',forecastBullish:'📈 Bullish',forecastBase:'📊 Base',forecastBearish:'📉 Bearish',forecastBiasLabel_bull:'Bullish',forecastBiasLabel_slbull:'Sl. bullish',forecastBiasLabel_bear:'Bearish',forecastBiasLabel_slbear:'Sl. bearish',forecastBiasLabel_neutral:'Neutral',
+    dcaTitle:'DCA Calculator',dcaDesc:'Dollar Cost Averaging — periodic investment in Bitcoin',dcaMonthly:'Monthly investment (€)',dcaMonthsAgo:'How many months ago',dcaStartPrice:'Initial BTC price (€)',dcaUseNow:'use current',dcaInfoTitle:'What is DCA?',dcaInfoText:'<b>Dollar Cost Averaging</b> means investing a fixed amount periodically, regardless of the price.<br><br>✅ Eliminates the stress of "buying at the perfect moment"<br>✅ Automatically averages your entry price<br>✅ Strategy recommended by most Bitcoiners for the long term',dcaInfoNote:'Calculations assume a linear entry price from the initial price to the current price.',
+    dcaTotalInvested:'TOTAL INVESTED',dcaBTCAccum:'BTC ACCUMULATED',dcaCurrentVal:'CURRENT VALUE',dcaProfitLoss:'PROFIT/LOSS',dcaAvgEntry:'Average entry price',dcaCurrentPrice:'Current price',dcaDiff:'Difference',
+    atmFilterAll:'All',atmFilterAtm:'ATMs',atmFilterShop:'Merchants',
+    onboardTitle:'Welcome to SatsFlow! 🟠',onboardSub:'Your Bitcoin tracker. Here\'s what each tab does:',
+    onboardStart:'Let\'s go!',
+    tooltipRSI:'RSI (0–100): below 30 = oversold (possible bullish bounce). Above 70 = overbought (possible correction). Measures the speed and magnitude of price changes.',
+    tooltipMACD:'MACD: difference between EMA(12) and EMA(26). When it crosses above the signal line → bullish. Below → bearish. Identifies trend changes.',
+    tooltipMA:'MA7 vs MA30: Golden Cross (MA7 above MA30) = bullish trend. Death Cross (MA7 below MA30) = bearish trend. Shows medium-term momentum.',
+    tooltipBollinger:'Bollinger Bands: price channel based on moving average ± 2 standard deviations. Near upper band = overbought. Near lower band = oversold. Wide bands = high volatility.',
+    staleData:'Stale data · last updated'
   }
 };
 const t=()=>T[S.lang]||T.es;
@@ -386,7 +409,7 @@ async function sendMorningBriefing(){
   const ta=typeof analyze==='function'?analyze():null;
   const sigKey=ta?.signal==='COMPRAR'?'buy':ta?.signal==='VENDER'?'sell':'neutral';
   const sig=tr[sigKey]||tr.neutral;
-  const title=S.lang==='ca'?'☀️ Resum matinal BTC':'☀️ Resumen matutino BTC';
+  const title=S.lang==='ca'?'☀️ Resum matinal BTC':S.lang==='en'?'☀️ BTC Morning Briefing':'☀️ Resumen matutino BTC';
   const body=tr.morningMsg(Math.round(price),change,fg,sig);
   const detail=tr.morningDetail(dom,change);
   showNotif(title,body+'\n'+detail);
@@ -410,9 +433,10 @@ function renderSettings(){
     // Idioma
     +'<div style="margin-bottom:18px;padding-bottom:18px;border-bottom:1px solid var(--border)">'
     +'<div style="font-size:13px;font-weight:600;margin-bottom:10px">🌐 '+tr.language+'</div>'
-    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">'
     +'<button onclick="setLang(\'es\')" style="padding:10px;border-radius:10px;border:2px solid '+(S.lang==='es'?'#f97316':'var(--border)')+';background:'+(S.lang==='es'?'rgba(249,115,22,.1)':'var(--bg)')+';font-size:13px;font-weight:'+(S.lang==='es'?'700':'400')+';cursor:pointer;color:var(--text)"><img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMCAyMCI+PHJlY3Qgd2lkdGg9IjMwIiBoZWlnaHQ9IjIwIiBmaWxsPSIjYzYwYjFlIi8+PHJlY3QgeT0iNSIgd2lkdGg9IjMwIiBoZWlnaHQ9IjEwIiBmaWxsPSIjZmZjNDAwIi8+PC9zdmc+" style=\"width:20px;height:14px;vertical-align:middle;margin-right:5px;border-radius:2px\">Español</button>'
     +'<button onclick="setLang(\'ca\')" style="padding:10px;border-radius:10px;border:2px solid '+(S.lang==='ca'?'#f97316':'var(--border)')+';background:'+(S.lang==='ca'?'rgba(249,115,22,.1)':'var(--bg)')+';font-size:13px;font-weight:'+(S.lang==='ca'?'700':'400')+';cursor:pointer;color:var(--text)"><img src=\"data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMCAyMCI+PHJlY3Qgd2lkdGg9IjMwIiBoZWlnaHQ9IjIwIiBmaWxsPSIjRkNERDA5Ii8+PHJlY3QgeT0iMi44NiIgd2lkdGg9IjMwIiBoZWlnaHQ9IjIuODYiIGZpbGw9IiNEQTEyMUEiLz48cmVjdCB5PSI4LjU3IiB3aWR0aD0iMzAiIGhlaWdodD0iMi44NiIgZmlsbD0iI0RBMTIxQSIvPjxyZWN0IHk9IjE0LjI4IiB3aWR0aD0iMzAiIGhlaWdodD0iMi44NiIgZmlsbD0iI0RBMTIxQSIvPjxwb2x5Z29uIHBvaW50cz0iMCwwIDE0LDEwIDAsMjAiIGZpbGw9IiMwMDMyQTAiLz48cG9seWdvbiBwb2ludHM9IjUuNSw2LjUgNi41LDkuNSA5LjUsOS41IDcsMTEuNSA4LDE0LjUgNS41LDEyLjUgMywxNC41IDQsMTEuNSAxLjUsOS41IDQuNSw5LjUiIGZpbGw9IndoaXRlIi8+PC9zdmc+\" style=\"width:20px;height:13px;vertical-align:middle;margin-right:5px;border-radius:2px\">Català</button>'
+    +'<button onclick="setLang(\'en\')" style="padding:10px;border-radius:10px;border:2px solid '+(S.lang==='en'?'#f97316':'var(--border)')+';background:'+(S.lang==='en'?'rgba(249,115,22,.1)':'var(--bg)')+';font-size:13px;font-weight:'+(S.lang==='en'?'700':'400')+';cursor:pointer;color:var(--text)">🇬🇧 English</button>'
     +'</div></div>'
     // Resumen matutino
     +'<div>'
@@ -1770,6 +1794,7 @@ function startPriceWS(){
             setTimeout(()=>{arrow.style.opacity='0.5';arrow.style.transform='none';},700);
           }
         }
+        S.dataAge.price=Date.now(); // Mejora 7: timestamp de último dato
         updateHeader();
         // Actualizar conversor si tab activo
         if(S.currentTab==='home'){
@@ -1787,7 +1812,7 @@ function startPriceWS(){
     _ws.onclose=()=>{
       const d=document.getElementById('ws-dot');if(d){d.style.background='#ef4444';d.title='Reconectando...';}
       _wsRetries++;
-      const delay=Math.min(30000,2000*Math.pow(2,_wsRetries)); // backoff exponencial
+      const delay=Math.min(30000,1000*Math.pow(2,_wsRetries))+Math.floor(Math.random()*500); // backoff exponencial con jitter
       setTimeout(startPriceWS,delay);
     };
   }catch(e){console.warn('[WS]',e);}
@@ -1908,10 +1933,10 @@ function renderAnalysis(){
       </div>
     </div>
     <div class="grid-2" style="gap:8px">
-      <div class="stat-box"><div class="stat-label">RSI (14)</div><div class="stat-val" style="color:${rsiColor}">${a.lastRSI.toFixed(1)}</div><div style="font-size:9px;color:var(--text3)">${rsiLabel}</div></div>
-      <div class="stat-box"><div class="stat-label">MACD</div><div class="stat-val" style="color:${macdBull?'#10b981':'#ef4444'}">${a.lMACD?.toFixed(0)}</div><div style="font-size:9px;color:var(--text3)">${macdBull?tr.macdBullish:tr.macdBearish}</div></div>
-      <div class="stat-box"><div class="stat-label">MA7 vs MA30</div><div class="stat-val" style="font-size:11px;color:${smaBull?'#10b981':'#ef4444'}">${smaBull?tr.goldenCross:tr.deathCross}</div><div style="font-size:9px;color:var(--text3)">${smaBull?tr.bullish:tr.bearish}</div></div>
-      <div class="stat-box"><div class="stat-label">Bollinger</div><div class="stat-val" style="font-size:11px;color:${bbPosColor}">${bbPos}</div></div>
+      <div class="stat-box"><div class="stat-label">RSI (14)<button class="ind-info" onclick="showIndTooltip(this,'${tr.tooltipRSI||'RSI: mide velocidad de cambios de precio. <30 sobrevendido, >70 sobrecomprado.'}')">?</button></div><div class="stat-val" style="color:${rsiColor}">${a.lastRSI.toFixed(1)}</div><div style="font-size:9px;color:var(--text3)">${rsiLabel}</div></div>
+      <div class="stat-box"><div class="stat-label">MACD<button class="ind-info" onclick="showIndTooltip(this,'${tr.tooltipMACD||'MACD: diferencia EMA(12)-EMA(26). Cruza arriba = alcista, cruza abajo = bajista.'}')">?</button></div><div class="stat-val" style="color:${macdBull?'#10b981':'#ef4444'}">${a.lMACD?.toFixed(0)}</div><div style="font-size:9px;color:var(--text3)">${macdBull?tr.macdBullish:tr.macdBearish}</div></div>
+      <div class="stat-box"><div class="stat-label">MA7 vs MA30<button class="ind-info" onclick="showIndTooltip(this,'${tr.tooltipMA||'Golden Cross (MA7>MA30) = alcista. Death Cross (MA7<MA30) = bajista.'}')">?</button></div><div class="stat-val" style="font-size:11px;color:${smaBull?'#10b981':'#ef4444'}">${smaBull?tr.goldenCross:tr.deathCross}</div><div style="font-size:9px;color:var(--text3)">${smaBull?tr.bullish:tr.bearish}</div></div>
+      <div class="stat-box"><div class="stat-label">Bollinger<button class="ind-info" onclick="showIndTooltip(this,'${tr.tooltipBollinger||'Bandas Bollinger: canal ±2σ alrededor de la media. Cerca del límite superior = sobrecomprado.'}')">?</button></div><div class="stat-val" style="font-size:11px;color:${bbPosColor}">${bbPos}</div></div>
     </div>
   </div>
   <div class="card">
@@ -1924,6 +1949,22 @@ function renderAnalysis(){
   <div class="card"><div style="font-size:13px;font-weight:600;margin-bottom:6px;color:var(--text2)">MACD</div>${miniLine(a.macdData,'#3b82f6',65,[])}<div style="font-size:10px;color:var(--text3);margin-top:4px">${tr.macdDesc}</div></div>
   <div style="font-size:10px;color:var(--text3);text-align:center">${tr.noFinancialAdvice}</div>
 </div>`;
+}
+// Mejora 16: tooltip educativo para indicadores técnicos
+function showIndTooltip(btn, text){
+  let tt=document.getElementById('ind-tt');
+  if(!tt){tt=document.createElement('div');tt.id='ind-tt';document.body.appendChild(tt);}
+  tt.textContent=text;
+  tt.style.display='block';
+  const r=btn.getBoundingClientRect();
+  const left=Math.min(window.innerWidth-270,Math.max(8,r.left));
+  const top=r.bottom+6;
+  tt.style.left=left+'px';
+  tt.style.top=(top+window.scrollY)+'px';
+  tt.style.position='fixed';
+  tt.style.top=top+'px';
+  const hide=(e)=>{if(!tt.contains(e.target)&&e.target!==btn){tt.style.display='none';document.removeEventListener('click',hide);}};
+  setTimeout(()=>document.addEventListener('click',hide),50);
 }
 function calcRainbow(price){
   const tr=t();
@@ -2146,6 +2187,11 @@ function renderATM(){
       <button class="btn-orange" onclick="loadATM()">${tr.atmBtn}</button>
     </div>
     <div id="atm-count" style="font-size:12px;color:#10b981;margin-bottom:8px;font-weight:600;${alreadyLoaded?'':'display:none'}"></div>
+    ${alreadyLoaded?`<div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap">
+      <button class="atm-pill${S.atmFilter==='all'?' active':''}" onclick="filterATM('all')">${t().atmFilterAll||'Todos'}</button>
+      <button class="atm-pill${S.atmFilter==='atm'?' active':''}" onclick="filterATM('atm')">🏧 ${t().atmFilterAtm||'ATMs'}</button>
+      <button class="atm-pill${S.atmFilter==='shop'?' active':''}" onclick="filterATM('shop')">🏪 ${t().atmFilterShop||'Comercios'}</button>
+    </div>`:''}
     <div id="map-wrapper" style="height:360px;border-radius:12px;position:relative;${alreadyLoaded?'':'display:none'};clip-path:inset(0 round 12px)">
       <div id="map-container" style="position:absolute;inset:0;"></div>
     </div>
@@ -2246,13 +2292,19 @@ async function loadATM(){
         }
       }catch(err2){console.warn('Overpass:',err2);}
     }
+    // Guardar datos para filtros (Mejora 13)
+    S.atmData=atms;
+    S.atmMarkers=[];
     atms.forEach(a=>{
       const bg=a.type.includes('ATM')?'#f97316':a.type.includes('Banco')?'#3b82f6':'#10b981';
       const shape=a.type.includes('ATM')?'3px':'50%';
       const aIcon=L.divIcon({html:'<div style="background:'+bg+';width:14px;height:14px;border-radius:'+shape+';border:2px solid white;box-shadow:0 2px 5px rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;color:white;font-size:8px;font-weight:700">₿</div>',iconSize:[14,14],iconAnchor:[7,7],className:''});
-      if(S.leafletMap)L.marker([a.lat,a.lng],{icon:aIcon})
-        .addTo(S.leafletMap)
-        .bindPopup('<b>'+a.name+'</b><br><small>'+a.type+(a.op?' · '+a.op:'')+'</small>'+(a.lightning?'<br><small style="color:#f97316">⚡ Lightning</small>':''));
+      if(S.leafletMap){
+        const mk=L.marker([a.lat,a.lng],{icon:aIcon})
+          .addTo(S.leafletMap)
+          .bindPopup('<b>'+a.name+'</b><br><small>'+a.type+(a.op?' · '+a.op:'')+'</small>'+(a.lightning?'<br><small style="color:#f97316">⚡ Lightning</small>':''));
+        S.atmMarkers.push({marker:mk,data:a});
+      }
     });
     // Forzar re-render del mapa después de añadir todos los marcadores
     setTimeout(()=>{
@@ -2286,6 +2338,27 @@ async function loadATM(){
     const msg=e.code===1?tr.atmErrPerm:e.name==='TimeoutError'?tr.atmErrTimeout:tr.atmErrMap;
     if(st)st.innerHTML=`<div style="color:#ef4444;font-size:13px;margin-bottom:14px;line-height:1.5">${msg}</div><button class="btn-orange" onclick="loadATM()">${tr.atmRetry}</button>`;
   }
+}
+// Mejora 13: filtrar marcadores ATM por tipo
+function filterATM(type){
+  S.atmFilter=type;
+  // Actualizar clases activas en los pills
+  document.querySelectorAll('#tab-atm .atm-pill').forEach(btn=>{
+    const t=btn.getAttribute('onclick')||'';
+    btn.classList.toggle('active', t.includes("'"+type+"'"));
+  });
+  if(!S.leafletMap||!S.atmMarkers.length)return;
+  // Mostrar u ocultar marcadores según tipo
+  S.atmMarkers.forEach(({marker,data})=>{
+    const isAtm=data.type.includes('ATM');
+    const show=type==='all'||(type==='atm'&&isAtm)||(type==='shop'&&!isAtm);
+    if(show){if(!S.leafletMap.hasLayer(marker))marker.addTo(S.leafletMap);}
+    else{if(S.leafletMap.hasLayer(marker))S.leafletMap.removeLayer(marker);}
+  });
+  // Actualizar contador
+  const visible=type==='all'?S.atmData.length:S.atmData.filter(d=>type==='atm'?d.type.includes('ATM'):!d.type.includes('ATM')).length;
+  const cnt=document.getElementById('atm-count');
+  if(cnt&&visible>0)cnt.textContent='✅ '+visible+' '+(t().atmFound||'encontrados');
 }
 function renderAlerts(){
   const tr=t();
@@ -3805,6 +3878,34 @@ function calcForecast(currentPrice){
   });
   return{horizons,factors,netScore,taTotal,onChainTotal,macroTotal,ta,regime,regimeDesc,wTA,wOC,wMacro,asymBull,asymBear};
 }
+// Mejora 4: barra visual de rango Bear/Base/Bull sobre el precio actual
+function renderForecastRangeBar(cur, bearP, baseP, bullP){
+  const rMin=Math.min(cur,bearP)*0.975;
+  const rMax=Math.max(cur,bullP)*1.025;
+  const span=rMax-rMin;
+  if(span<=0)return'';
+  const pct=p=>Math.round(Math.max(1,Math.min(99,(p-rMin)/span*100)));
+  const bearX=pct(bearP), baseX=pct(baseP), bullX=pct(bullP), curX=pct(cur);
+  const fmt=p=>'$'+(p>=1000?(p/1000).toFixed(0)+'K':p.toFixed(0));
+  return '<div style="margin:10px 4px 6px;padding-top:8px">'
+    +'<div style="font-size:9px;color:var(--text3);margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em">📍 Precio en el rango proyectado</div>'
+    +'<div style="position:relative;height:8px;background:linear-gradient(90deg,rgba(239,68,68,.25) 0%,rgba(234,179,8,.25) 50%,rgba(16,185,129,.25) 100%);border-radius:999px;margin-bottom:22px">'
+    // Marcador Bear
+    +'<div style="position:absolute;left:'+bearX+'%;top:-3px;transform:translateX(-50%);width:3px;height:14px;background:#ef4444;border-radius:2px"></div>'
+    +'<div style="position:absolute;left:'+bearX+'%;top:17px;transform:translateX(-50%);font-size:8px;color:#ef4444;white-space:nowrap;font-weight:600">'+fmt(bearP)+'</div>'
+    // Marcador Base
+    +'<div style="position:absolute;left:'+baseX+'%;top:-3px;transform:translateX(-50%);width:3px;height:14px;background:#eab308;border-radius:2px"></div>'
+    +'<div style="position:absolute;left:'+baseX+'%;top:17px;transform:translateX(-50%);font-size:8px;color:#eab308;white-space:nowrap;font-weight:600">'+fmt(baseP)+'</div>'
+    // Marcador Bull
+    +'<div style="position:absolute;left:'+bullX+'%;top:-3px;transform:translateX(-50%);width:3px;height:14px;background:#10b981;border-radius:2px"></div>'
+    +'<div style="position:absolute;left:'+bullX+'%;top:17px;transform:translateX(-50%);font-size:8px;color:#10b981;white-space:nowrap;font-weight:600">'+fmt(bullP)+'</div>'
+    // Marcador precio actual (círculo naranja)
+    +'<div style="position:absolute;left:'+curX+'%;top:-5px;transform:translateX(-50%);width:18px;height:18px;border-radius:50%;background:#f97316;border:2px solid white;box-shadow:0 2px 8px rgba(249,115,22,.5);display:flex;align-items:center;justify-content:center">'
+    +'<div style="width:5px;height:5px;border-radius:50%;background:white"></div></div>'
+    +'<div style="position:absolute;left:'+curX+'%;top:-22px;transform:translateX(-50%);font-size:8px;font-weight:800;color:#f97316;white-space:nowrap">AHORA</div>'
+    +'</div>'
+    +'</div>';
+}
 function renderForecast(){
   try{
   const tr=t();
@@ -3886,6 +3987,8 @@ function renderForecast(){
       +'</div>'
       +'</div>'
       +'<div style="font-size:10px;color:var(--text3);line-height:1.4">'+h.note+'</div>'
+      // Barra de rango visual (Mejora 4)
+      +renderForecastRangeBar(price, bearP, baseP, bullP)
       +'</div>';
   }).join('');
   const blockColor=s=>s>0.05?'#10b981':s<-0.05?'#ef4444':'#eab308';
@@ -4266,6 +4369,42 @@ function renderBlockStat(){
     +'</div>';
 }
 
+// Mejora 10: modal de onboarding en primera visita
+function showOnboarding(){
+  if(localStorage.getItem('sf-onboarded'))return;
+  const tr=t();
+  const tabs=[
+    {i:'🏠',n:tr.home||'Inicio',d:'Precio en tiempo real, conversor y gráfico'},
+    {i:'🧠',n:tr.analysis||'Análisis',d:'RSI, MACD, Bollinger y señal técnica'},
+    {i:'📊',n:tr.market||'Mercado',d:'Fear & Greed, dominancia y minería'},
+    {i:'⛓️',n:tr.mempool||'Mempool',d:'Comisiones y congestión de la red'},
+    {i:'🏧',n:tr.atm||'Cajeros',d:'ATMs Bitcoin cercanos en mapa'},
+    {i:'📰',n:tr.news||'Noticias',d:'Últimas noticias con sentimiento'},
+    {i:'🔔',n:tr.alerts||'Alertas',d:'Notificaciones de precio personalizadas'},
+    {i:'📈',n:tr.corr||'Correlac.',d:'BTC vs S&P500 vs Oro'},
+    {i:'🌍',n:tr.global||'Global',d:'Adopción mundial y eventos macro'},
+    {i:'🔮',n:tr.forecast||'Previsión',d:'Predicciones con 29 factores'},
+    {i:'🔄',n:tr.cycles||'Ciclos',d:'Comparador de ciclos de halving'},
+    {i:'📐',n:tr.dca||'DCA',d:'Calculadora de inversión periódica'},
+  ];
+  const div=document.createElement('div');
+  div.className='modal-overlay';
+  div.id='sf-onboard';
+  div.innerHTML='<div class="modal-box" style="max-width:400px;max-height:90vh;overflow-y:auto">'
+    +'<div style="font-size:22px;font-weight:800;margin-bottom:4px">'+tr.onboardTitle+'</div>'
+    +'<div style="font-size:12px;color:var(--text3);margin-bottom:14px">'+tr.onboardSub+'</div>'
+    +'<div class="onboard-grid">'
+    +tabs.map(tb=>'<div class="onboard-item"><span class="onboard-item-icon">'+tb.i+'</span><div><div style="font-size:11px;font-weight:700">'+tb.n+'</div><div style="font-size:10px;color:var(--text3)">'+tb.d+'</div></div></div>').join('')
+    +'</div>'
+    +'<button class="btn-orange" style="width:100%;margin-top:14px" onclick="closeOnboarding()">'+tr.onboardStart+'</button>'
+    +'</div>';
+  document.body.appendChild(div);
+}
+function closeOnboarding(){
+  localStorage.setItem('sf-onboarded','1');
+  const m=document.getElementById('sf-onboard');
+  if(m)m.remove();
+}
 async function init(){
   try{
     try{S.alerts=await loadAlertsDB();}catch(e){S.alerts=[];}
@@ -4288,6 +4427,32 @@ async function init(){
     },300);
     // Segunda llamada por si el layout aún no estaba listo
     setTimeout(_updateTabFade,1000);
+    // Mejora 10: onboarding en primera visita
+    setTimeout(showOnboarding, 800);
+    // Mejora 11: swipe táctil entre tabs
+    let _tx=0;
+    const _tabList=['home','analysis','market','mempool','atm','news','alerts','corr','global','forecast','cycles','dca'];
+    const _cnt=document.getElementById('content');
+    if(_cnt){
+      _cnt.addEventListener('touchstart',e=>{_tx=e.changedTouches[0].clientX;},{passive:true});
+      _cnt.addEventListener('touchend',e=>{
+        const dx=e.changedTouches[0].clientX-_tx;
+        if(Math.abs(dx)>55&&Math.abs(dx)<300){
+          const idx=_tabList.indexOf(S.currentTab);
+          if(dx<0&&idx<_tabList.length-1)switchTab(_tabList[idx+1]);
+          else if(dx>0&&idx>0)switchTab(_tabList[idx-1]);
+        }
+      },{passive:true});
+    }
+    // Mejora 11: navegación con teclas de flecha
+    document.addEventListener('keydown',e=>{
+      if(e.target.tagName==='INPUT'||e.target.tagName==='SELECT'||e.target.tagName==='TEXTAREA')return;
+      if(e.key==='ArrowRight'||e.key==='ArrowLeft'){
+        const idx=_tabList.indexOf(S.currentTab);
+        if(e.key==='ArrowRight'&&idx<_tabList.length-1)switchTab(_tabList[idx+1]);
+        else if(e.key==='ArrowLeft'&&idx>0)switchTab(_tabList[idx-1]);
+      }
+    });
     setInterval(async()=>{try{await fetchMempool();if(S.currentTab==='mempool')renderTab('mempool');}catch{}},30000);
     setInterval(async()=>{try{await Promise.all([fetchMarket(),fetchMining()]);if(S.currentTab==='market')renderTab('market');}catch{}},120000);
     setInterval(async()=>{try{await fetchNews();if(S.currentTab==='news')renderTab('news');}catch{}},300000);
