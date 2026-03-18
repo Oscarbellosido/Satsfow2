@@ -4434,7 +4434,7 @@ async function init(){
     const _tabList=['home','analysis','market','mempool','atm','news','alerts','corr','global','forecast','cycles','dca'];
     const _cnt=document.getElementById('content');
     if(_cnt){
-      _cnt.addEventListener('touchstart',e=>{_tx=e.changedTouches[0].clientX;_multiTouch=e.touches.length>1;},{passive:true});
+      _cnt.addEventListener('touchstart',e=>{_tx=e.changedTouches[0].clientX;_multiTouch=e.touches.length>1||!!e.target.closest('#map-wrapper,#map-container,.leaflet-container');},{passive:true});
       _cnt.addEventListener('touchmove',e=>{if(e.touches.length>1)_multiTouch=true;},{passive:true});
       _cnt.addEventListener('touchend',e=>{
         if(_multiTouch){_multiTouch=false;return;}
