@@ -4430,12 +4430,14 @@ async function init(){
     // Mejora 10: onboarding en primera visita
     setTimeout(showOnboarding, 800);
     // Mejora 11: swipe táctil entre tabs
-    let _tx=0;
+    let _tx=0,_multiTouch=false;
     const _tabList=['home','analysis','market','mempool','atm','news','alerts','corr','global','forecast','cycles','dca'];
     const _cnt=document.getElementById('content');
     if(_cnt){
-      _cnt.addEventListener('touchstart',e=>{_tx=e.changedTouches[0].clientX;},{passive:true});
+      _cnt.addEventListener('touchstart',e=>{_tx=e.changedTouches[0].clientX;_multiTouch=e.touches.length>1;},{passive:true});
+      _cnt.addEventListener('touchmove',e=>{if(e.touches.length>1)_multiTouch=true;},{passive:true});
       _cnt.addEventListener('touchend',e=>{
+        if(_multiTouch){_multiTouch=false;return;}
         const dx=e.changedTouches[0].clientX-_tx;
         if(Math.abs(dx)>55&&Math.abs(dx)<300){
           const idx=_tabList.indexOf(S.currentTab);
