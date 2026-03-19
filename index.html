@@ -1225,32 +1225,14 @@ function isBitcoinNews(title){
   return btcKeywords.some(k=>t.includes(k));
 }
 async function tryFetchRSS(url){
-  // rss2json.com: convierte RSS a JSON, sin problemas CORS desde GitHub Pages
+  // 1. Fetch directo — funciona si el feed tiene CORS abierto (Access-Control-Allow-Origin: *)
   try{
-    const r=await fetch('https://api.rss2json.com/v1/api.json?rss_url='+encodeURIComponent(url),{signal:AbortSignal.timeout(8000)});
-    if(r.ok){
-      const j=await r.json();
-      if(j.status==='ok'&&j.items?.length>0){
-        // Convertir formato rss2json a XML simulado para parseRSS
-        const fakeXml=j.items.map(it=>{
-          const d=it.pubDate||new Date().toISOString();
-          const link=it.link||'';
-          const title=it.title||'';
-          const desc=(it.description||it.content||'').replace(/<[^>]+>/g,'').slice(0,200);
-          return '<item><title><![CDATA['+title+']]></title><link>'+link+'</link><description><![CDATA['+desc+']]></description><pubDate>'+d+'</pubDate></item>';
-        }).join('');
-        return '<rss>'+fakeXml+'</rss>';
-      }
-    }
-  }catch{}
-  // Fallback: allorigins proxy (ya usado en la app para M2, correlaciones, etc.)
-  try{
-    const r=await fetch('https://api.allorigins.win/raw?url='+encodeURIComponent(url),{signal:AbortSignal.timeout(8000)});
+    const r=await fetch(url,{signal:AbortSignal.timeout(7000)});
     if(r.ok){const t=await r.text();if(t.includes('<item'))return t;}
   }catch{}
-  // Fallback: intentar fetch directo (funciona para algunos feeds con CORS abierto)
+  // 2. Fallback: allorigins proxy
   try{
-    const r=await fetch(url,{signal:AbortSignal.timeout(6000)});
+    const r=await fetch('https://api.allorigins.win/raw?url='+encodeURIComponent(url),{signal:AbortSignal.timeout(8000)});
     if(r.ok){const t=await r.text();if(t.includes('<item'))return t;}
   }catch{}
   return '';
@@ -1270,11 +1252,11 @@ function parseRSS(xml,source){
 async function fetchNews(){
   const seen=new Set();
   let results=[];
-  // Feeds confirmados que funcionan via rss2json (sin count) o allorigins
+  // Feeds con CORS abierto (Access-Control-Allow-Origin: *) — fetch directo desde browser
   const feeds=[
-    {url:'https://decrypt.co/feed',source:'Decrypt'},
-    {url:'https://cointelegraph.com/rss',source:'CoinTelegraph'},
-    {url:'https://bitcoinist.com/feed/',source:'Bitcoinist'},
+    {url:'https://news.bitcoin.com/feed/',source:'Bitcoin.com'},
+    {url:'https://cryptopotato.com/feed/',source:'CryptoPotato'},
+    {url:'https://ambcrypto.com/feed',source:'AMBCrypto'},
   ];
   for(const feed of feeds){
     if(results.length>=12)break;
