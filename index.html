@@ -1242,6 +1242,11 @@ async function tryFetchRSS(url){
       }
     }
   }catch{}
+  // Fallback: allorigins proxy (ya usado en la app para M2, correlaciones, etc.)
+  try{
+    const r=await fetch('https://api.allorigins.win/raw?url='+encodeURIComponent(url),{signal:AbortSignal.timeout(8000)});
+    if(r.ok){const t=await r.text();if(t.includes('<item'))return t;}
+  }catch{}
   // Fallback: intentar fetch directo (funciona para algunos feeds con CORS abierto)
   try{
     const r=await fetch(url,{signal:AbortSignal.timeout(6000)});
@@ -3952,8 +3957,9 @@ function calcForecast(currentPrice){
     const bearMultA=1-h.vol*asymBear*(1-bias*1.5);
     const baseMultA=(1+h.vol*0.3*bias)*(1+biasFix); // corrección histórica en base
     h.bull=Math.round(currentPrice*Math.max(bullMultA,1.01));
-    h.base=Math.round(currentPrice*Math.max(Math.min(baseMultA,bullMultA*0.9),bearMultA*1.1));
     h.bear=Math.round(currentPrice*Math.min(bearMultA,0.99));
+    const baseRawA=Math.round(currentPrice*Math.max(Math.min(baseMultA,bullMultA*0.9),bearMultA*1.1));
+    h.base=Math.max(h.bear+1,Math.min(baseRawA,h.bull-1));
     h.mostLikely=bias>0.05?'bull':bias<-0.05?'bear':'base';
     h.signal=bias>0.1?'COMPRAR':bias<-0.1?'VENDER':'NEUTRAL';
   });
@@ -4005,10 +4011,11 @@ function renderForecast(){
     const baseMult=(1+h.vol*0.3*bias)*(1+biasFix);
     const bearMult=1-h.vol*asymBear*(1-bias*1.5);
     const bullP=Math.round(price*Math.max(bullMult,1.01));
-    const baseP=Math.round(price*Math.max(Math.min(baseMult,bullMult*0.9),bearMult*1.1));
     const bearP=Math.round(price*Math.min(bearMult,0.99));
+    const baseRaw=Math.round(price*Math.max(Math.min(baseMult,bullMult*0.9),bearMult*1.1));
+    const baseP=Math.max(bearP+1,Math.min(baseRaw,bullP-1));
     const bullPct=(bullMult-1)*100;
-    const basePct=(baseMult-1)*100;
+    const basePct=((baseP/price)-1)*100;
     const bearPct=(bearMult-1)*100;
     const biasColor=bias>0.05?'#10b981':bias<-0.05?'#ef4444':'#eab308';
     const biasLabel=bias>0.1?tr.forecastBiasLabel_bull:bias>0.02?tr.forecastBiasLabel_slbull:bias<-0.1?tr.forecastBiasLabel_bear:bias<-0.02?tr.forecastBiasLabel_slbear:tr.forecastBiasLabel_neutral;
