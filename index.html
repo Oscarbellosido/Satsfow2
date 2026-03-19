@@ -1215,18 +1215,19 @@ function isBitcoinNews(title){
   // Español + Catalán + inglés
   const btcKeywords=[
     'bitcoin','btc','satoshi','sats','lightning','halving','mempool','nakamoto','ordinals','taproot','segwit',
-    'cripto','criptomoned','blockchain','criptoactivo',
+    'crypto','cryptocurrency','blockchain','digital asset',
+    'cripto','criptomoned','criptoactivo',
     // Español
     'moneda digital','activo digital','reserva bitcoin','etf bitcoin','precio bitcoin',
     // Catalán
-    'criptomoned','moneda digital','actiu digital',
+    'moneda digital','actiu digital',
   ];
   return btcKeywords.some(k=>t.includes(k));
 }
 async function tryFetchRSS(url){
   // rss2json.com: convierte RSS a JSON, sin problemas CORS desde GitHub Pages
   try{
-    const r=await fetch('https://api.rss2json.com/v1/api.json?rss_url='+encodeURIComponent(url)+'&count=10',{signal:AbortSignal.timeout(8000)});
+    const r=await fetch('https://api.rss2json.com/v1/api.json?rss_url='+encodeURIComponent(url),{signal:AbortSignal.timeout(8000)});
     if(r.ok){
       const j=await r.json();
       if(j.status==='ok'&&j.items?.length>0){
@@ -1269,42 +1270,25 @@ function parseRSS(xml,source){
 async function fetchNews(){
   const seen=new Set();
   let results=[];
-  // Fuente primaria: CryptoCompare News API — JSON directo, sin CORS, sin API key
-  try{
-    const r=await fetch('https://min-api.cryptocompare.com/data/v2/news/?lang=EN&categories=BTC&excludeCategories=Sponsored&extraParams=SatsFlow',{signal:AbortSignal.timeout(8000)});
-    if(r.ok){
-      const j=await r.json();
-      if(j.Response==='Success'&&j.Data?.Data?.length){
-        j.Data.Data.slice(0,15).forEach(n=>{
-          if(n.title&&n.url&&!seen.has(n.url)){
-            seen.add(n.url);
-            results.push({id:n.url,title:n.title,url:n.url,source:n.source_info?.name||n.source||'CryptoNews',date:new Date(n.published_on*1000)});
-          }
-        });
-      }
-    }
-  }catch(e){console.warn('cryptocompare news',e);}
-  // Fallback: feeds RSS via proxy (bitcoinist, decrypt, cointelegraph)
-  if(results.length<5){
-    const feeds=[
-      {url:'https://bitcoinist.com/feed/',source:'Bitcoinist'},
-      {url:'https://decrypt.co/feed',source:'Decrypt'},
-      {url:'https://cointelegraph.com/rss',source:'CoinTelegraph'},
-    ];
-    for(const feed of feeds){
-      if(results.length>=12)break;
-      try{
-        const xml=await tryFetchRSS(feed.url);
-        if(!xml)continue;
-        const items=parseRSS(xml,feed.source);
-        items.forEach(item=>{
-          if(!seen.has(item.id)&&isBitcoinNews(item.title)){
-            seen.add(item.id);
-            results.push(item);
-          }
-        });
-      }catch(e){console.warn('feed error',feed.source,e);}
-    }
+  // Feeds confirmados que funcionan via rss2json (sin count) o allorigins
+  const feeds=[
+    {url:'https://decrypt.co/feed',source:'Decrypt'},
+    {url:'https://cointelegraph.com/rss',source:'CoinTelegraph'},
+    {url:'https://bitcoinist.com/feed/',source:'Bitcoinist'},
+  ];
+  for(const feed of feeds){
+    if(results.length>=12)break;
+    try{
+      const xml=await tryFetchRSS(feed.url);
+      if(!xml)continue;
+      const items=parseRSS(xml,feed.source);
+      items.forEach(item=>{
+        if(!seen.has(item.id)&&isBitcoinNews(item.title)){
+          seen.add(item.id);
+          results.push(item);
+        }
+      });
+    }catch(e){console.warn('feed error',feed.source,e);}
   }
   results=results.sort((a,b)=>b.date-a.date).slice(0,15);
   if(results.length>0)S.news=results;
