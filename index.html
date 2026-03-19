@@ -1267,48 +1267,44 @@ function parseRSS(xml,source){
   return results;
 }
 async function fetchNews(){
-  const feeds=[
-    {url:'https://news.google.com/rss/search?q=bitcoin&hl=es&gl=ES&ceid=ES:es',source:'Google Noticias ES'},
-    {url:'https://news.google.com/rss/search?q=bitcoin&hl=ca&gl=ES&ceid=ES:ca',source:'Google Notícies CA'},
-    {url:'https://news.google.com/rss/search?q=bitcoin+precio+adopcion&hl=es&gl=ES&ceid=ES:es',source:'Google Noticias ES'},
-    {url:'https://news.google.com/rss/search?q=bitcoin+BTC+halving&hl=es&gl=ES&ceid=ES:es',source:'Google Noticias ES'},
-  ];
   const seen=new Set();
   let results=[];
-  for(const feed of feeds){
-    if(results.length>=12)break;
-    try{
-      const xml=await tryFetchRSS(feed.url);
-      if(!xml)continue;
-      const items=parseRSS(xml,feed.source);
-      items.forEach(item=>{
-        if(!seen.has(item.id)&&isBitcoinNews(item.title)){
-          seen.add(item.id);
-          results.push(item);
-        }
-      });
-    }catch(e){console.warn('feed error',feed.source,e);}
-  }
-  if(results.length<3){
-    try{
-      const urls=[
-        'https://news.google.com/rss/search?q=bitcoin&hl=es&gl=ES&ceid=ES:es',
-        'https://news.google.com/rss/search?q=bitcoin&hl=ca&gl=ES&ceid=ES:ca',
-      ];
-      for(const rssUrl of urls){
-        if(results.length>=8)break;
-        const r=await fetch('https://api.rss2json.com/v1/api.json?rss_url='+encodeURIComponent(rssUrl)+'&count=10',{signal:AbortSignal.timeout(8000)});
-        const j=await r.json();
-        if(j.status==='ok'&&j.items?.length){
-          j.items.forEach(n=>{
-            if(n.title&&n.link&&!seen.has(n.link)&&isBitcoinNews(n.title)){
-              seen.add(n.link);
-              results.push({id:n.link,title:n.title,url:n.link,source:j.feed?.title||'Bitcoin News',date:new Date(n.pubDate)});
-            }
-          });
-        }
+  // Fuente primaria: CryptoCompare News API — JSON directo, sin CORS, sin API key
+  try{
+    const r=await fetch('https://min-api.cryptocompare.com/data/v2/news/?lang=EN&categories=BTC&excludeCategories=Sponsored&extraParams=SatsFlow',{signal:AbortSignal.timeout(8000)});
+    if(r.ok){
+      const j=await r.json();
+      if(j.Response==='Success'&&j.Data?.Data?.length){
+        j.Data.Data.slice(0,15).forEach(n=>{
+          if(n.title&&n.url&&!seen.has(n.url)){
+            seen.add(n.url);
+            results.push({id:n.url,title:n.title,url:n.url,source:n.source_info?.name||n.source||'CryptoNews',date:new Date(n.published_on*1000)});
+          }
+        });
       }
-    }catch(e){console.warn('rss2json fallback',e);}
+    }
+  }catch(e){console.warn('cryptocompare news',e);}
+  // Fallback: feeds RSS via proxy (bitcoinist, decrypt, cointelegraph)
+  if(results.length<5){
+    const feeds=[
+      {url:'https://bitcoinist.com/feed/',source:'Bitcoinist'},
+      {url:'https://decrypt.co/feed',source:'Decrypt'},
+      {url:'https://cointelegraph.com/rss',source:'CoinTelegraph'},
+    ];
+    for(const feed of feeds){
+      if(results.length>=12)break;
+      try{
+        const xml=await tryFetchRSS(feed.url);
+        if(!xml)continue;
+        const items=parseRSS(xml,feed.source);
+        items.forEach(item=>{
+          if(!seen.has(item.id)&&isBitcoinNews(item.title)){
+            seen.add(item.id);
+            results.push(item);
+          }
+        });
+      }catch(e){console.warn('feed error',feed.source,e);}
+    }
   }
   results=results.sort((a,b)=>b.date-a.date).slice(0,15);
   if(results.length>0)S.news=results;
