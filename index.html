@@ -1282,8 +1282,9 @@ async function fetchNews(){
       const xml=await tryFetchRSS(feed.url);
       if(!xml)continue;
       const items=parseRSS(xml,feed.source);
+      // Feeds dedicados a crypto — no filtrar por keyword, todos son relevantes
       items.forEach(item=>{
-        if(!seen.has(item.id)&&isBitcoinNews(item.title)){
+        if(!seen.has(item.id)){
           seen.add(item.id);
           results.push(item);
         }
@@ -1819,11 +1820,12 @@ function renderTab(tab){
       el.innerHTML=skeletonMap[tab]();
       // Tornar a renderitzar quan les dades arribin
       const waitAndRender=()=>{
+        if(S.currentTab!==tab)return;
         const stillNeeds=(tab==='home'&&S.price.usd===0)||(tab==='analysis'&&!S.historyTA?.length)||(tab==='market'&&!S.marketData)||(tab==='mempool'&&!S.mempool)||(tab==='news'&&!S.news.length)||(tab==='cycles'&&!S.cycleHistory);
-        if(!stillNeeds||S.currentTab!==tab)return;
-        setTimeout(waitAndRender,400);
+        if(stillNeeds){setTimeout(waitAndRender,400);return;}
+        try{el.innerHTML=map[tab]();}catch(e){el.innerHTML=skeletonMap[tab]();}
       };
-      setTimeout(()=>{if(S.currentTab===tab)try{el.innerHTML=map[tab]();}catch(e){el.innerHTML=skeletonMap[tab]();}},400);
+      setTimeout(waitAndRender,400);
       return;
     }
     try{el.innerHTML=map[tab]();if(afterRender[tab])afterRender[tab]();}
