@@ -1976,15 +1976,16 @@ function calcRainbow(price){
   return{bands:priceBands,currentBand,center};
 }
 function analyzeSentiment(title){
-  const t=title.toLowerCase();
+  const txt=title.toLowerCase();
   const bull=['sube','subida','máximo','record','supera','alcanza','adopción','aprueba','compra','acumula','bull','rally','verde','crece','positivo','boom','logro','avance','dispara','eleva','histórico','etf','institucional'];
   const bear=['baja','caída','cae','mínimo','pierde','pérdida','bear','rojo','colapso','crash','crisis','prohibe','vende','hackeo','robo','fraude','multa','investigación','prohibición','negativo','desplome','hunde','riesgo','problema'];
   let score=0;
-  bull.forEach(w=>{if(t.includes(w))score++;});
-  bear.forEach(w=>{if(t.includes(w))score--;});
-  if(score>0)return{label:t().bullish,color:'#10b981',icon:'📈',score};
-  if(score<0)return{label:t().bearish,color:'#ef4444',icon:'📉',score};
-  return{label:t().neutral,color:'#94a3b8',icon:'➖',score};
+  bull.forEach(w=>{if(txt.includes(w))score++;});
+  bear.forEach(w=>{if(txt.includes(w))score--;});
+  const tr=t();
+  if(score>0)return{label:tr.bullish,color:'#10b981',icon:'📈',score};
+  if(score<0)return{label:tr.bearish,color:'#ef4444',icon:'📉',score};
+  return{label:tr.neutral,color:'#94a3b8',icon:'➖',score};
 }
 function renderMarket(){
   const tr=t();
