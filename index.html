@@ -1225,14 +1225,25 @@ function isBitcoinNews(title){
   return btcKeywords.some(k=>t.includes(k));
 }
 async function tryFetchRSS(url){
-  // 1. Fetch directo — funciona si el feed tiene CORS abierto (Access-Control-Allow-Origin: *)
+  // 1. rss2json — soporta CORS con cabecera Origin (browser lo envía automáticamente)
+  try{
+    const r=await fetch('https://api.rss2json.com/v1/api.json?rss_url='+encodeURIComponent(url)+'&count=10',{signal:AbortSignal.timeout(8000)});
+    if(r.ok){
+      const j=await r.json();
+      if(j.status==='ok'&&j.items?.length>0){
+        const fakeXml=j.items.map(it=>{
+          const d=it.pubDate||new Date().toISOString();
+          const link=it.link||'';
+          const title=it.title||'';
+          return '<item><title><![CDATA['+title+']]></title><link>'+link+'</link><pubDate>'+d+'</pubDate></item>';
+        }).join('');
+        return '<rss>'+fakeXml+'</rss>';
+      }
+    }
+  }catch{}
+  // 2. Fetch directo — para feeds con CORS abierto (Access-Control-Allow-Origin: *)
   try{
     const r=await fetch(url,{signal:AbortSignal.timeout(7000)});
-    if(r.ok){const t=await r.text();if(t.includes('<item'))return t;}
-  }catch{}
-  // 2. Fallback: allorigins proxy
-  try{
-    const r=await fetch('https://api.allorigins.win/raw?url='+encodeURIComponent(url),{signal:AbortSignal.timeout(8000)});
     if(r.ok){const t=await r.text();if(t.includes('<item'))return t;}
   }catch{}
   return '';
@@ -1252,8 +1263,11 @@ function parseRSS(xml,source){
 async function fetchNews(){
   const seen=new Set();
   let results=[];
-  // Feeds con CORS abierto (Access-Control-Allow-Origin: *) — fetch directo desde browser
   const feeds=[
+    // Google News via rss2json (original, funcionaba)
+    {url:'https://news.google.com/rss/search?q=bitcoin&hl=es&gl=ES&ceid=ES:es',source:'Google Noticias'},
+    {url:'https://news.google.com/rss/search?q=bitcoin+BTC+precio&hl=es&gl=ES&ceid=ES:es',source:'Google Noticias'},
+    // Feeds con CORS abierto (fetch directo)
     {url:'https://news.bitcoin.com/feed/',source:'Bitcoin.com'},
     {url:'https://cryptopotato.com/feed/',source:'CryptoPotato'},
     {url:'https://ambcrypto.com/feed',source:'AMBCrypto'},
@@ -1275,7 +1289,7 @@ async function fetchNews(){
   }
   results=results.sort((a,b)=>b.date-a.date).slice(0,15);
   if(results.length>0)S.news=results;
-  else if(S.news.length===0)S.news=[{id:'err',title:'No se pudieron cargar noticias. Inténtalo de nuevo.',url:'#',source:'Error',date:new Date()}];
+  else if(S.news.length===0)S.news=[{id:'err',title:'⚠️ No se pudieron cargar noticias.',url:'__retry__',source:'',date:new Date()}];
 }
 function calcEMA(p,k){const m=2/(k+1),e=[];p.forEach((v,i)=>{e.push(i===0?v:v*m+e[i-1]*(1-m));});return e;}
 function calcRSI(p,k=14){const r=new Array(k).fill(null);let g=0,l=0;for(let i=1;i<=k;i++){const d=p[i]-p[i-1];d>0?g+=d:l+=Math.abs(d);}let ag=g/k,al=l/k;for(let i=k;i<p.length;i++){const d=p[i]-p[i-1];ag=(ag*(k-1)+(d>0?d:0))/k;al=(al*(k-1)+(d<0?Math.abs(d):0))/k;r.push(100-(100/(1+(al===0?100:ag/al))));}return r;}
@@ -2100,6 +2114,12 @@ function renderNews(){
     +'<div style="font-size:11px;color:'+globalColor+';font-weight:600;text-align:center">'+globalLabel+'</div>'
     +'</div>';
   const newsItems=S.news.map(function(n,i){
+    if(n.url==='__retry__'){
+      return '<div class="news-item" style="text-align:center;padding:20px">'
+        +'<div style="font-size:13px;color:var(--text2);margin-bottom:12px">'+n.title+'</div>'
+        +'<button onclick="S.news=[];fetchNews().then(()=>renderTab(\'news\'))" style="padding:10px 20px;background:#f97316;color:white;border:none;border-radius:10px;font-size:13px;cursor:pointer">🔄 Reintentar</button>'
+        +'</div>';
+    }
     const sent=sentiments[i];
     return '<a href="'+n.url+'" target="_blank" rel="noopener noreferrer" class="news-item" style="border-left:3px solid '+sent.color+';padding-left:10px">'
       +'<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">'
