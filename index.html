@@ -5,7 +5,7 @@
   <meta http-equiv="cache-control" content="no-cache, no-store, must-revalidate"/>
   <meta http-equiv="pragma" content="no-cache"/>
   <meta http-equiv="expires" content="0"/>
-  <meta name="app-version" content="v50"/>
+  <meta name="app-version" content="v51"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"/>
   <meta name="theme-color" content="#f97316">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -72,7 +72,7 @@
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-const BUILD_TS='202603111906';
+const BUILD_TS='202603220001';
 const S={price:{usd:0,eur:0},change24h:0,marketCap:0,history:[],ohlc:[],mempool:null,marketData:null,miningData:null,news:[],alerts:[],days:'30',chartType:'area',dark:localStorage.getItem('sf-theme')!=='light',notifPerm:window.Notification?.permission||'unsupported',atmLoaded:false,leafletMap:null,lastUpdated:null,feeLevel:'hour',txSize:250,currentTab:'home',corrData:null,corrPeriod:'30',dominanceHistory:[],rainbowData:null,dominanceYearData:null,historyTA:[],lang:localStorage.getItem('sf-lang')||'es',morningAlert:JSON.parse(localStorage.getItem('sf-morning')||'null'),blockHeight:null,blocksToHalving:null,halvingPct:null,corrCached:null,
   // Mejora 7: seguimiento de datos obsoletos
   dataAge:{},
@@ -3367,6 +3367,133 @@ async function updateForecastBias(){
   }catch(e){console.warn('updateForecastBias:',e);S.forecastBias=0;}
 }
 
+/* ══════ ML: TensorFlow.js · Ajuste adaptativo de pesos ══════ */
+const ML={model:null,trained:null,training:false,accuracy:null,samplesUsed:0,lastTrained:null,blend:0.40};
+
+function mlFeaturize(s){
+  return[
+    Math.max(-1,Math.min(1,(s.taTotal||0)*5)),
+    Math.max(-1,Math.min(1,(s.onChainTotal||0)*5)),
+    Math.max(-1,Math.min(1,(s.macroTotal||0)*5)),
+    (((s.fg||50))-50)/50,
+    Math.max(-3,Math.min(3,(((s.dom||50))-50)/10)),
+    s.regime==='bull'?1:0,s.regime==='bear'?1:0,
+    s.regime==='trend_up'?1:0,s.regime==='trend_down'?1:0,
+    s.regime==='lateral'?1:0
+  ];
+}
+
+function mlCreateModel(){
+  const m=tf.sequential();
+  m.add(tf.layers.dense({inputShape:[10],units:16,activation:'relu',kernelInitializer:'glorotUniform'}));
+  m.add(tf.layers.dropout({rate:0.15}));
+  m.add(tf.layers.dense({units:8,activation:'relu'}));
+  m.add(tf.layers.dense({units:3,activation:'softmax'}));
+  m.compile({optimizer:tf.train.adam(0.008),loss:'categoricalCrossentropy'});
+  return m;
+}
+
+function mlMakeLabel(s,chg){
+  const d=Math.sign(chg)||1;
+  const r=[
+    Math.max(0.05,0.33+(s.taTotal||0)*d*2.5),
+    Math.max(0.05,0.33+(s.onChainTotal||0)*d*2.5),
+    Math.max(0.05,0.33+(s.macroTotal||0)*d*2.5)
+  ];
+  const sum=r.reduce((a,b)=>a+b,0);
+  return r.map(v=>v/sum);
+}
+
+async function mlTrain(){
+  if(ML.training||typeof tf==='undefined')return{error:'unavailable'};
+  ML.training=true;
+  try{
+    const log=JSON.parse(localStorage.getItem('sf-pricelog')||'{}');
+    const preds=await loadPredictions();
+    const now=Date.now(),D=86400000;
+    const samples=[];
+    for(const snap of preds){
+      if(snap.taTotal==null||snap.onChainTotal==null||snap.macroTotal==null)continue;
+      if(now-snap.ts<7*D)continue;
+      const td=new Date(snap.ts+7*D).toISOString().slice(0,10);
+      const real=log[td]||getPriceAtDate(td);
+      if(!real||real<=0||!snap.price)continue;
+      samples.push({snap,chg:(real-snap.price)/snap.price});
+    }
+    if(samples.length<5){ML.training=false;ML.trained=false;return{error:'insufficient',n:samples.length};}
+    if(!ML.model)ML.model=mlCreateModel();
+    const xs=tf.tensor2d(samples.map(s=>mlFeaturize(s.snap)));
+    const ys=tf.tensor2d(samples.map(s=>mlMakeLabel(s.snap,s.chg)));
+    await ML.model.fit(xs,ys,{epochs:100,batchSize:Math.min(16,Math.max(4,samples.length)),shuffle:true,validationSplit:samples.length>=10?0.15:0,verbose:0});
+    xs.dispose();ys.dispose();
+    let ok=0;
+    for(const{snap,chg}of samples){
+      const ft=tf.tensor2d([mlFeaturize(snap)]);
+      const pred=ML.model.predict(ft);
+      const w=pred.dataSync();
+      ft.dispose();pred.dispose();
+      if(Math.sign((snap.taTotal||0)*w[0]+(snap.onChainTotal||0)*w[1]+(snap.macroTotal||0)*w[2])===Math.sign(chg))ok++;
+    }
+    ML.accuracy=+(ok/samples.length*100).toFixed(1);
+    ML.samplesUsed=samples.length;
+    ML.lastTrained=Date.now();
+    ML.trained=true;
+    await ML.model.save('localstorage://sf-ml-model');
+    localStorage.setItem('sf-ml-meta',JSON.stringify({accuracy:ML.accuracy,samplesUsed:ML.samplesUsed,lastTrained:ML.lastTrained}));
+    console.log('[ML] Entrenado accuracy='+ML.accuracy+'% n='+ML.samplesUsed);
+    ML.training=false;
+    return{accuracy:ML.accuracy,n:ML.samplesUsed};
+  }catch(e){console.error('[ML]',e);ML.training=false;return{error:e.message};}
+}
+
+async function mlInit(){
+  if(ML.trained!==null&&!ML.training)return;
+  if(typeof tf==='undefined'){
+    try{
+      await new Promise((res,rej)=>{
+        const s=document.createElement('script');
+        s.src='https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js';
+        s.onload=res;s.onerror=()=>rej(new Error('tf_load_fail'));
+        document.head.appendChild(s);
+      });
+    }catch(e){ML.trained=false;return;}
+  }
+  try{
+    const loaded=await tf.loadLayersModel('localstorage://sf-ml-model').catch(()=>null);
+    if(loaded){
+      ML.model=loaded;
+      ML.model.compile({optimizer:tf.train.adam(0.008),loss:'categoricalCrossentropy'});
+      const meta=JSON.parse(localStorage.getItem('sf-ml-meta')||'null');
+      if(meta){ML.accuracy=meta.accuracy;ML.samplesUsed=meta.samplesUsed;ML.lastTrained=meta.lastTrained;}
+      ML.trained=true;
+      console.log('[ML] Modelo cargado accuracy='+ML.accuracy+'%');
+    }else{
+      await mlTrain();
+    }
+  }catch(e){console.warn('[ML] init:',e);ML.trained=false;}
+}
+
+function mlGetWeights(ctx){
+  if(!ML.trained||!ML.model||typeof tf==='undefined')return null;
+  try{
+    const ft=tf.tensor2d([mlFeaturize(ctx)]);
+    const pred=ML.model.predict(ft);
+    const raw=Array.from(pred.dataSync());
+    ft.dispose();pred.dispose();
+    const s=raw[0]+raw[1]+raw[2];
+    return s>0?{wTA:raw[0]/s,wOC:raw[1]/s,wMacro:raw[2]/s}:null;
+  }catch{return null;}
+}
+
+async function mlRetrainUI(){
+  if(ML.training)return;
+  ML.model=null;ML.trained=null;
+  try{tf.io.removeModel('localstorage://sf-ml-model').catch(()=>{});localStorage.removeItem('sf-ml-meta');}catch{}
+  if(S.currentTab==='forecast')renderTab('forecast');
+  const r=await mlTrain();
+  if(S.currentTab==='forecast')renderTab('forecast');
+}
+
 function calcForecast(currentPrice){
   const ta=analyze();
   const fg=S.marketData?.fearGreed?.value||50;
@@ -3834,6 +3961,18 @@ function calcForecast(currentPrice){
     wTA=0.30; wOC=0.35; wMacro=0.35; // on-chain más fiable en laterales
   }
 
+  // ── MEJORA ML: Ajuste de pesos via TensorFlow.js
+  const mlW=mlGetWeights({taTotal,onChainTotal,macroTotal,fg,dom,regime});
+  const mlActive=mlW!==null;
+  if(mlActive){
+    const b=ML.blend;
+    wTA=wTA*(1-b)+mlW.wTA*b;
+    wOC=wOC*(1-b)+mlW.wOC*b;
+    wMacro=wMacro*(1-b)+mlW.wMacro*b;
+    const tot=wTA+wOC+wMacro;
+    wTA/=tot;wOC/=tot;wMacro/=tot;
+  }
+
   const netScore = taTotal*wTA + onChainTotal*wOC + macroTotal*wMacro;
 
   // ── MEJORA 2: Penalización por divergencia entre categorías
@@ -3948,7 +4087,7 @@ function calcForecast(currentPrice){
     h.mostLikely=bias>0.05?'bull':bias<-0.05?'bear':'base';
     h.signal=bias>0.1?'COMPRAR':bias<-0.1?'VENDER':'NEUTRAL';
   });
-  return{horizons,factors,netScore,taTotal,onChainTotal,macroTotal,ta,regime,regimeDesc,wTA,wOC,wMacro,asymBull,asymBear,divergenceMult,divergenceNote,realVol,biasFix};
+  return{horizons,factors,netScore,taTotal,onChainTotal,macroTotal,ta,regime,regimeDesc,wTA,wOC,wMacro,asymBull,asymBear,divergenceMult,divergenceNote,realVol,biasFix,mlActive};
 }
 // Mejora 4: barra visual de rango Bear/Base/Bull sobre el precio actual
 function renderForecastRangeBar(cur, bearP, baseP, bullP){
@@ -3986,7 +4125,8 @@ function renderForecast(){
   if(S.history.length<10)return'<div class="card" style="text-align:center;padding:40px;color:var(--text3)"><span class="spin">📊</span><br><br>'+tr.forecastLoading+'<br><small style="color:var(--text3);font-size:11px">'+tr.forecastWaitHist+'</small></div>';
   // ── MEJORA 3: Calcular sesgo histórico de forma asíncrona si aún no está cacheado
   if(S.forecastBias===undefined){S.forecastBias=0;updateForecastBias().then(()=>{if(S.currentTab==='forecast')renderTab('forecast');});}
-  const{horizons,factors,netScore,taTotal,onChainTotal,macroTotal,ta,regime,regimeDesc,wTA,wOC,wMacro,asymBull,asymBear,divergenceMult,divergenceNote,realVol,biasFix}=calcForecast(price);
+  if(ML.trained===null&&!ML.training){mlInit().then(()=>{if(S.currentTab==='forecast')renderTab('forecast');});}
+  const{horizons,factors,netScore,taTotal,onChainTotal,macroTotal,ta,regime,regimeDesc,wTA,wOC,wMacro,asymBull,asymBear,divergenceMult,divergenceNote,realVol,biasFix,mlActive}=calcForecast(price);
   if(!OC.loaded)fetchOnChain();
   const fmt=p=>'$'+(p>=1e6?(p/1e6).toFixed(2)+'M':p>=1000?(p/1000).toFixed(0)+'K':p.toFixed(0));
   const fmtPct=p=>(p>=0?'+':'')+p.toFixed(1)+'%';
@@ -4104,6 +4244,48 @@ function renderForecast(){
   const onChainBadge=OC.loaded
     ?'<span style="font-size:10px;color:#10b981;font-weight:600">✅ Datos on-chain en tiempo real</span>'
     :'<span style="font-size:10px;color:#eab308;font-weight:600"><span class="spin" style="font-size:10px">⏳</span> Cargando datos on-chain...</span>';
+  // ── Panel ML ──
+  const mlDays=ML.lastTrained?Math.floor((Date.now()-ML.lastTrained)/86400000):null;
+  const mlAgeStr=mlDays===null?'–':mlDays===0?'hoy':mlDays===1?'ayer':mlDays+'d atrás';
+  const mlCard=ML.trained===null
+    ?'<div class="card" style="border:1px solid rgba(167,139,250,.2);background:rgba(167,139,250,.03)">'
+      +'<div style="display:flex;justify-content:space-between;align-items:center">'
+      +'<div style="font-size:14px;font-weight:700">🧠 ML adaptativo</div>'
+      +'<span style="font-size:10px;color:#6b7280"><span class="spin">⚙️</span> Iniciando...</span>'
+      +'</div></div>'
+    :'<div class="card" style="border:1px solid rgba(167,139,250,'+(ML.trained?'.3':'.15')+');background:rgba(167,139,250,'+(ML.trained?'.05':'.02')+')">'
+      +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">'
+      +'<div style="font-size:14px;font-weight:700">🧠 ML adaptativo</div>'
+      +(ML.training
+        ?'<span style="font-size:10px;color:#f97316"><span class="spin">⚙️</span> Entrenando...</span>'
+        :ML.trained
+          ?'<span style="font-size:10px;background:rgba(16,185,129,.15);color:#10b981;padding:2px 8px;border-radius:999px;font-weight:700">● Activo</span>'
+          :'<span style="font-size:10px;color:#6b7280">Sin datos suficientes</span>')
+      +'</div>'
+      +(ML.trained
+        ?'<div style="font-size:11px;color:var(--text2);line-height:1.5;margin-bottom:10px">TensorFlow.js aprende qué categorías predicen mejor el precio real. Pesos ajustados al <b>'+Math.round(ML.blend*100)+'%</b> según el historial.</div>'
+         +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:10px">'
+         +[{l:'Precisión',v:ML.accuracy+'%',c:'#a78bfa'},{l:'Muestras',v:ML.samplesUsed,c:'#60a5fa'},{l:'Entrenado',v:mlAgeStr,c:'#34d399'}].map(x=>
+           '<div style="text-align:center;padding:8px 4px;background:var(--bg);border-radius:8px">'
+           +'<div style="font-size:9px;color:var(--text3);margin-bottom:3px">'+x.l+'</div>'
+           +'<div style="font-size:14px;font-weight:800;color:'+x.c+'">'+x.v+'</div>'
+           +'</div>'
+         ).join('')
+         +'</div>'
+         +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;margin-bottom:10px">'
+         +[{l:'Técnico',w:wTA},{l:'On-chain',w:wOC},{l:'Macro',w:wMacro}].map(x=>{
+           const pct=Math.round(x.w*100);
+           return '<div style="background:var(--bg);border-radius:6px;padding:6px 8px">'
+             +'<div style="font-size:9px;color:var(--text3);margin-bottom:3px">'+x.l+'</div>'
+             +'<div style="background:var(--bg3);border-radius:999px;height:4px;margin-bottom:3px">'
+             +'<div style="height:100%;border-radius:999px;background:#a78bfa;width:'+pct+'%"></div></div>'
+             +'<div style="font-size:11px;font-weight:800;color:#a78bfa">'+pct+'%</div>'
+             +'</div>';
+         }).join('')
+         +'</div>'
+        :'<div style="font-size:11px;color:var(--text3);margin-bottom:10px">Necesita ≥5 predicciones con 7+ días de antigüedad para aprender del historial.</div>')
+      +'<button onclick="mlRetrainUI()" '+(ML.training?'disabled ':'')+'style="width:100%;padding:8px;background:rgba(167,139,250,.12);border:1px solid rgba(167,139,250,.4);border-radius:8px;color:#a78bfa;font-size:12px;font-weight:600;cursor:pointer">🔄 '+(ML.training?'Entrenando...':(ML.trained?'Reentrenar modelo':'Entrenar ahora'))+'</button>'
+      +'</div>';
   const html='<div class="space-y">'
     +'<div style="background:rgba(234,179,8,.08);border:1px solid rgba(234,179,8,.3);border-radius:12px;padding:12px;display:flex;gap:10px">'
     +'<div style="font-size:20px">⚠️</div>'
@@ -4143,8 +4325,10 @@ function renderForecast(){
     +(divergenceMult>1?'<div style="font-size:10px;color:#eab308;margin-top:4px">'+divergenceNote+'</div>':'')
     +(Math.abs(biasFix)>=0.01?'<div style="font-size:10px;color:#818cf8;margin-top:3px">🔧 Corrección histórica aplicada: '+(biasFix>=0?'+':'')+Math.round(biasFix*100)+'% sobre precio base ('+Math.abs(Math.round(biasFix*100))+'% de sesgo detectado en predicciones pasadas).</div>':'')
     +'<div style="font-size:10px;color:var(--text3);margin-top:3px">📊 Volatilidad realizada (14d): '+(realVol*100).toFixed(1)+'% anualizada</div>'
+    +(mlActive?'<div style="font-size:10px;color:#a78bfa;margin-top:3px">🧠 Pesos ajustados por ML · '+ML.accuracy+'% acc · '+ML.samplesUsed+' muestras</div>':'')
     +'</div>'
     +'</div>'
+    +mlCard
     +'<div class="card">'
     +'<div style="font-size:15px;font-weight:700;margin-bottom:4px">📅 Rangos por horizonte</div>'
     +'<div style="font-size:11px;color:var(--text3);margin-bottom:14px">Precio actual: <b style="color:#f97316;font-size:13px">$'+Math.round(price).toLocaleString()+'</b>'+(ta?' · RSI: <b style="color:var(--text)">'+ta.lastRSI.toFixed(0)+'</b> · Señal TA: <b style="color:var(--text)">'+ta.signal+'</b>':'')+'</div>'
