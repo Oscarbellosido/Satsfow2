@@ -4099,7 +4099,7 @@ function renderForecastRangeBar(cur, bearP, baseP, bullP){
   if(span<=0)return'';
   const pct=p=>Math.round(Math.max(1,Math.min(99,(p-rMin)/span*100)));
   const bearX=pct(bearP), baseX=pct(baseP), bullX=pct(bullP), curX=pct(cur);
-  const fmt=p=>'$'+(p>=1000?(p/1000).toFixed(0)+'K':p.toFixed(0));
+  const fmt=p=>'$'+(p>=1000?(p/1000).toFixed(1)+'K':p.toFixed(0));
   return '<div style="margin:10px 4px 6px;padding-top:8px">'
     +'<div style="font-size:9px;color:var(--text3);margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em">📍 Precio en el rango proyectado</div>'
     +'<div style="position:relative;height:8px;background:linear-gradient(90deg,rgba(239,68,68,.25) 0%,rgba(234,179,8,.25) 50%,rgba(16,185,129,.25) 100%);border-radius:999px;margin-bottom:22px">'
@@ -4130,17 +4130,22 @@ function renderForecast(){
   if(ML.trained===null&&!ML.training){mlInit().then(()=>{if(S.currentTab==='forecast')renderTab('forecast');});}
   const{horizons,factors,netScore,taTotal,onChainTotal,macroTotal,ta,regime,regimeDesc,wTA,wOC,wMacro,asymBull,asymBear,divergenceMult,divergenceNote,realVol,biasFix,mlActive}=calcForecast(price);
   if(!OC.loaded)fetchOnChain();
-  const fmt=p=>'$'+(p>=1e6?(p/1e6).toFixed(2)+'M':p>=1000?(p/1000).toFixed(0)+'K':p.toFixed(0));
+  // Formateja milers amb 1 decimal per evitar col·lisions visuals (p.ex. $74.0K vs $74.1K)
+  const fmt=p=>'$'+(p>=1e6?(p/1e6).toFixed(2)+'M':p>=1000?(p/1000).toFixed(1)+'K':p.toFixed(0));
   const fmtPct=p=>(p>=0?'+':'')+p.toFixed(1)+'%';
   const horizonCards=horizons.map(h=>{
     const bias=h.localScore;
     const bullMult=1+h.vol*asymBull*(1+bias*2);
     const baseMult=(1+h.vol*0.3*bias)*(1+biasFix);
     const bearMult=1-h.vol*asymBear*(1-bias*1.5);
-    const bullP=Math.round(price*Math.max(bullMult,1.01));
-    const bearP=Math.round(price*Math.min(bearMult,0.99));
-    const baseRaw=Math.round(price*Math.max(Math.min(baseMult,bullMult*0.9),bearMult*1.1));
-    const baseP=Math.max(bearP+1,Math.min(baseRaw,bullP-1));
+    // Mínim +3%/-3% per garantir separació visible entre escenaris
+    const bullP=Math.round(price*Math.max(bullMult,1.03));
+    const bearP=Math.round(price*Math.min(bearMult,0.97));
+    // Cap del base: màxim 65% del recorregut alcista (evita bullMult*0.9<1 quan vol és baix)
+    const baseCapMult=1+(bullMult-1)*0.65;
+    const minSep=Math.ceil(price*0.01); // separació mínima visible: 1% del preu
+    const baseRaw=Math.round(price*Math.max(Math.min(baseMult,baseCapMult),bearMult*1.1));
+    const baseP=Math.max(bearP+minSep,Math.min(baseRaw,bullP-minSep));
     const bullPct=(bullMult-1)*100;
     const basePct=((baseP/price)-1)*100;
     const bearPct=(bearMult-1)*100;
