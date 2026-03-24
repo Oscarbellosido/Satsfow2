@@ -2407,7 +2407,7 @@ function renderAlerts(){
         +'<div style="display:flex;align-items:center;gap:10px">'+dot
         +'<div><div style="font-size:13px;font-weight:600">'+label+'</div>'
         +'<div style="font-size:10px;color:var(--text3)">'+sub+'</div></div></div>'
-        +'<button onclick="removeAlert(\\\''+a.id+'\\\')" style="background:none;border:none;color:var(--text3);font-size:18px;padding:4px;cursor:pointer">✕</button></div>';
+        +`<button onclick="removeAlert('${a.id}')" style="background:none;border:none;color:var(--text3);font-size:18px;padding:4px;cursor:pointer">✕</button></div>`;
     }).join('');
 
   const modeBtn=(m,label)=>'<button onclick="S._alertMode=\''+m+'\';renderTab(\'alerts\')" style="flex:1;padding:6px;border-radius:8px;border:1px solid var(--border);background:'+(alertMode===m?'#f97316':'var(--bg)')+';color:'+(alertMode===m?'#fff':'var(--text2)')+';font-size:12px;font-weight:'+(alertMode===m?'700':'400')+';cursor:pointer">'+label+'</button>';
