@@ -1066,7 +1066,7 @@ async function fetchPrice(){
     // ── Klines para gráfico: intentar ambos endpoints Binance en paralelo
     try{
       const interval=S.days==='1'?'1h':S.days==='7'?'4h':S.days==='30'?'1d':S.days==='90'?'3d':'1w';
-      const limit=S.days==='1'?'24':S.days==='7'?'42':S.days==='90'?'30':'52';
+      const limit=S.days==='1'?'24':S.days==='7'?'42':S.days==='30'?'30':S.days==='90'?'30':'52';
       const kUrl='klines?symbol=BTCUSDT&interval='+interval+'&limit='+limit;
       const [kBnCom, kBnVis] = await Promise.allSettled([
         fetch('https://api.binance.com/api/v3/'+kUrl,{signal:AbortSignal.timeout(6000)}),
@@ -1380,7 +1380,7 @@ function areaSVG(data){
     const idx=Math.min(i*step,data.length-1);
     const d=data[idx];
     const x=toX(idx);
-    const label=d.time?new Date(d.time).toLocaleDateString('ca-ES',{day:'2-digit',month:'2-digit'}):d.date||'';
+    const label=d.time?(S.days==='1'?new Date(d.time).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}):new Date(d.time).toLocaleDateString('ca-ES',{day:'2-digit',month:'2-digit'})):d.date||'';
     if(label) xLabels+=`<text x="${x}" y="${H-PB+14}" font-size="8" fill="#64748b" text-anchor="middle">${label}</text>`;
   }
   const pts=data.map((d,i)=>`${toX(i)},${toY(d.price)}`);
@@ -1421,7 +1421,7 @@ function candleSVG(data){
     const idx=Math.min(i*step,data.length-1);
     const d=data[idx];
     const x=toX(idx);
-    const label=d.time?new Date(d.time).toLocaleDateString('ca-ES',{day:'2-digit',month:'2-digit'}):d.date||'';
+    const label=d.time?(S.days==='1'?new Date(d.time).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}):new Date(d.time).toLocaleDateString('ca-ES',{day:'2-digit',month:'2-digit'})):d.date||'';
     if(label) xLabels+=`<text x="${x}" y="${H-PB+14}" font-size="8" fill="#64748b" text-anchor="middle">${label}</text>`;
   }
   const candles=data.map((d,i)=>{
@@ -1913,7 +1913,7 @@ function calcConv(f,raw){
 }
 function setI(id,val){const e=document.getElementById('inp-'+id);if(e&&document.activeElement!==e)e.value=val;}
 function setChartType(t){S.chartType=t;renderTab('home');}
-function setPeriod(d){S.days=d;Promise.all([fetchPrice(),fetchOHLC()]).then(()=>renderTab('home'));}
+function setPeriod(d){S.days=d;S._priceFetchedAt=0;Promise.all([fetchPrice(),fetchOHLC()]).then(()=>renderTab('home'));}
 function renderAnalysis(){
   const tr=t();
   const a=analyze();
