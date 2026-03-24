@@ -103,14 +103,22 @@ self.addEventListener('message', (event) => {
 // ─── Lógica de comprobación de precio ────────────────────────────────────────
 async function checkPriceAndNotify() {
   try {
-    const res  = await fetch('https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT');
-    const json = await res.json();
-    const usd  = parseFloat(json?.price);
+    const [usdRes, eurRes] = await Promise.allSettled([
+      fetch('https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT'),
+      fetch('https://api.binance.com/api/v3/ticker/price?symbol=BTCEUR'),
+    ]);
+    const usd = usdRes.status === 'fulfilled' && usdRes.value.ok
+      ? parseFloat((await usdRes.value.json())?.price) : NaN;
     if (!usd) return;
+
+    let eur = null;
+    if (eurRes.status === 'fulfilled' && eurRes.value.ok) {
+      try { eur = parseFloat((await eurRes.value.json())?.price) || null; } catch {}
+    }
 
     // Recupera alertas guardadas en IndexedDB / cache
     const alertsRaw = await getStoredAlerts();
-    await checkPriceAndNotifyWithAlerts(alertsRaw, usd);
+    await checkPriceAndNotifyWithAlerts(alertsRaw, usd, eur);
 
     // Guarda el último precio conocido
     await storeLastPrice(usd);
@@ -119,7 +127,7 @@ async function checkPriceAndNotify() {
   }
 }
 
-async function checkPriceAndNotifyWithAlerts(alerts = [], currentPriceUsd = null) {
+async function checkPriceAndNotifyWithAlerts(alerts = [], currentPriceUsd = null, currentPriceEur = null) {
   if (!currentPriceUsd) {
     try {
       const res  = await fetch('https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT');
@@ -127,10 +135,17 @@ async function checkPriceAndNotifyWithAlerts(alerts = [], currentPriceUsd = null
       currentPriceUsd = parseFloat(json?.price);
     } catch { return; }
   }
+  if (!currentPriceEur) {
+    try {
+      const res  = await fetch('https://api.binance.com/api/v3/ticker/price?symbol=BTCEUR');
+      const json = await res.json();
+      currentPriceEur = parseFloat(json?.price) || null;
+    } catch {}
+  }
 
   for (const alert of alerts) {
     if (alert.triggered) continue;
-    const price     = alert.currency === 'usd' ? currentPriceUsd : currentPriceUsd * 0.93; // EUR approx
+    const price     = alert.currency === 'usd' ? currentPriceUsd : (currentPriceEur ?? currentPriceUsd * 0.92);
     const triggered = alert.condition === 'above' ? price >= alert.targetPrice : price <= alert.targetPrice;
 
     if (triggered) {
@@ -155,11 +170,12 @@ async function checkPriceAndNotifyWithAlerts(alerts = [], currentPriceUsd = null
 // ─── IndexedDB helpers ────────────────────────────────────────────────────────
 function openDB() {
   return new Promise((resolve, reject) => {
-    const req = indexedDB.open('satsflow', 1);
+    const req = indexedDB.open('satsflow', 2);
     req.onupgradeneeded = (e) => {
       const db = e.target.result;
-      if (!db.objectStoreNames.contains('alerts'))     db.createObjectStore('alerts',    { keyPath: 'id' });
-      if (!db.objectStoreNames.contains('meta'))       db.createObjectStore('meta',      { keyPath: 'key' });
+      if (!db.objectStoreNames.contains('alerts'))      db.createObjectStore('alerts',      { keyPath: 'id' });
+      if (!db.objectStoreNames.contains('meta'))        db.createObjectStore('meta',        { keyPath: 'key' });
+      if (!db.objectStoreNames.contains('predictions')) db.createObjectStore('predictions', { keyPath: 'date' });
     };
     req.onsuccess = (e) => resolve(e.target.result);
     req.onerror   = (e) => reject(e.target.error);

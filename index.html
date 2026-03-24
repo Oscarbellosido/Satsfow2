@@ -79,7 +79,8 @@ const S={price:{usd:0,eur:0},change24h:0,marketCap:0,history:[],ohlc:[],mempool:
   // Mejora 8: control de peticiones en vuelo
   fetchError:{},
   // Mejora 13: filtros ATM
-  atmFilter:'all',atmData:[],atmMarkers:[]
+  atmFilter:'all',atmData:[],atmMarkers:[],
+  _predPage:0
 };
 // Mejora 8: throttle de APIs — previene llamadas duplicadas concurrentes
 const _fetching=new Set();
@@ -1220,7 +1221,7 @@ function isBitcoinNews(title){
     // Español
     'moneda digital','activo digital','reserva bitcoin','etf bitcoin','precio bitcoin',
     // Catalán
-    'moneda digital','actiu digital',
+    'actiu digital',
   ];
   return btcKeywords.some(k=>t.includes(k));
 }
@@ -1292,7 +1293,7 @@ async function fetchNews(){
   else if(S.news.length===0)S.news=[{id:'err',title:'⚠️ No se pudieron cargar noticias.',url:'__retry__',source:'',date:new Date()}];
 }
 function calcEMA(p,k){const m=2/(k+1),e=[];p.forEach((v,i)=>{e.push(i===0?v:v*m+e[i-1]*(1-m));});return e;}
-function calcRSI(p,k=14){const r=new Array(k).fill(null);let g=0,l=0;for(let i=1;i<=k;i++){const d=p[i]-p[i-1];d>0?g+=d:l+=Math.abs(d);}let ag=g/k,al=l/k;for(let i=k;i<p.length;i++){const d=p[i]-p[i-1];ag=(ag*(k-1)+(d>0?d:0))/k;al=(al*(k-1)+(d<0?Math.abs(d):0))/k;r.push(100-(100/(1+(al===0?100:ag/al))));}return r;}
+function calcRSI(p,k=14){const r=new Array(k).fill(null);let g=0,l=0;for(let i=1;i<=k;i++){const d=p[i]-p[i-1];d>0?g+=d:l+=Math.abs(d);}let ag=g/k,al=l/k;r.push(100-(100/(1+(al===0?100:ag/al))));for(let i=k+1;i<p.length;i++){const d=p[i]-p[i-1];ag=(ag*(k-1)+(d>0?d:0))/k;al=(al*(k-1)+(d<0?Math.abs(d):0))/k;r.push(100-(100/(1+(al===0?100:ag/al))));}return r;}
 function analyze(){
   // Usar historial de 60 velas diarias si está disponible — siempre suficiente para TA
   const src=S.historyTA&&S.historyTA.length>=30?S.historyTA:S.history;
@@ -1305,8 +1306,9 @@ function analyze(){
   const sig=calcEMA(macd.slice(26),9);
   const padSig=[...new Array(26).fill(null),...new Array(macd.length-26-sig.length).fill(null),...sig];
   const lMACD=macd[macd.length-1],lSig=padSig[padSig.length-1];
-  const sma7=prices.slice(-7).reduce((a,b)=>a+b,0)/7;
-  const sma30=prices.slice(-30).reduce((a,b)=>a+b,0)/30;
+  const sma7=prices.slice(-7).reduce((a,b)=>a+b,0)/Math.min(7,prices.length);
+  const sl30=prices.slice(-30);
+  const sma30=sl30.reduce((a,b)=>a+b,0)/sl30.length;
   const sl20=prices.slice(-20),m20=sl20.reduce((a,b)=>a+b,0)/20;
   const std=Math.sqrt(sl20.reduce((a,b)=>a+(b-m20)**2,0)/sl20.length);
   const bbU=m20+2*std,bbL=m20-2*std;
