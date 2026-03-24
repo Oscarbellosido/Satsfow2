@@ -3608,8 +3608,9 @@ function calcForecast(currentPrice){
     volumeDesc='Volumen on-chain estimado en niveles saludables.';
   }
   let stochRsiScore=0, stochRsiDesc='';
-  if(ta && S.history.length>=20){
-    const prices=S.history.map(h=>h.price);
+  const stochSrc=S.historyTA&&S.historyTA.length>=28?S.historyTA:(S.history.length>=28?S.history:null);
+  if(ta && stochSrc){
+    const prices=stochSrc.map(h=>h.price);
     const rsiArr=calcRSI(prices);
     const rsiValid=rsiArr.filter(v=>v!=null);
     if(rsiValid.length>=14){
@@ -3622,8 +3623,8 @@ function calcForecast(currentPrice){
       else if(stochRsi<60){stochRsiScore=0.01;stochRsiDesc='Stoch RSI '+stochRsi.toFixed(0)+'/100 — Zona neutral.';}
       else if(stochRsi<80){stochRsiScore=-0.04;stochRsiDesc='Stoch RSI '+stochRsi.toFixed(0)+'/100 — Zona alta. Momentum fuerte pero con precaución.';}
       else{stochRsiScore=-0.12;stochRsiDesc='Stoch RSI '+stochRsi.toFixed(0)+'/100 — Sobrecomprado extremo. Posible corrección inminente.';}
-    }
-  } else { stochRsiScore=0; stochRsiDesc='Stoch RSI: datos insuficientes (se necesitan 20+ velas).'; }
+    } else { stochRsiDesc='Stoch RSI: datos insuficientes (se necesitan 28+ velas).'; }
+  } else { stochRsiDesc='Stoch RSI: datos insuficientes (se necesitan 28+ velas).'; }
   let obvScore=0, obvDesc='';
   if(S.ohlc && S.ohlc.length>=10){
     const ohlc=S.ohlc;
