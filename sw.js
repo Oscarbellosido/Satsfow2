@@ -1,11 +1,14 @@
 // ─── SatsFlow Service Worker ─────────────────────────────────────────────────
 // Versión del caché — cambia este número para forzar actualización
-const CACHE_VERSION = 'Satsfow2-v78';
+const CACHE_VERSION = 'Satsfow2-v79';
 const CACHE_ASSETS  = [
   './',
   './index.html',
   './manifest.json',
-  './style.css'
+  './style.css',
+  // Leaflet (mapa de Cajeros) — necessari per funcionar offline
+  'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css',
+  'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'
 ];
 
 // ─── Install: pre-cache shell ─────────────────────────────────────────────────
