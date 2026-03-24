@@ -77,7 +77,7 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 const BUILD_TS='202603220001';
-const S={price:{usd:0,eur:0},change24h:0,marketCap:0,history:[],ohlc:[],mempool:null,marketData:null,miningData:null,news:[],alerts:[],days:'30',chartType:'area',dark:localStorage.getItem('sf-theme')!=='light',notifPerm:window.Notification?.permission||'unsupported',atmLoaded:false,leafletMap:null,lastUpdated:null,feeLevel:'hour',txSize:250,currentTab:'home',corrData:null,corrPeriod:'30',dominanceHistory:[],rainbowData:null,dominanceYearData:null,historyTA:[],lang:localStorage.getItem('sf-lang')||'es',morningAlert:JSON.parse(localStorage.getItem('sf-morning')||'null'),blockHeight:null,blocksToHalving:null,halvingPct:null,corrCached:null,
+const S={price:{usd:0,eur:0},change24h:0,marketCap:0,history:[],ohlc:[],mempool:null,marketData:null,miningData:null,news:[],alerts:[],days:'30',chartType:'area',chartCurrency:localStorage.getItem('sf-chart-cur')||'usd',dark:localStorage.getItem('sf-theme')!=='light',notifPerm:window.Notification?.permission||'unsupported',atmLoaded:false,leafletMap:null,lastUpdated:null,feeLevel:'hour',txSize:250,currentTab:'home',corrData:null,corrPeriod:'30',dominanceHistory:[],rainbowData:null,dominanceYearData:null,historyTA:[],lang:localStorage.getItem('sf-lang')||'es',morningAlert:JSON.parse(localStorage.getItem('sf-morning')||'null'),blockHeight:null,blocksToHalving:null,halvingPct:null,corrCached:null,
   // Mejora 7: seguimiento de datos obsoletos
   dataAge:{},
   // Mejora 8: control de peticiones en vuelo
@@ -166,7 +166,7 @@ const T={
     errorLoad:'Error al cargar', errorRetry:'🔄 Reintentar',
     importOk:'✅ Config importada correctamente!', importErr:'❌ Error: archivo no válido',
     domAccum:'Los datos se acumularán mientras la app está abierta...', now:'AHORA',
-    alertAbove:'ha subido sobre', alertBelow:'ha bajado de',
+    alertAbove:'ha subido sobre', alertBelow:'ha bajado de', recurring:'🔄 Recurrente',
     rb_maxSell:'Zona de venta máxima', rb_veryCostly:'Muy caro — vende', rb_fomo:'FOMO intenso', rb_costly:'Caro', rb_fair:'Precio justo', rb_cheap:'Todavía barato', rb_accum:'Acumula', rb_histOffer:'Oferta histórica', rb_maxBuy:'Compra máximo',
     cyclesTitle:'Comparador de Ciclos BTC', cyclesSubtitle:'Precio normalizado desde el halving (halving = 1x)', cyclesCurrent:'2024 (actual)', cyclesDayLabel:'Día del ciclo', cyclesMultLabel:'Multiplicador', cyclesSinceHalving:'Desde halving', cyclesHalvingPrice:'Precio halving', cyclesPosition:'Posición actual', cyclesDayOf:'Precio en día', cyclesEachCycle:'de cada ciclo', cyclesAthTitle:'Proyección ATH ciclo 2024', cyclesAthModel:'ATH proyectado (modelo histórico)', cyclesAthMult:'Multiplicador esperado', cyclesAthDate:'Fecha estimada', cyclesAthDays:'Días restantes estimados', cyclesAthPassed:'Ya pasó o muy cerca', cyclesDaysLeft:'~$1 días', cyclesAbove20:'Por encima del ciclo 2020', cyclesInLine20:'En línea con ciclo 2020', cyclesBelow20:'Por debajo del ciclo 2020', cyclesFarBelow:'Muy por debajo del histórico', cyclesDisclaimer:'⚠️ Basado en patrones históricos. Cada ciclo es diferente. No es consejo financiero.',
     globalEventsTitle:'Próximos eventos', globalEventsDesc:'Eventos macro y crypto que impactan a Bitcoin', globalPast:'Pasado', globalToday:'HOY', globalInDays:'En $1 días', globalDomTitle:'Dominancia BTC histórica', globalDomDesc:'2020 – hoy · Con marcadores de halving', globalDomNote:'Por encima del 50%: Bitcoin dominante. Por encima del 60%: mercado en acumulación / bear market altcoins.', globalMapTitle:'Mapa de adopción Bitcoin', globalMapDesc:'Estado legal por país — toca los puntos para ver detalles', globalMapSrc:'Fuentes: Library of Congress, CoinDesk, Bitcoin.org · Datos 2024-2025', globalLoadingMap:'Cargando mapa...', globalLegal:'Curso legal', globalETF:'ETF aprobados', globalRegulated:'Regulado', globalRestricted:'Restrictivo', globalBanned:'Prohibido', globalStatusLegal:'🟢 Curso Legal', globalStatusETF:'🔵 ETF Aprobados', globalStatusReg:'🟡 Regulado', globalStatusRes:'🟠 Restrictivo', globalStatusBan:'🔴 Prohibido',
@@ -258,7 +258,7 @@ const T={
     errorLoad:'Error en carregar', errorRetry:'🔄 Reintentar',
     importOk:'✅ Configuració importada correctament!', importErr:'❌ Error: fitxer no vàlid',
     domAccum:"Les dades s'acumularan mentre l'app estigui oberta...", now:'ARA',
-    alertAbove:'ha pujat per sobre', alertBelow:'ha baixat de',
+    alertAbove:'ha pujat per sobre', alertBelow:'ha baixat de', recurring:'🔄 Recurrent',
     rb_maxSell:'Zona de venda màxima', rb_veryCostly:'Molt car — ven', rb_fomo:'FOMO intens', rb_costly:'Car', rb_fair:'Preu just', rb_cheap:'Encara barat', rb_accum:'Acumula', rb_histOffer:'Oferta històrica', rb_maxBuy:'Compra màxim',
     cyclesTitle:'Comparador de Cicles BTC', cyclesSubtitle:'Preu normalitzat des del halving (halving = 1x)', cyclesCurrent:'2024 (actual)', cyclesDayLabel:'Dia del cicle', cyclesMultLabel:'Multiplicador', cyclesSinceHalving:'Des del halving', cyclesHalvingPrice:'Preu halving', cyclesPosition:'Posició actual', cyclesDayOf:'Preu al dia', cyclesEachCycle:'de cada cicle', cyclesAthTitle:'Projecció ATH cicle 2024', cyclesAthModel:'ATH projectat (model històric)', cyclesAthMult:'Multiplicador esperat', cyclesAthDate:'Data estimada', cyclesAthDays:'Dies restants estimats', cyclesAthPassed:'Ja va passar o molt a prop', cyclesDaysLeft:'~$1 dies', cyclesAbove20:'Per sobre del cicle 2020', cyclesInLine20:'En línia amb el cicle 2020', cyclesBelow20:'Per sota del cicle 2020', cyclesFarBelow:'Molt per sota de l\'històric', cyclesDisclaimer:'⚠️ Basat en patrons històrics. Cada cicle és diferent. No és un consell financer.',
     globalEventsTitle:'Propers esdeveniments', globalEventsDesc:'Esdeveniments macro i crypto que impacten Bitcoin', globalPast:'Passat', globalToday:'AVUI', globalInDays:'En $1 dies', globalDomTitle:'Dominància BTC històrica', globalDomDesc:'2020 – avui · Amb marcadors de halving', globalDomNote:'Per sobre del 50%: Bitcoin dominant. Per sobre del 60%: mercat en acumulació / bear market altcoins.', globalMapTitle:'Mapa d\'adopció Bitcoin', globalMapDesc:'Estat legal per país — toca els punts per veure detalls', globalMapSrc:'Fonts: Library of Congress, CoinDesk, Bitcoin.org · Dades 2024-2025', globalLoadingMap:'Carregant mapa...', globalLegal:'Curs legal', globalETF:'ETF aprovats', globalRegulated:'Regulat', globalRestricted:'Restrictiu', globalBanned:'Prohibit', globalStatusLegal:'🟢 Curs Legal', globalStatusETF:'🔵 ETF Aprovats', globalStatusReg:'🟡 Regulat', globalStatusRes:'🟠 Restrictiu', globalStatusBan:'🔴 Prohibit',
@@ -339,7 +339,7 @@ const T={
     errorLoad:'Error loading',errorRetry:'🔄 Retry',
     importOk:'✅ Config imported successfully!',importErr:'❌ Error: invalid file',
     domAccum:'Data will accumulate while the app is open...',now:'NOW',
-    alertAbove:'has risen above',alertBelow:'has fallen below',
+    alertAbove:'has risen above',alertBelow:'has fallen below',recurring:'🔄 Recurring',
     rb_maxSell:'Maximum sell zone',rb_veryCostly:'Very expensive — sell',rb_fomo:'Intense FOMO',rb_costly:'Expensive',rb_fair:'Fair price',rb_cheap:'Still cheap',rb_accum:'Accumulate',rb_histOffer:'Historical offer',rb_maxBuy:'Maximum buy',
     cyclesTitle:'BTC Cycles Comparator',cyclesSubtitle:'Price normalized since halving (halving = 1x)',cyclesCurrent:'2024 (current)',cyclesDayLabel:'Cycle day',cyclesMultLabel:'Multiplier',cyclesSinceHalving:'Since halving',cyclesHalvingPrice:'Halving price',cyclesPosition:'Current position',cyclesDayOf:'Price on day',cyclesEachCycle:'of each cycle',cyclesAthTitle:'2024 Cycle ATH Projection',cyclesAthModel:'Projected ATH (historical model)',cyclesAthMult:'Expected multiplier',cyclesAthDate:'Estimated date',cyclesAthDays:'Estimated days remaining',cyclesAthPassed:'Already passed or very close',cyclesDaysLeft:'~$1 days',cyclesAbove20:'Above 2020 cycle',cyclesInLine20:'In line with 2020 cycle',cyclesBelow20:'Below 2020 cycle',cyclesFarBelow:'Well below historical',cyclesDisclaimer:'⚠️ Based on historical patterns. Each cycle is different. Not financial advice.',
     globalEventsTitle:'Upcoming events',globalEventsDesc:'Macro and crypto events impacting Bitcoin',globalPast:'Past',globalToday:'TODAY',globalInDays:'In $1 days',globalDomTitle:'Historical BTC Dominance',globalDomDesc:'2020 – today · With halving markers',globalDomNote:'Above 50%: Bitcoin dominant. Above 60%: market in accumulation / altcoin bear market.',globalMapTitle:'Bitcoin Adoption Map',globalMapDesc:'Legal status by country — tap points to see details',globalMapSrc:'Sources: Library of Congress, CoinDesk, Bitcoin.org · Data 2024-2025',globalLoadingMap:'Loading map...',globalLegal:'Legal tender',globalETF:'Approved ETFs',globalRegulated:'Regulated',globalRestricted:'Restrictive',globalBanned:'Banned',globalStatusLegal:'🟢 Legal Tender',globalStatusETF:'🔵 Approved ETFs',globalStatusReg:'🟡 Regulated',globalStatusRes:'🟠 Restrictive',globalStatusBan:'🔴 Banned',
@@ -1860,13 +1860,19 @@ function renderTab(tab){
 function renderHome(){
   const tr=t();
   const pos=S.change24h>=0;
+  const isEur=S.chartCurrency==='eur';
+  const eurRate=isEur&&S.price.eur>0&&S.price.usd>0?S.price.eur/S.price.usd:1;
+  const sym=isEur?'€':'$';
+  const cvtH=h=>({...h,price:h.price*eurRate,high:h.high?h.high*eurRate:undefined,low:h.low?h.low*eurRate:undefined,open:h.open?h.open*eurRate:undefined});
+  const chartHistory=isEur?S.history.map(cvtH):S.history;
+  const chartOHLC=isEur?S.ohlc.map(o=>({...o,open:o.open*eurRate,high:o.high*eurRate,low:o.low*eurRate,close:o.close*eurRate})):S.ohlc;
   const pct=S.days==='1'?S.change24h.toFixed(2):S.history.length>1?((S.history[S.history.length-1].price-S.history[0].price)/S.history[0].price*100).toFixed(2):'0.00';
   const pctColor=parseFloat(pct)>=0?'#10b981':'#ef4444';
-  // Max i min del període actual
-  const _high=S.history.length?Math.max(...S.history.map(h=>h.high||h.price).filter(v=>v>0)):0;
-  const _low=S.history.length?Math.min(...S.history.map(h=>h.low||h.price).filter(v=>v>0)):0;
+  // Max i min del període actual (en la moneda seleccionada)
+  const _high=(S.history.length?Math.max(...S.history.map(h=>h.high||h.price).filter(v=>v>0)):0)*eurRate;
+  const _low=(S.history.length?Math.min(...S.history.map(h=>h.low||h.price).filter(v=>v>0)):0)*eurRate;
   const upd=S.lastUpdated?S.lastUpdated.toLocaleTimeString(S.lang==='ca'?'ca-ES':'es-ES',{hour:'2-digit',minute:'2-digit'}):'—';
-  const chart=S.chartType==='area'?areaSVG(S.history):candleSVG(S.ohlc);
+  const chart=S.chartType==='area'?areaSVG(chartHistory):candleSVG(chartOHLC);
   return`<div class="space-y">
   <div class="card">
     <div style="font-size:15px;font-weight:700;margin-bottom:12px">${tr.converter}</div>
@@ -1882,10 +1888,13 @@ function renderHome(){
     <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
       <div><div style="font-size:15px;font-weight:700">📈 Historial</div><span style="font-size:11px;font-weight:600;color:${pctColor}">${parseFloat(pct)>=0?'+':''}${pct}%</span><span style="font-size:10px;color:var(--text3);margin-left:4px">${tr.thisPeriod}</span></div>
       <div style="display:flex;gap:14px;margin-top:5px;margin-bottom:2px">
-        <span style="font-size:11px;color:#10b981;font-weight:700">▲ $${_high>=1000?(_high/1000).toFixed(1)+'k':Math.round(_high).toLocaleString()}</span>
-        <span style="font-size:11px;color:#ef4444;font-weight:700">▼ $${_low>=1000?(_low/1000).toFixed(1)+'k':Math.round(_low).toLocaleString()}</span>
+        <span style="font-size:11px;color:#10b981;font-weight:700">▲ ${sym}${_high>=1000?(_high/1000).toFixed(1)+'k':Math.round(_high).toLocaleString()}</span>
+        <span style="font-size:11px;color:#ef4444;font-weight:700">▼ ${sym}${_low>=1000?(_low/1000).toFixed(1)+'k':Math.round(_low).toLocaleString()}</span>
       </div>
-      <div class="chart-type-wrap"><button class="chart-type-btn ${S.chartType==='area'?'active':''}" onclick="setChartType('area')">${tr.chartArea}</button><button class="chart-type-btn ${S.chartType==='candle'?'active':''}" onclick="setChartType('candle')">${tr.chartCandle}</button><button class="chart-type-btn ${S.showRSI?'active':''}" onclick="S.showRSI=!S.showRSI;renderTab('home')" style="color:${S.showRSI?'#fff':'#a855f7'}">RSI</button></div>
+      <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+        <div class="chart-type-wrap"><button class="chart-type-btn ${S.chartType==='area'?'active':''}" onclick="setChartType('area')">${tr.chartArea}</button><button class="chart-type-btn ${S.chartType==='candle'?'active':''}" onclick="setChartType('candle')">${tr.chartCandle}</button><button class="chart-type-btn ${S.showRSI?'active':''}" onclick="S.showRSI=!S.showRSI;renderTab('home')" style="color:${S.showRSI?'#fff':'#a855f7'}">RSI</button></div>
+        <div class="chart-type-wrap"><button class="chart-type-btn ${!isEur?'active':''}" onclick="setChartCurrency('usd')">$ USD</button><button class="chart-type-btn ${isEur?'active':''}" onclick="setChartCurrency('eur')">€ EUR</button></div>
+      </div>
     </div>
     <div class="period-wrap">${['1','7','30','90','365'].map(d=>`<button class="period-btn ${S.days===d?'active':''}" onclick="setPeriod('${d}')">${d==='1'?'24h':d==='365'?'1A':d+'D'}</button>`).join('')}</div>
     <div id="chart-wrap" style="background:#0a1628;border-radius:12px;padding:6px 4px 2px;margin:0 -4px;cursor:crosshair" onmousemove="chartHover(event)" ontouchstart="chartHover(event.touches[0])" ontouchmove="chartHover(event.touches[0])" onmouseleave="chartLeave()" ontouchend="chartLeave()" ontouchcancel="chartLeave()">${chart||'<div style="text-align:center;color:var(--text3);padding:40px">'+tr.loading+'</div>'}</div>
@@ -1914,6 +1923,7 @@ function calcConv(f,raw){
 function setI(id,val){const e=document.getElementById('inp-'+id);if(e&&document.activeElement!==e)e.value=val;}
 function setChartType(t){S.chartType=t;renderTab('home');}
 function setPeriod(d){S.days=d;S._priceFetchedAt=0;Promise.all([fetchPrice(),fetchOHLC()]).then(()=>renderTab('home'));}
+function setChartCurrency(c){S.chartCurrency=c;localStorage.setItem('sf-chart-cur',c);renderTab('home');}
 function renderAnalysis(){
   const tr=t();
   const a=analyze();
@@ -2392,7 +2402,7 @@ function renderAlerts(){
         :(a.condition==='above'?'↑ ':'↓ ')+(a.currency==='usd'?'$':'€')+a.targetPrice.toLocaleString();
       const pctNow=isPct&&a.refPrice?((S.price.usd-a.refPrice)/a.refPrice*100).toFixed(2):null;
       const dot=a.triggered?'<span style="color:#eab308;font-size:16px">⚠️</span>':'<div style="width:8px;height:8px;border-radius:50%;background:'+(a.condition==='above'?'#10b981':'#ef4444')+'"></div>';
-      const sub=a.triggered?'¡DISPARADA!':isPct?('Ref: $'+Math.round(a.refPrice).toLocaleString()+' · Ahora: '+(pctNow>0?'+':'')+pctNow+'%'):'Pendiente';
+      const sub=a.triggered?'¡DISPARADA!'+(a.recurring?' · 🔄 se rearmará':''):isPct?('Ref: $'+Math.round(a.refPrice).toLocaleString()+' · Ahora: '+(pctNow>0?'+':'')+pctNow+'%'):(a.recurring?'🔄 Recurrente':'Pendiente');
       return '<div class="alert-item '+(a.triggered?'triggered':'')+'">'
         +'<div style="display:flex;align-items:center;gap:10px">'+dot
         +'<div><div style="font-size:13px;font-weight:600">'+label+'</div>'
@@ -2411,7 +2421,8 @@ function renderAlerts(){
       <option value="usd">USD</option><option value="eur">EUR</option>
     </select>
     <button class="btn-orange" style="padding:8px 14px;flex-shrink:0" onclick="addAlert()">+</button>
-  </div>`;
+  </div>
+  <label style="display:flex;align-items:center;gap:7px;margin-top:7px;cursor:pointer;font-size:12px;color:var(--text2)"><input type="checkbox" id="alert-recurring" style="width:14px;height:14px;accent-color:#f97316"/>${tr.recurring}</label>`;
 
   const pctForm=`<div style="margin-bottom:8px;font-size:11px;color:var(--text3)">${tr.refPrice}: <b style="color:var(--text)">$${Math.round(S.price.usd).toLocaleString()}</b></div>
   <div class="input-row">
@@ -2425,7 +2436,8 @@ function renderAlerts(){
     </select>
     <button class="btn-orange" style="padding:8px 14px;flex-shrink:0" onclick="addPctAlert()">+</button>
   </div>
-  <div style="font-size:10px;color:var(--text3);margin-top:6px">${tr.triggerDesc}</div>`;
+  <div style="font-size:10px;color:var(--text3);margin-top:6px">${tr.triggerDesc}</div>
+  <label style="display:flex;align-items:center;gap:7px;margin-top:7px;cursor:pointer;font-size:12px;color:var(--text2)"><input type="checkbox" id="alert-pct-recurring" style="width:14px;height:14px;accent-color:#f97316"/>${tr.recurring}</label>`;
 
   return`<div class="space-y">${settingsHTML}<div class="card">
     <div style="font-size:15px;font-weight:700;margin-bottom:12px">🔔 ${tr.alertsTitle2}</div>
@@ -2439,10 +2451,10 @@ function renderAlerts(){
   </div></div>`;
 }
 async function activateNotifs(){const r=await requestNotifPerm();if(r==='granted')showNotif('✅ SatsFlow','Notificaciones activadas.');renderTab('alerts');}
-function addAlert(){const t=document.getElementById('alert-target'),cur=document.getElementById('alert-curr');if(!t||!cur)return;const val=parseFloat(t.value);if(isNaN(val)||val<=0)return;const curr=cur.value,price=curr==='usd'?S.price.usd:S.price.eur;S.alerts.push({id:Date.now().toString(),type:'price',targetPrice:val,currency:curr,condition:val>price?'above':'below',triggered:false});saveAlerts();navigator.serviceWorker?.ready.then(reg=>reg.active?.postMessage({type:'CHECK_ALERTS',alerts:S.alerts}));t.value='';renderTab('alerts');}
-function addPctAlert(){const t=document.getElementById('alert-pct'),d=document.getElementById('alert-pct-dir');if(!t||!d)return;const pct=parseFloat(t.value);if(isNaN(pct)||pct<=0)return;const dir=d.value;S.alerts.push({id:Date.now().toString(),type:'pct',targetPct:dir==='above'?pct:-pct,condition:dir,refPrice:S.price.usd,triggered:false});saveAlerts();t.value='';renderTab('alerts');}
+function addAlert(){const t=document.getElementById('alert-target'),cur=document.getElementById('alert-curr'),rec=document.getElementById('alert-recurring');if(!t||!cur)return;const val=parseFloat(t.value);if(isNaN(val)||val<=0)return;const curr=cur.value,price=curr==='usd'?S.price.usd:S.price.eur;S.alerts.push({id:Date.now().toString(),type:'price',targetPrice:val,currency:curr,condition:val>price?'above':'below',triggered:false,recurring:rec?rec.checked:false});saveAlerts();navigator.serviceWorker?.ready.then(reg=>reg.active?.postMessage({type:'CHECK_ALERTS',alerts:S.alerts}));t.value='';renderTab('alerts');}
+function addPctAlert(){const t=document.getElementById('alert-pct'),d=document.getElementById('alert-pct-dir'),rec=document.getElementById('alert-pct-recurring');if(!t||!d)return;const pct=parseFloat(t.value);if(isNaN(pct)||pct<=0)return;const dir=d.value;S.alerts.push({id:Date.now().toString(),type:'pct',targetPct:dir==='above'?pct:-pct,condition:dir,refPrice:S.price.usd,triggered:false,recurring:rec?rec.checked:false});saveAlerts();t.value='';renderTab('alerts');}
 function removeAlert(id){S.alerts=S.alerts.filter(a=>a.id!==id);saveAlerts();renderTab('alerts');}
-function checkAlerts(){if(!S.price.usd)return;let changed=false;S.alerts=S.alerts.map(a=>{if(a.triggered)return a;const p=a.currency==='usd'?S.price.usd:S.price.eur,hit=a.condition==='above'?p>=a.targetPrice:p<=a.targetPrice;if(hit){const sym=a.currency==='usd'?'$':'€';const tr=t();showNotif('⚡ Alerta SatsFlow',`BTC ${a.condition==='above'?tr.alertAbove:tr.alertBelow} ${sym}${a.targetPrice.toLocaleString()} — $${S.price.usd.toLocaleString()}`);changed=true;return{...a,triggered:true};}return a;});if(changed){saveAlerts();if(S.currentTab==='alerts')renderTab('alerts');}}
+function checkAlerts(){if(!S.price.usd)return;let changed=false;S.alerts=S.alerts.map(a=>{const p=a.currency==='usd'?S.price.usd:S.price.eur;if(a.triggered&&a.recurring){const crossedBack=a.condition==='above'?p<a.targetPrice:p>a.targetPrice;if(crossedBack){changed=true;return{...a,triggered:false};}return a;}if(a.triggered)return a;const hit=a.condition==='above'?p>=a.targetPrice:p<=a.targetPrice;if(hit){const sym=a.currency==='usd'?'$':'€';const tr=t();showNotif('⚡ Alerta SatsFlow',`BTC ${a.condition==='above'?tr.alertAbove:tr.alertBelow} ${sym}${a.targetPrice.toLocaleString()} — $${S.price.usd.toLocaleString()}`);changed=true;return{...a,triggered:true};}return a;});if(changed){saveAlerts();if(S.currentTab==='alerts')renderTab('alerts');}}
 async function fetchCorr(){
   S.corrError=null;
   const days=parseInt(S.corrPeriod)||30;
@@ -4561,10 +4573,14 @@ function chartHover(e){
   const idx=Math.round(pct*(S.history.length-1));
   const pt=S.history[idx];
   if(!pt)return;
+  const _isEur=S.chartCurrency==='eur';
+  const _rate=_isEur&&S.price.eur>0&&S.price.usd>0?S.price.eur/S.price.usd:1;
+  const _sym=_isEur?'€':'$';
+  const _cv=v=>Math.round(v*_rate).toLocaleString();
   const d=pt.date||'';
-  const p='$'+Math.round(pt.price).toLocaleString();
-  const h=pt.high?'↑$'+Math.round(pt.high).toLocaleString():'';
-  const l=pt.low?'↓$'+Math.round(pt.low).toLocaleString():'';
+  const p=_sym+_cv(pt.price);
+  const h=pt.high?'↑'+_sym+_cv(pt.high):'';
+  const l=pt.low?'↓'+_sym+_cv(pt.low):'';
   tip.innerHTML=`<span style="color:#94a3b8;font-size:10px">${d}</span><br>${p}${h?' <span style="color:#10b981">'+h+'</span>':''} ${l?'<span style="color:#ef4444">'+l+'</span>':''}`;
   // Posició: seguir cursor però no sortir de pantalla
   const tw=tip.offsetWidth||140;
