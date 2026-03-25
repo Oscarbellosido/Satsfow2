@@ -1,6 +1,6 @@
 // ─── SatsFlow Service Worker ─────────────────────────────────────────────────
 // Versión del caché — cambia este número para forzar actualización
-const CACHE_VERSION = 'Satsfow2-v79';
+const CACHE_VERSION = 'Satsfow2-v80';
 const CACHE_ASSETS  = [
   './',
   './index.html',
@@ -49,7 +49,11 @@ self.addEventListener('fetch', (event) => {
         caches.open(CACHE_VERSION).then(cache => cache.put(event.request, clone));
         return response;
       })
-      .catch(() => caches.match(event.request))
+      // Si la xarxa falla, intentar la caché. Si tampoc hi és (cache miss),
+      // retornar 503 explícit — event.respondWith(undefined) causa errors de xarxa
+      // que poden deixar l'app shell sense carregar (pantalla en blanc).
+      .catch(() => caches.match(event.request)
+        .then(r => r || new Response('', {status:503, statusText:'Offline'})))
   );
 });
 

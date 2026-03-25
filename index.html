@@ -513,7 +513,17 @@ async function manualRefresh(){
 const fmtN=(v,d=2)=>isNaN(v)?'—':Number(v).toLocaleString('en-US',{maximumFractionDigits:d});
 const fmtBig=v=>{if(!v)return'—';if(v>=1e12)return`$${(v/1e12).toFixed(2)}T`;if(v>=1e9)return`$${(v/1e9).toFixed(1)}B`;return`$${v.toLocaleString()}`;};
 const timeAgo=d=>{const s=Math.floor((Date.now()-d)/1000);if(s<60)return s+'s';if(s<3600)return Math.floor(s/60)+'m';if(s<86400)return Math.floor(s/3600)+'h';return Math.floor(s/86400)+'d';};
-function openDB(){return new Promise((res,rej)=>{const r=indexedDB.open('satsflow',2);r.onupgradeneeded=e=>{const db=e.target.result;if(!db.objectStoreNames.contains('alerts'))db.createObjectStore('alerts',{keyPath:'id'});if(!db.objectStoreNames.contains('predictions'))db.createObjectStore('predictions',{keyPath:'date'});};r.onsuccess=e=>res(e.target.result);r.onerror=rej;});}
+function openDB(){return new Promise((res,rej)=>{
+  let done=false;
+  // Timeout de 3s: si la BD queda bloquejada (altra pestanya amb versió antiga)
+  // la promesa mai es resoldria, bloquejant init() i deixant la pantalla en blanc
+  const tOut=setTimeout(()=>{if(!done){done=true;rej(new Error('openDB timeout'));}},3000);
+  const r=indexedDB.open('satsflow',2);
+  r.onupgradeneeded=e=>{const db=e.target.result;if(!db.objectStoreNames.contains('alerts'))db.createObjectStore('alerts',{keyPath:'id'});if(!db.objectStoreNames.contains('predictions'))db.createObjectStore('predictions',{keyPath:'date'});};
+  r.onblocked=()=>{if(!done){done=true;clearTimeout(tOut);rej(new Error('openDB blocked'));}};
+  r.onsuccess=e=>{if(!done){done=true;clearTimeout(tOut);res(e.target.result);}};
+  r.onerror=e=>{if(!done){done=true;clearTimeout(tOut);rej(e.target.error);}};
+});}
 async function saveAlerts(){try{const db=await openDB();const tx=db.transaction('alerts','readwrite');const s=tx.objectStore('alerts');s.clear();S.alerts.forEach(a=>s.put(a));}catch{}}
 async function loadAlertsDB(){try{const db=await openDB();const tx=db.transaction('alerts','readonly');return new Promise(res=>{const q=tx.objectStore('alerts').getAll();q.onsuccess=()=>res(q.result||[]);q.onerror=()=>res([]);});}catch{return[];}}
 
@@ -925,12 +935,16 @@ if('serviceWorker' in navigator){
         if(!newSW)return;
         newSW.addEventListener('statechange',()=>{
           if(newSW.state==='installed'&&navigator.serviceWorker.controller){
-            console.log('[SW] nueva versión disponible — activando');
-            newSW.postMessage({type:'SKIP_WAITING'});
-            // Recargar la página para que use la nueva versión
-            navigator.serviceWorker.addEventListener('controllerchange',()=>{
-              window.location.reload();
-            },{once:true});
+            console.log('[SW] nueva versión disponible — mostrando banner');
+            // NO fer reload() automàtic: si la caché és obsoleta i la xarxa és lenta
+            // (típic al matí) el reload deixa la pantalla en blanc sense recuperació.
+            // En lloc d'això, mostrem un banner discret perquè l'usuari decideixi.
+            const banner=document.createElement('div');
+            banner.id='sw-update-banner';
+            banner.style.cssText='position:fixed;bottom:70px;left:50%;transform:translateX(-50%);background:#1e293b;border:1px solid #f97316;border-radius:12px;padding:10px 16px;display:flex;align-items:center;gap:10px;z-index:9998;box-shadow:0 4px 20px rgba(0,0,0,.4);font-size:13px;color:#f1f5f9;white-space:nowrap';
+            banner.innerHTML='🔄 Nova versió disponible <button onclick="navigator.serviceWorker.getRegistration().then(r=>{if(r&&r.waiting)r.waiting.postMessage({type:\'SKIP_WAITING\'});});this.closest(\'#sw-update-banner\').remove();navigator.serviceWorker.addEventListener(\'controllerchange\',()=>location.reload(),{once:true});" style="margin-left:8px;padding:4px 12px;background:#f97316;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">Actualitzar</button><button onclick="this.closest(\'#sw-update-banner\').remove()" style="background:none;border:none;color:#94a3b8;font-size:16px;cursor:pointer;padding:0 4px">✕</button>';
+            document.body.appendChild(banner);
+            setTimeout(()=>{const b=document.getElementById('sw-update-banner');if(b)b.remove();},30000);
           }
         });
       });
@@ -4804,7 +4818,7 @@ function _checkZombie(attempt) {
     sessionStorage.removeItem('sf-reloads');
     return; // OK
   }
-  const delays = [5000, 12000, 20000];
+  const delays = [5000, 8000, 12000]; // total 30s (era 42s: 5+12+20+5 inicial)
   if (attempt < delays.length) {
     setTimeout(() => _checkZombie(attempt + 1), delays[attempt]);
     return;
@@ -4834,6 +4848,9 @@ document.addEventListener('visibilitychange', () => {
   // App visible de nuevo → SIEMPRE refrescar, independientemente del estado del precio.
   // En Android el proceso puede haber sido matado y S.price quedará a 0 aunque
   // hayan pasado menos de 6h — sin este fetch la pantalla quedaría en blanco.
+  // Reset TTL: sense això, si fetchPrice() va ser cridat fa menys de 30s retorna
+  // immediatament sense fer res i la pantalla queda en blanc en despertar.
+  S._priceFetchedAt=0;
   fetchPrice().then(() => renderCurrentTab()).catch(() => {
     try { renderCurrentTab(); } catch {} // renderizar con datos locales si falla la red
   });
