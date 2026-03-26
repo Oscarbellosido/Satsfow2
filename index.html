@@ -4743,6 +4743,10 @@ async function init(){
     setInterval(async()=>{try{await fetchPrice();checkAlerts();renderCurrentTab();}catch{}},60000);
     // WebSocket para precio tick a tick
     startPriceWS();
+    // Iniciar zombie check AQUÍ, dins init(), DESPRÉS que fetchPrice() hagi tingut
+    // temps. Si s'inicia des del top-level (5s des que el script s'executa) i
+    // fetchPrice() triga >5s (xarxa d'Android al matí), fa recarregues innecessàries.
+    setTimeout(() => _checkZombie(0), 3000);
     // Scroll indicator del tabbar
     setTimeout(()=>{
       const nav=document.getElementById('tabbar');
@@ -4838,8 +4842,6 @@ function _checkZombie(attempt) {
     if (tabEl) tabEl.innerHTML = errHTML;
   }
 }
-setTimeout(() => _checkZombie(0), 5000);
-
 // ── Visibilitychange: solo refrescar datos, nunca recargar la página ──
 // Android mata el proceso por la noche → el zombie detector lo maneja al reabrir
 // Aquí solo actualizamos el precio cuando el usuario vuelve a la app durante el día
@@ -4851,6 +4853,8 @@ document.addEventListener('visibilitychange', () => {
   // Reset TTL: sense això, si fetchPrice() va ser cridat fa menys de 30s retorna
   // immediatament sense fer res i la pantalla queda en blanc en despertar.
   S._priceFetchedAt=0;
+  // Reconnectar WebSocket immediatament (backoff pot arribar a 30s, massa lent al matí)
+  if(!_ws||_ws.readyState===2||_ws.readyState===3){startPriceWS();}
   fetchPrice().then(() => renderCurrentTab()).catch(() => {
     try { renderCurrentTab(); } catch {} // renderizar con datos locales si falla la red
   });
@@ -4879,8 +4883,21 @@ document.addEventListener('visibilitychange', () => {
         _saveTS();
         window.location.reload();
       }
-    }, 8000); // dar 8s a fetchPrice para recuperar el precio antes de recargar
+    }, 15000); // dar 15s a fetchPrice (xarxa lenta al matí en Android)
   }
+});
+
+// ── pageshow: bfcache d'Android/iOS ──
+// Quan Android/iOS restaura la PWA des del bfcache (back-forward cache),
+// NO dispara 'visibilitychange' ni recarrega la pàgina. L'únic event
+// fiable és 'pageshow' amb e.persisted === true.
+// Sense aquest handler, l'app pot quedar congelada amb dades antigues.
+window.addEventListener('pageshow', (e) => {
+  if (!e.persisted) return; // càrrega normal, no bfcache
+  console.log('[SatsFlow] Restaurat des de bfcache → re-fetch');
+  S._priceFetchedAt = 0;
+  if (!_ws || _ws.readyState === 2 || _ws.readyState === 3) { startPriceWS(); }
+  fetchPrice().then(() => renderCurrentTab()).catch(() => { try { renderCurrentTab(); } catch {} });
 });
 
 init();
