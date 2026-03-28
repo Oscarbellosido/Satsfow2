@@ -2104,7 +2104,7 @@ function analyzeSentiment(title){
 function renderMarket(){
   const tr=t();
   if(!S.marketData)return'<div class="card" style="text-align:center;padding:40px;color:var(--text3)"><span class="spin">⏳</span><br><br>'+tr.loadingMarket+'</div>';
-  const m=S.marketData,mi=S.miningData,fg=m.fearGreed,dom=m.dominance;
+  const m=S.marketData,fg=m.fearGreed,dom=m.dominance;
   const fgColor=fg.value<=25?'#ef4444':fg.value<=45?'#f97316':fg.value<=55?'#eab308':fg.value<=75?'#84cc16':'#10b981';
   const fgLabel=fg.value<=25?tr.extreme_fear:fg.value<=45?tr.fear:fg.value<=55?tr.neutral2:fg.value<=75?tr.greed:tr.extreme_greed;
   const toRad=d=>(d*Math.PI)/180,r=65,cx=90,cy=88,angle=-90+(fg.value/100)*180;
@@ -2173,17 +2173,6 @@ function renderMarket(){
         +'<span style="color:var(--text2)">'+x.l+'</span><span style="font-weight:700;color:'+x.c+'">'+x.v+'%</span></div>'
         +'<div class="prog-track"><div class="prog-bar" style="width:'+(parseFloat(x.v)||0)+'%;background:'+x.c+'"></div></div></div>';
     }).join('');
-  let miningHTML='';
-  if(mi){
-    miningHTML='<div class="card"><div style="font-size:15px;font-weight:700;margin-bottom:12px">⛏️ '+tr.miningTitle+'</div>'
-      +'<div class="grid-2" style="margin-bottom:12px">'
-      +'<div class="stat-box"><div class="stat-label">'+tr.hashrate+'</div><div class="stat-val" style="color:#10b981">'+mi.hashrate+'</div><div style="font-size:9px;color:var(--text3)">EH/s</div></div>'
-      +'<div class="stat-box"><div class="stat-label">'+tr.diffChange+'</div><div class="stat-val" style="color:'+(mi.difficultyChange>=0?'#ef4444':'#10b981')+'">'+(mi.difficultyChange>=0?'+':'')+(mi.difficultyChange||0).toFixed(2)+'%</div></div>'
-      +'</div>'
-      +'<div style="font-size:12px;color:var(--text2);margin-bottom:6px;display:flex;justify-content:space-between"><span>'+tr.nextAdjust+'</span><span style="color:var(--text3)">'+mi.remainingBlocks+' '+tr.blocks+'</span></div>'
-      +'<div class="prog-track"><div class="prog-bar" style="width:'+(mi.progressPercent||0)+'%;background:#22c55e"></div></div>'
-      +'<div style="font-size:10px;color:var(--text3);text-align:right;margin-top:2px">'+(mi.progressPercent||0).toFixed(1)+'% '+tr.completed+'</div></div>';
-  }
   // ── ETF Flows card ──────────────────────────────────────────────────────────
   let etfHTML='';
   const etf=S.etfData;
@@ -2260,7 +2249,6 @@ function renderMarket(){
     +'<div style="font-size:10px;color:var(--text3);margin-top:4px">Cap. total: '+fmtBig(m.totalMcap)+' · '+domTag+'</div>'
     +'</div>'
     +rainbowHTML
-    +miningHTML
     +etfHTML
     +'</div>';
 }
@@ -2340,6 +2328,7 @@ function renderMempool(){
     <div style="font-size:10px;color:var(--text3);text-align:center;margin-top:8px">P2PKH≈250B · SegWit≈140B · Taproot≈110B</div>
   </div>
   ${renderBlockStat()}
+  ${(()=>{const mi=S.miningData,tr=t();if(!mi)return'';return'<div class="card"><div style="font-size:15px;font-weight:700;margin-bottom:12px">⛏️ '+tr.miningTitle+'</div>'+'<div class="grid-2" style="margin-bottom:12px">'+'<div class="stat-box"><div class="stat-label">'+tr.hashrate+'</div><div class="stat-val" style="color:#10b981">'+mi.hashrate+'</div><div style="font-size:9px;color:var(--text3)">EH/s</div></div>'+'<div class="stat-box"><div class="stat-label">'+tr.diffChange+'</div><div class="stat-val" style="color:'+(mi.difficultyChange>=0?'#ef4444':'#10b981')+'">'+(mi.difficultyChange>=0?'+':'')+(mi.difficultyChange||0).toFixed(2)+'%</div></div>'+'</div>'+'<div style="font-size:12px;color:var(--text2);margin-bottom:6px;display:flex;justify-content:space-between"><span>'+tr.nextAdjust+'</span><span style="color:var(--text3)">'+mi.remainingBlocks+' '+tr.blocks+'</span></div>'+'<div class="prog-track"><div class="prog-bar" style="width:'+(mi.progressPercent||0)+'%;background:#22c55e"></div></div>'+'<div style="font-size:10px;color:var(--text3);text-align:right;margin-top:2px">'+(mi.progressPercent||0).toFixed(1)+'% '+tr.completed+'</div></div>';})()}
 </div>`;
 }
 function renderATM(){
