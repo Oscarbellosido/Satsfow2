@@ -5,7 +5,7 @@
   <meta http-equiv="cache-control" content="no-cache, no-store, must-revalidate"/>
   <meta http-equiv="pragma" content="no-cache"/>
   <meta http-equiv="expires" content="0"/>
-  <meta name="app-version" content="v52"/>
+  <meta name="app-version" content="v53"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"/>
   <meta name="theme-color" content="#f97316">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -46,30 +46,27 @@
   </div>
   <div id="content">
     <div id="tab-home" class="tab-content fade"></div>
-    <div id="tab-analysis" class="tab-content fade" style="display:none"></div>
+    <div id="tab-technical" class="tab-content fade" style="display:none"></div>
     <div id="tab-market" class="tab-content fade" style="display:none"></div>
     <div id="tab-mempool" class="tab-content fade" style="display:none"></div>
     <div id="tab-atm" class="tab-content fade" style="display:none"></div>
     <div id="tab-news" class="tab-content fade" style="display:none"></div>
     <div id="tab-alerts" class="tab-content fade" style="display:none"></div>
-    <div id="tab-corr" class="tab-content fade" style="display:none"></div>
-    <div id="tab-global" class="tab-content fade" style="display:none"></div>
-    <div id="tab-forecast" class="tab-content fade" style="display:none"></div>
-    <div id="tab-cycles" class="tab-content fade" style="display:none"></div>
+    <div id="tab-macroglobal" class="tab-content fade" style="display:none"></div>
+    <div id="tab-cyclesforecast" class="tab-content fade" style="display:none"></div>
     <div id="tab-dca" class="tab-content fade" style="display:none"></div>
   </div>
   <div id="tabbar-wrap"><nav id="tabbar">
     <button class="tab-btn active" data-tab="home" onclick="switchTab('home')"><span class="tab-icon">🏠</span>Inicio</button>
-    <button class="tab-btn" data-tab="analysis" onclick="switchTab('analysis')"><span class="tab-icon">🧠</span>Análisis</button>
-    <button class="tab-btn" data-tab="market" onclick="switchTab('market')"><span class="tab-icon">📊</span>Mercado</button>
+    <button class="tab-btn" data-tab="technical" onclick="switchTab('technical')"><span class="tab-icon">📊</span>Tècnic</button>
+    <button class="tab-btn" data-tab="market" onclick="switchTab('market')"><span class="tab-icon">🏪</span>Mercado</button>
     <button class="tab-btn" data-tab="mempool" onclick="switchTab('mempool')"><span class="tab-icon">⛓️</span>Mempool</button>
     <button class="tab-btn" data-tab="atm" onclick="switchTab('atm')"><span class="tab-icon">🏧</span>Cajeros</button>
     <button class="tab-btn" data-tab="news" onclick="switchTab('news')"><span class="tab-icon">📰</span>Noticias</button>
     <button class="tab-btn" data-tab="alerts" onclick="switchTab('alerts')"><span class="tab-icon">🔔</span>Alertas</button>
-    <button class="tab-btn" data-tab="corr" onclick="switchTab('corr')"><span class="tab-icon">📈</span>Correlac.</button>
-    <button class="tab-btn" data-tab="global" onclick="switchTab('global')"><span class="tab-icon">🌍</span>Global</button>
-    <button class="tab-btn" data-tab="forecast" onclick="switchTab('forecast')"><span class="tab-icon">🔮</span>Previsión</button>
-    <button class="tab-btn" data-tab="cycles" onclick="switchTab('cycles')"><span class="tab-icon">🔄</span>Ciclos</button><button class="tab-btn" data-tab="dca" onclick="switchTab('dca')"><span class="tab-icon">📐</span>DCA</button>
+    <button class="tab-btn" data-tab="macroglobal" onclick="switchTab('macroglobal')"><span class="tab-icon">🌍</span>Macro & Global</button>
+    <button class="tab-btn" data-tab="cyclesforecast" onclick="switchTab('cyclesforecast')"><span class="tab-icon">🔮</span>Cicles & Prev.</button>
+    <button class="tab-btn" data-tab="dca" onclick="switchTab('dca')"><span class="tab-icon">📐</span>DCA</button>
   </nav></div>
   <div id="tab-scroll-fade"></div>
 </div>
@@ -96,9 +93,9 @@ async function _once(key,fn){if(_fetching.has(key))return;_fetching.add(key);try
 /* ══════ TRADUCCIONS / TRADUCCIONES ══════ */
 const T={
   es:{
-    home:'Inicio',analysis:'Análisis',market:'Mercado',mempool:'Mempool',
+    home:'Inicio',analysis:'Análisis',technical:'Tècnic',market:'Mercado',mempool:'Mempool',
     atm:'Cajeros',news:'Noticias',alerts:'Alertas',corr:'Correlac.',
-    global:'Global',forecast:'Previsión',
+    global:'Global',forecast:'Previsión',macroglobal:'Macro & Global',cyclesforecast:'Cicles & Prev.',
     price:'Precio',change24h:'Cambio 24h',fearGreed:'Fear & Greed',dominance:'Dominancia',
     settings:'Ajustes',language:'Idioma',morningBriefing:'Resumen matutino',
     morningBriefingDesc:'Notificación diaria con el estado del mercado al despertar',
@@ -193,9 +190,9 @@ const T={
     etfRetry:'🔄 Actualizar',etfLiveData:'● En directo',etfFallback:'📅 Datos del'
   },
   ca:{
-    home:'Inici',analysis:'Anàlisi',market:'Mercat',mempool:'Mempool',
+    home:'Inici',analysis:'Anàlisi',technical:'Tècnic',market:'Mercat',mempool:'Mempool',
     atm:'Caixers',news:'Notícies',alerts:'Alertes',corr:'Correlac.',
-    global:'Global',forecast:'Previsió',
+    global:'Global',forecast:'Previsió',macroglobal:'Macro & Global',cyclesforecast:'Cicles & Prev.',
     price:'Preu',change24h:'Canvi 24h',fearGreed:'Por & Cobdícia',dominance:'Dominància',
     settings:'Configuració',language:'Idioma',morningBriefing:'Resum matinal',
     morningBriefingDesc:"Notificació diària amb l'estat del mercat en despertar",
@@ -286,9 +283,9 @@ const T={
     etfRetry:'🔄 Actualitzar',etfLiveData:'● En directe',etfFallback:'📅 Dades del'
   },
   en:{
-    home:'Home',analysis:'Analysis',market:'Market',mempool:'Mempool',
+    home:'Home',analysis:'Analysis',technical:'Technical',market:'Market',mempool:'Mempool',
     atm:'ATMs',news:'News',alerts:'Alerts',corr:'Correl.',
-    global:'Global',forecast:'Forecast',
+    global:'Global',forecast:'Forecast',macroglobal:'Macro & Global',cyclesforecast:'Cycles & Prev.',
     price:'Price',change24h:'24h Change',fearGreed:'Fear & Greed',dominance:'Dominance',
     settings:'Settings',language:'Language',morningBriefing:'Morning briefing',
     morningBriefingDesc:'Daily notification with market status when you wake up',
@@ -378,8 +375,8 @@ function setLang(lang,silent){
   S.lang=lang;
   localStorage.setItem('sf-lang',lang);
   document.documentElement.lang=lang;
-  const tabKeys=['home','analysis','market','mempool','atm','news','alerts','corr','global','forecast','cycles','dca'];
-  const tabIcons={home:'🏠',analysis:'🧠',market:'📊',mempool:'⛓️',atm:'🏧',news:'📰',alerts:'🔔',corr:'📈',global:'🌍',forecast:'🔮',cycles:'🔄',dca:'📐'};
+  const tabKeys=['home','technical','market','mempool','atm','news','alerts','macroglobal','cyclesforecast','dca'];
+  const tabIcons={home:'🏠',technical:'📊',market:'🏪',mempool:'⛓️',atm:'🏧',news:'📰',alerts:'🔔',macroglobal:'🌍',cyclesforecast:'🔮',dca:'📐'};
   tabKeys.forEach(tab=>{
     const btn=document.querySelector('[data-tab="'+tab+'"]');
     if(btn)btn.innerHTML='<span class="tab-icon">'+tabIcons[tab]+'</span>'+(t()[tab]||tab);
@@ -561,7 +558,7 @@ async function purgeInvalidSnapshots(){
   const tr=t();
   const msg=invalid.length>0?invalid.length+' '+tr.purgeMsg1:tr.purgeMsg2;
   showNotif('🧹 SatsFlow',msg);
-  renderTab('forecast');
+  renderTab('cyclesforecast');
 }
 // #15: usa modal propi en lloc del confirm() natiu del navegador
 function clearAllPredictions(){
@@ -569,7 +566,7 @@ function clearAllPredictions(){
     if(!ok)return;
     const preds=await loadPredictions();
     for(const p of preds)await deletePrediction(p.date);
-    renderTab('forecast');
+    renderTab('cyclesforecast');
   });
 }
 async function deletePrediction(date){
@@ -625,7 +622,7 @@ async function saveSnapshotIfNeeded(manual=false){
     snap.manual=true;
     snap.date=snap.date+'_m'+Date.now(); // evitar sobreescribir el auto del mismo día
     await savePrediction(snap);
-    if(S.currentTab==='forecast')renderTab('forecast');
+    if(S.currentTab==='cyclesforecast')renderTab('cyclesforecast');
     showNotif('📸 SatsFlow',t().snapSaved+snap.price.toLocaleString());
     return;
   }
@@ -646,7 +643,7 @@ async function saveSnapshotIfNeeded(manual=false){
         localStorage.setItem('sf-pricelog',JSON.stringify(log));
       }catch{}
       console.log('[SatsFlow] Snapshot diario guardado:',snap.date,'BTC $'+snap.price.toLocaleString());
-      if(S.currentTab==='forecast')renderTab('forecast');
+      if(S.currentTab==='cyclesforecast')renderTab('cyclesforecast');
     }
   }catch(e){console.warn('autoSnapshot:',e);}
 }
@@ -1907,21 +1904,21 @@ function startPriceWS(){
 function renderTab(tab){
   const el=document.getElementById('tab-'+tab);if(!el)return;
   // Skeleton map — mostra mentre carrega
-  const skeletonMap={home:skeletonHome,analysis:skeletonAnalysis,market:skeletonMarket,mempool:skeletonGeneric,news:skeletonGeneric,corr:skeletonGeneric,global:skeletonGeneric,forecast:skeletonGeneric,cycles:skeletonGeneric};
-  const map={home:renderHome,analysis:renderAnalysis,market:renderMarket,mempool:renderMempool,atm:renderATM,news:renderNews,alerts:renderAlerts,corr:renderCorr,global:renderGlobal,forecast:renderForecast,cycles:renderCycles,dca:renderDCA};const afterRender={'dca':()=>setTimeout(calcDCA,50)};
+  const skeletonMap={home:skeletonHome,technical:skeletonAnalysis,market:skeletonMarket,mempool:skeletonGeneric,news:skeletonGeneric,macroglobal:skeletonGeneric,cyclesforecast:skeletonGeneric};
+  const map={home:renderHome,technical:renderAnalysis,market:renderMarket,mempool:renderMempool,atm:renderATM,news:renderNews,alerts:renderAlerts,macroglobal:renderMacroGlobal,cyclesforecast:renderCyclesForecast,dca:renderDCA};const afterRender={'dca':()=>setTimeout(calcDCA,50)};
   // El tab ATM no se re-renderiza si el mapa ya está activo — evita destruir Leaflet
   if(tab==='atm'&&S.leafletMap){
     return;
   }
   if(map[tab]){
     // Mostrar skeleton si la tab no té dades encara
-    const needsSkeleton=(tab==='home'&&S.price.usd===0)||(tab==='analysis'&&!S.historyTA?.length)||(tab==='market'&&!S.marketData)||(tab==='mempool'&&!S.mempool)||(tab==='news'&&!S.news.length)||(tab==='cycles'&&!S.cycleHistory);
+    const needsSkeleton=(tab==='home'&&S.price.usd===0)||(tab==='technical'&&!S.historyTA?.length)||(tab==='market'&&!S.marketData)||(tab==='mempool'&&!S.mempool)||(tab==='news'&&!S.news.length)||(tab==='cyclesforecast'&&!S.cycleHistory);
     if(needsSkeleton&&skeletonMap[tab]){
       el.innerHTML=skeletonMap[tab]();
       // Tornar a renderitzar quan les dades arribin
       const waitAndRender=()=>{
         if(S.currentTab!==tab)return;
-        const stillNeeds=(tab==='home'&&S.price.usd===0)||(tab==='analysis'&&!S.historyTA?.length)||(tab==='market'&&!S.marketData)||(tab==='mempool'&&!S.mempool)||(tab==='news'&&!S.news.length)||(tab==='cycles'&&!S.cycleHistory);
+        const stillNeeds=(tab==='home'&&S.price.usd===0)||(tab==='technical'&&!S.historyTA?.length)||(tab==='market'&&!S.marketData)||(tab==='mempool'&&!S.mempool)||(tab==='news'&&!S.news.length)||(tab==='cyclesforecast'&&!S.cycleHistory);
         if(stillNeeds){setTimeout(waitAndRender,400);return;}
         try{el.innerHTML=map[tab]();}catch(e){el.innerHTML=skeletonMap[tab]();}
       };
@@ -2104,7 +2101,7 @@ function analyzeSentiment(title){
 function renderMarket(){
   const tr=t();
   if(!S.marketData)return'<div class="card" style="text-align:center;padding:40px;color:var(--text3)"><span class="spin">⏳</span><br><br>'+tr.loadingMarket+'</div>';
-  const m=S.marketData,fg=m.fearGreed,dom=m.dominance;
+  const m=S.marketData,fg=m.fearGreed;
   const fgColor=fg.value<=25?'#ef4444':fg.value<=45?'#f97316':fg.value<=55?'#eab308':fg.value<=75?'#84cc16':'#10b981';
   const fgLabel=fg.value<=25?tr.extreme_fear:fg.value<=45?tr.fear:fg.value<=55?tr.neutral2:fg.value<=75?tr.greed:tr.extreme_greed;
   const toRad=d=>(d*Math.PI)/180,r=65,cx=90,cy=88,angle=-90+(fg.value/100)*180;
@@ -2115,50 +2112,6 @@ function renderMarket(){
     const x2=cx+r*Math.cos(toRad(e)),y2=cy+r*Math.sin(toRad(e));
     return 'M '+x1+' '+y1+' A '+r+' '+r+' 0 0 1 '+x2+' '+y2;
   };
-  const others=(100-parseFloat(dom.btc||0)-parseFloat(dom.eth||0)).toFixed(1);
-  const rainbow=S.price.usd>0?calcRainbow(S.price.usd):null;
-  let domHistHTML='<div style="font-size:11px;color:var(--text3);text-align:center;padding:12px">'+tr.domAccum+'</div>';
-  const hist=S.dominanceHistory;
-  if(hist.length>=2){
-    const W=280,H=60,P=4;
-    const vals=hist.map(h=>h.btc);
-    const mn=Math.min(...vals)-1,mx=Math.max(...vals)+1,rng=mx-mn||1;
-    const tX=i=>P+(i/(hist.length-1))*(W-P*2);
-    const tY=v=>P+(1-(v-mn)/rng)*(H-P*2);
-    const pts=hist.map((h,i)=>tX(i)+','+tY(h.btc)).join(' ');
-    const last=hist[hist.length-1];
-    domHistHTML='<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:65px" preserveAspectRatio="none">'
-      +'<polyline points="'+pts+'" fill="none" stroke="#f97316" stroke-width="2" stroke-linejoin="round"/>'
-      +'<circle cx="'+tX(hist.length-1)+'" cy="'+tY(last.btc)+'" r="3" fill="#f97316"/>'
-      +'</svg>';
-  }
-  const domTag=parseFloat(dom.btc)>50
-    ?'<span style="color:#10b981">'+tr.dominanceBull+'</span>'
-    :'<span style="color:#3b82f6">'+tr.dominanceAlt+'</span>';
-  let rainbowHTML='';
-  if(rainbow){
-    const bandRows=rainbow.bands.map(function(b){
-      const isCur=b.label===rainbow.currentBand.label;
-      const priceStr='$'+(b.price>=1e9?(b.price/1e9).toFixed(1)+'B':b.price>=1e6?(b.price/1e6).toFixed(1)+'M':b.price>=1000?Math.round(b.price/1000)+'K':Math.round(b.price));
-      const nowBadge=isCur?'<span style="font-size:9px;background:'+b.color+';color:white;padding:1px 6px;border-radius:999px;font-weight:700">'+tr.now+'</span>':'';
-      return '<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:8px;margin-bottom:3px;'
-        +'background:'+(isCur?b.color+'22':'transparent')+';border:1px solid '+(isCur?b.color+'66':'transparent')+'">'
-        +'<div style="width:12px;height:12px;border-radius:3px;background:'+b.color+';flex-shrink:0"></div>'
-        +'<div style="flex:1;font-size:11px;color:'+(isCur?'var(--text)':'var(--text2)')+';'+(isCur?'font-weight:700':'')+'">'+(b.label)+'</div>'
-        +'<div style="font-size:11px;color:'+(isCur?b.color:'var(--text3)')+';'+(isCur?'font-weight:700':'')+'">'+priceStr+'</div>'
-        +nowBadge+'</div>';
-    }).join('');
-    rainbowHTML='<div class="card">'
-      +'<div style="font-size:15px;font-weight:700;margin-bottom:4px">🌈 '+tr.rainbowTitle+'</div>'
-      +'<div style="font-size:11px;color:var(--text3);margin-bottom:14px">'+tr.rainbowDesc+'</div>'
-      +'<div style="margin-bottom:14px">'+bandRows+'</div>'
-      +'<div style="background:rgba(249,115,22,.08);border:1px solid rgba(249,115,22,.3);border-radius:10px;padding:10px">'
-      +'<div style="font-size:12px;font-weight:700;margin-bottom:4px">'+tr.rainbowSignal+': <span style="color:'+rainbow.currentBand.color+'">'+rainbow.currentBand.label+'</span></div>'
-      +'<div style="font-size:11px;color:var(--text2)">'+tr.currentPriceLbl+' <b style="color:var(--text)">$'+S.price.usd.toLocaleString()+'</b> · '+tr.rainbowModel+'</div>'
-      +'</div>'
-      +'<div style="font-size:10px;color:var(--text3);margin-top:8px">'+tr.rainbowDisclaimer+'</div>'
-      +'</div>';
-  }
   const gaugeSegs=segs.map(function(s){return '<path d="'+arc(s.s,s.e)+'" stroke="'+s.c+'" stroke-width="13" fill="none" stroke-linecap="round" opacity=".4"/>';}).join('');
   const gaugeSVG='<svg viewBox="0 0 180 100" style="width:180px;max-width:100%">'
     +gaugeSegs
@@ -2167,12 +2120,6 @@ function renderMarket(){
     +'<text x="'+cx+'" y="'+(cy-14)+'" text-anchor="middle" fill="'+fgColor+'" font-size="22" font-weight="800">'+fg.value+'</text>'
     +'<text x="'+cx+'" y="'+(cy-2)+'" text-anchor="middle" fill="'+fgColor+'" font-size="9" font-weight="600">'+fgLabel+'</text>'
     +'</svg>';
-  const domBars=[{l:'Bitcoin (BTC)',v:dom.btc,c:'#f97316'},{l:'Ethereum (ETH)',v:dom.eth,c:'#3b82f6'},{l:'Resto',v:others,c:'#64748b'}]
-    .map(function(x){
-      return '<div style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px">'
-        +'<span style="color:var(--text2)">'+x.l+'</span><span style="font-weight:700;color:'+x.c+'">'+x.v+'%</span></div>'
-        +'<div class="prog-track"><div class="prog-bar" style="width:'+(parseFloat(x.v)||0)+'%;background:'+x.c+'"></div></div></div>';
-    }).join('');
   // ── ETF Flows card ──────────────────────────────────────────────────────────
   let etfHTML='';
   const etf=S.etfData;
@@ -2239,16 +2186,6 @@ function renderMarket(){
     +'<div class="card"><div style="font-size:15px;font-weight:700;margin-bottom:12px">📊 '+tr.fearGreedTitle+'</div>'
     +'<div style="display:flex;justify-content:center">'+gaugeSVG+'</div>'
     +'<div style="font-size:10px;color:var(--text3);text-align:center;margin-top:4px">'+tr.fearGreedSource+'</div></div>'
-    +'<div class="card">'
-    +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">'
-    +'<div style="font-size:15px;font-weight:700">🌍 '+tr.dominanceTitle+'</div>'
-    +'<div style="font-size:20px;font-weight:800;color:#f97316">'+dom.btc+'%</div></div>'
-    +domBars
-    +'<div style="font-size:11px;color:var(--text3);font-weight:600;margin:10px 0 4px">'+tr.dominanceEvolution+'</div>'
-    +domHistHTML
-    +'<div style="font-size:10px;color:var(--text3);margin-top:4px">Cap. total: '+fmtBig(m.totalMcap)+' · '+domTag+'</div>'
-    +'</div>'
-    +rainbowHTML
     +etfHTML
     +'</div>';
 }
@@ -2692,7 +2629,7 @@ async function fetchCorr(){
         S.corrData=parsed.data;
         S.corrError=null;
         S.corrCached=parsed.savedAt;
-        renderTab('corr');
+        renderTab('macroglobal');
         return;
       }
     }catch{}
@@ -2700,14 +2637,14 @@ async function fetchCorr(){
     S.corrCached=null;
     const spxFail=!finalSpy.length, goldFail=!finalGold.length;
     S.corrError=(spxFail&&goldFail?'S&P500 i Or':spxFail?'S&P500':'Or')+': no s\'han pogut carregar dades. Totes les fonts estan no disponibles.';
-    renderTab('corr');
+    renderTab('macroglobal');
     return;
   }
 
   const normalize=arr=>{const base=arr[0]||1;return arr.map(v=>(v/base)*100);};
   const minLen=Math.min(btcPrices.length||999, finalSpy.length, finalGold.length, mstrPrices.length||999);
   const useMstr=mstrPrices.length>=5;
-  if(minLen<5){S.corrData=null;S.corrError='Dades insuficients per calcular correlació.';renderTab('corr');return;}
+  if(minLen<5){S.corrData=null;S.corrError='Dades insuficients per calcular correlació.';renderTab('macroglobal');return;}
   const btcN=normalize(btcPrices.slice(-minLen));
   const spyN=normalize(finalSpy.slice(-minLen));
   const goldN=normalize(finalGold.slice(-minLen));
@@ -2918,7 +2855,7 @@ function renderCorr(){
 async function loadCorr(){
   S.corrLoading=true;
   S.corrError=null;
-  renderTab('corr');
+  renderTab('macroglobal');
   // Timeout global de 10s — si triga més, usa caché o mostra error
   const timeout=new Promise(res=>setTimeout(()=>res('timeout'),10000));
   const result=await Promise.race([fetchCorr().then(()=>'ok'),timeout]);
@@ -2931,7 +2868,7 @@ async function loadCorr(){
   }
   S.corrLoading=false;
   S.corrLoadMsg=null;
-  renderTab('corr');
+  renderTab('macroglobal');
 }
 function setCorrPeriod(p){
   S.corrPeriod=p;
@@ -3121,6 +3058,9 @@ function renderGlobal(){
     +'<div style="font-size:10px;color:var(--text3);margin-top:4px">'+tr.globalMapSrc+'</div>'
     +'</div>'
     +'</div>';
+}
+function renderMacroGlobal(){
+  return renderCorr()+renderGlobal();
 }
 async function loadWorldMap(){
   const wrap=document.getElementById('world-map-wrap');
@@ -3506,7 +3446,7 @@ async function fetchOnChain(){
   }catch(e){console.warn('GoogleTrends proxy',e);}
 
   OC.loaded=true;
-  if(S.currentTab==='forecast')renderTab('forecast');
+  if(S.currentTab==='cyclesforecast')renderTab('cyclesforecast');
 }
 // ── MEJORA 3: Calcula el sesgo histórico del modelo comparando predicciones pasadas con precio real
 async function updateForecastBias(){
@@ -3657,9 +3597,9 @@ async function mlRetrainUI(){
   if(ML.training)return;
   ML.model=null;ML.trained=null;
   try{tf.io.removeModel('localstorage://sf-ml-model').catch(()=>{});localStorage.removeItem('sf-ml-meta');}catch{}
-  if(S.currentTab==='forecast')renderTab('forecast');
+  if(S.currentTab==='cyclesforecast')renderTab('cyclesforecast');
   const r=await mlTrain();
-  if(S.currentTab==='forecast')renderTab('forecast');
+  if(S.currentTab==='cyclesforecast')renderTab('cyclesforecast');
 }
 
 function calcForecast(currentPrice){
@@ -4293,8 +4233,8 @@ function renderForecast(){
   if(!price)return'<div class="card" style="text-align:center;padding:40px;color:var(--text3)"><span class="spin">⏳</span><br><br>'+tr.forecastWaiting+'</div>';
   if(S.history.length<10)return'<div class="card" style="text-align:center;padding:40px;color:var(--text3)"><span class="spin">📊</span><br><br>'+tr.forecastLoading+'<br><small style="color:var(--text3);font-size:11px">'+tr.forecastWaitHist+'</small></div>';
   // ── MEJORA 3: Calcular sesgo histórico de forma asíncrona si aún no está cacheado
-  if(S.forecastBias===undefined){S.forecastBias=0;updateForecastBias().then(()=>{if(S.currentTab==='forecast')renderTab('forecast');});}
-  if(ML.trained===null&&!ML.training){mlInit().then(()=>{if(S.currentTab==='forecast')renderTab('forecast');});}
+  if(S.forecastBias===undefined){S.forecastBias=0;updateForecastBias().then(()=>{if(S.currentTab==='cyclesforecast')renderTab('cyclesforecast');});}
+  if(ML.trained===null&&!ML.training){mlInit().then(()=>{if(S.currentTab==='cyclesforecast')renderTab('cyclesforecast');});}
   const{horizons,factors,netScore,taTotal,onChainTotal,macroTotal,ta,regime,regimeDesc,wTA,wOC,wMacro,asymBull,asymBear,divergenceMult,divergenceNote,realVol,biasFix,mlActive}=calcForecast(price);
   if(!OC.loaded)fetchOnChain();
   // Formateja milers amb 1 decimal per evitar col·lisions visuals (p.ex. $74.0K vs $74.1K)
@@ -4613,6 +4553,34 @@ function showToast(msg){
   clearTimeout(t._to);t._to=setTimeout(()=>{t.style.opacity='0';},2500);
 }
 
+function renderCyclesForecast(){
+  const tr=t();
+  let rainbowHTML='';
+  const rainbow=S.price.usd>0?calcRainbow(S.price.usd):null;
+  if(rainbow){
+    const bandRows=rainbow.bands.map(function(b){
+      const isCur=b.label===rainbow.currentBand.label;
+      const priceStr='$'+(b.price>=1e9?(b.price/1e9).toFixed(1)+'B':b.price>=1e6?(b.price/1e6).toFixed(1)+'M':b.price>=1000?Math.round(b.price/1000)+'K':Math.round(b.price));
+      const nowBadge=isCur?'<span style="font-size:9px;background:'+b.color+';color:white;padding:1px 6px;border-radius:999px;font-weight:700">'+tr.now+'</span>':'';
+      return '<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:8px;margin-bottom:3px;background:'+(isCur?b.color+'22':'transparent')+';border:1px solid '+(isCur?b.color+'66':'transparent')+'">'
+        +'<div style="width:12px;height:12px;border-radius:3px;background:'+b.color+';flex-shrink:0"></div>'
+        +'<div style="flex:1;font-size:11px;color:'+(isCur?'var(--text)':'var(--text2)')+';'+(isCur?'font-weight:700':'')+'">'+(b.label)+'</div>'
+        +'<div style="font-size:11px;color:'+(isCur?b.color:'var(--text3)')+';'+(isCur?'font-weight:700':'')+'">'+priceStr+'</div>'
+        +nowBadge+'</div>';
+    }).join('');
+    rainbowHTML='<div class="space-y"><div class="card">'
+      +'<div style="font-size:15px;font-weight:700;margin-bottom:4px">🌈 '+tr.rainbowTitle+'</div>'
+      +'<div style="font-size:11px;color:var(--text3);margin-bottom:14px">'+tr.rainbowDesc+'</div>'
+      +'<div style="margin-bottom:14px">'+bandRows+'</div>'
+      +'<div style="background:rgba(249,115,22,.08);border:1px solid rgba(249,115,22,.3);border-radius:10px;padding:10px">'
+      +'<div style="font-size:12px;font-weight:700;margin-bottom:4px">'+tr.rainbowSignal+': <span style="color:'+rainbow.currentBand.color+'">'+rainbow.currentBand.label+'</span></div>'
+      +'<div style="font-size:11px;color:var(--text2)">'+tr.currentPriceLbl+' <b style="color:var(--text)">$'+S.price.usd.toLocaleString()+'</b> · '+tr.rainbowModel+'</div>'
+      +'</div>'
+      +'<div style="font-size:10px;color:var(--text3);margin-top:8px">'+tr.rainbowDisclaimer+'</div>'
+      +'</div></div>';
+  }
+  return rainbowHTML+renderCycles()+renderForecast();
+}
 function renderDCA(){
   const tr=t();
   const currentPrice=S.price.usd||70000;
@@ -4815,16 +4783,14 @@ function showOnboarding(){
   const tr=t();
   const tabs=[
     {i:'🏠',n:tr.home||'Inicio',d:'Precio en tiempo real, conversor y gráfico'},
-    {i:'🧠',n:tr.analysis||'Análisis',d:'RSI, MACD, Bollinger y señal técnica'},
-    {i:'📊',n:tr.market||'Mercado',d:'Fear & Greed, dominancia y minería'},
-    {i:'⛓️',n:tr.mempool||'Mempool',d:'Comisiones y congestión de la red'},
+    {i:'📊',n:tr.technical||'Tècnic',d:'RSI, MACD, Bollinger y señal técnica'},
+    {i:'🏪',n:tr.market||'Mercado',d:'Fear & Greed, ETF flows'},
+    {i:'⛓️',n:tr.mempool||'Mempool',d:'Comisiones, congestión y minería'},
     {i:'🏧',n:tr.atm||'Cajeros',d:'ATMs Bitcoin cercanos en mapa'},
     {i:'📰',n:tr.news||'Noticias',d:'Últimas noticias con sentimiento'},
     {i:'🔔',n:tr.alerts||'Alertas',d:'Notificaciones de precio personalizadas'},
-    {i:'📈',n:tr.corr||'Correlac.',d:'BTC vs S&P500 vs Oro'},
-    {i:'🌍',n:tr.global||'Global',d:'Adopción mundial y eventos macro'},
-    {i:'🔮',n:tr.forecast||'Previsión',d:'Predicciones con 29 factores'},
-    {i:'🔄',n:tr.cycles||'Ciclos',d:'Comparador de ciclos de halving'},
+    {i:'🌍',n:tr.macroglobal||'Macro & Global',d:'BTC vs S&P500/Oro, adopción, eventos'},
+    {i:'🔮',n:tr.cyclesforecast||'Cicles & Prev.',d:'Rainbow, ciclos, predicciones y ATH'},
     {i:'📐',n:tr.dca||'DCA',d:'Calculadora de inversión periódica'},
   ];
   const div=document.createElement('div');
@@ -4875,7 +4841,7 @@ async function init(){
     setTimeout(showOnboarding, 800);
     // Mejora 11: swipe táctil entre tabs
     let _tx=0,_multiTouch=false;
-    const _tabList=['home','analysis','market','mempool','atm','news','alerts','corr','global','forecast','cycles','dca'];
+    const _tabList=['home','technical','market','mempool','atm','news','alerts','macroglobal','cyclesforecast','dca'];
     const _cnt=document.getElementById('content');
     if(_cnt){
       _cnt.addEventListener('touchstart',e=>{_tx=e.changedTouches[0].clientX;_multiTouch=e.touches.length>1;},{passive:true});
