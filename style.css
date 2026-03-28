@@ -35,6 +35,7 @@ button{cursor:pointer;font-family:'Inter',sans-serif}
 .tab-btn.active{color:#f97316}
 .tab-btn.active::after{content:'';position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:24px;height:2px;background:#f97316;border-radius:2px}
 .tab-icon{font-size:18px;line-height:1}
+.tab-label{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:56px;font-size:9px}
 #content{padding:14px 14px 90px;max-width:700px;margin:0 auto}
 .space-y>*+*{margin-top:14px}
 .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
