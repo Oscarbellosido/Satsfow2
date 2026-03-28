@@ -31,11 +31,11 @@ button{cursor:pointer;font-family:'Inter',sans-serif}
 .sk-row{display:flex;gap:10px;margin-bottom:10px}
 .sk-circle{border-radius:50%;width:48px;height:48px;flex-shrink:0}
 .sk-box{height:80px;border-radius:10px}
-.tab-btn{display:flex;flex-direction:column;align-items:center;gap:2px;padding:7px 0 6px;border:none;background:transparent;color:var(--text3);font-size:9px;font-weight:500;position:relative;cursor:pointer;flex:0 0 auto;width:62px;white-space:nowrap}
+.tab-btn{display:flex;flex-direction:column;align-items:center;gap:2px;padding:7px 0 6px;border:none;background:transparent;color:var(--text3);font-size:9px;font-weight:500;position:relative;cursor:pointer;flex:0 0 62px;width:62px;overflow:hidden}
 .tab-btn.active{color:#f97316}
 .tab-btn.active::after{content:'';position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:24px;height:2px;background:#f97316;border-radius:2px}
 .tab-icon{font-size:18px;line-height:1}
-.tab-label{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:56px;font-size:9px}
+.tab-label{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;font-size:9px}
 #content{padding:14px 14px 90px;max-width:700px;margin:0 auto}
 .space-y>*+*{margin-top:14px}
 .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
