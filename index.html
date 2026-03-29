@@ -97,7 +97,7 @@ const T={
   es:{
     home:'Inicio',analysis:'Análisis',technical:'Tècnic',market:'Mercado',mempool:'Mempool',
     atm:'Cajeros',news:'Noticias',alerts:'Alertas',corr:'Correlac.',
-    global:'Global',forecast:'Previsión',macroglobal:'Macro & Global',cyclesforecast:'Cicles & Prev.',
+    global:'Global',forecast:'Previsión',macroglobal:'Macro & Global',cycles:'Cicles',
     price:'Precio',change24h:'Cambio 24h',fearGreed:'Fear & Greed',dominance:'Dominancia',
     settings:'Ajustes',language:'Idioma',morningBriefing:'Resumen matutino',
     morningBriefingDesc:'Notificación diaria con el estado del mercado al despertar',
@@ -194,7 +194,7 @@ const T={
   ca:{
     home:'Inici',analysis:'Anàlisi',technical:'Tècnic',market:'Mercat',mempool:'Mempool',
     atm:'Caixers',news:'Notícies',alerts:'Alertes',corr:'Correlac.',
-    global:'Global',forecast:'Previsió',macroglobal:'Macro & Global',cyclesforecast:'Cicles & Prev.',
+    global:'Global',forecast:'Previsió',macroglobal:'Macro & Global',cycles:'Cicles',
     price:'Preu',change24h:'Canvi 24h',fearGreed:'Por & Cobdícia',dominance:'Dominància',
     settings:'Configuració',language:'Idioma',morningBriefing:'Resum matinal',
     morningBriefingDesc:"Notificació diària amb l'estat del mercat en despertar",
@@ -287,7 +287,7 @@ const T={
   en:{
     home:'Home',analysis:'Analysis',technical:'Technical',market:'Market',mempool:'Mempool',
     atm:'ATMs',news:'News',alerts:'Alerts',corr:'Correl.',
-    global:'Global',forecast:'Forecast',macroglobal:'Macro & Global',cyclesforecast:'Cycles & Prev.',
+    global:'Global',forecast:'Forecast',macroglobal:'Macro & Global',cycles:'Cycles',
     price:'Price',change24h:'24h Change',fearGreed:'Fear & Greed',dominance:'Dominance',
     settings:'Settings',language:'Language',morningBriefing:'Morning briefing',
     morningBriefingDesc:'Daily notification with market status when you wake up',
@@ -562,7 +562,7 @@ async function purgeInvalidSnapshots(){
   const tr=t();
   const msg=invalid.length>0?invalid.length+' '+tr.purgeMsg1:tr.purgeMsg2;
   showNotif('🧹 SatsFlow',msg);
-  renderTab('cyclesforecast');
+  renderTab('forecast');
 }
 // #15: usa modal propi en lloc del confirm() natiu del navegador
 function clearAllPredictions(){
@@ -570,7 +570,7 @@ function clearAllPredictions(){
     if(!ok)return;
     const preds=await loadPredictions();
     for(const p of preds)await deletePrediction(p.date);
-    renderTab('cyclesforecast');
+    renderTab('forecast');
   });
 }
 async function deletePrediction(date){
@@ -626,7 +626,7 @@ async function saveSnapshotIfNeeded(manual=false){
     snap.manual=true;
     snap.date=snap.date+'_m'+Date.now(); // evitar sobreescribir el auto del mismo día
     await savePrediction(snap);
-    if(S.currentTab==='cyclesforecast')renderTab('cyclesforecast');
+    if(S.currentTab==='forecast')renderTab('forecast');
     showNotif('📸 SatsFlow',t().snapSaved+snap.price.toLocaleString());
     return;
   }
@@ -647,7 +647,7 @@ async function saveSnapshotIfNeeded(manual=false){
         localStorage.setItem('sf-pricelog',JSON.stringify(log));
       }catch{}
       console.log('[SatsFlow] Snapshot diario guardado:',snap.date,'BTC $'+snap.price.toLocaleString());
-      if(S.currentTab==='cyclesforecast')renderTab('cyclesforecast');
+      if(S.currentTab==='forecast')renderTab('forecast');
     }
   }catch(e){console.warn('autoSnapshot:',e);}
 }
@@ -1916,13 +1916,13 @@ function renderTab(tab){
   }
   if(map[tab]){
     // Mostrar skeleton si la tab no té dades encara
-    const needsSkeleton=(tab==='home'&&S.price.usd===0)||(tab==='technical'&&!S.historyTA?.length)||(tab==='market'&&!S.marketData)||(tab==='mempool'&&!S.mempool)||(tab==='news'&&!S.news.length)||(tab==='cyclesforecast'&&!S.cycleHistory);
+    const needsSkeleton=(tab==='home'&&S.price.usd===0)||(tab==='technical'&&!S.historyTA?.length)||(tab==='market'&&!S.marketData)||(tab==='mempool'&&!S.mempool)||(tab==='news'&&!S.news.length)||(tab==='cycles'&&!S.cycleHistory)||(tab==='forecast'&&!S.cycleHistory);
     if(needsSkeleton&&skeletonMap[tab]){
       el.innerHTML=skeletonMap[tab]();
       // Tornar a renderitzar quan les dades arribin
       const waitAndRender=()=>{
         if(S.currentTab!==tab)return;
-        const stillNeeds=(tab==='home'&&S.price.usd===0)||(tab==='technical'&&!S.historyTA?.length)||(tab==='market'&&!S.marketData)||(tab==='mempool'&&!S.mempool)||(tab==='news'&&!S.news.length)||(tab==='cyclesforecast'&&!S.cycleHistory);
+        const stillNeeds=(tab==='home'&&S.price.usd===0)||(tab==='technical'&&!S.historyTA?.length)||(tab==='market'&&!S.marketData)||(tab==='mempool'&&!S.mempool)||(tab==='news'&&!S.news.length)||(tab==='cycles'&&!S.cycleHistory)||(tab==='forecast'&&!S.cycleHistory);
         if(stillNeeds){setTimeout(waitAndRender,400);return;}
         try{el.innerHTML=map[tab]();}catch(e){el.innerHTML=skeletonMap[tab]();}
       };
@@ -3450,7 +3450,7 @@ async function fetchOnChain(){
   }catch(e){console.warn('GoogleTrends proxy',e);}
 
   OC.loaded=true;
-  if(S.currentTab==='cyclesforecast')renderTab('cyclesforecast');
+  if(S.currentTab==='cycles')renderTab('cycles');else if(S.currentTab==='forecast')renderTab('forecast');
 }
 // ── MEJORA 3: Calcula el sesgo histórico del modelo comparando predicciones pasadas con precio real
 async function updateForecastBias(){
@@ -3601,9 +3601,9 @@ async function mlRetrainUI(){
   if(ML.training)return;
   ML.model=null;ML.trained=null;
   try{tf.io.removeModel('localstorage://sf-ml-model').catch(()=>{});localStorage.removeItem('sf-ml-meta');}catch{}
-  if(S.currentTab==='cyclesforecast')renderTab('cyclesforecast');
+  if(S.currentTab==='cycles')renderTab('cycles');else if(S.currentTab==='forecast')renderTab('forecast');
   const r=await mlTrain();
-  if(S.currentTab==='cyclesforecast')renderTab('cyclesforecast');
+  if(S.currentTab==='cycles')renderTab('cycles');else if(S.currentTab==='forecast')renderTab('forecast');
 }
 
 function calcForecast(currentPrice){
@@ -4237,8 +4237,8 @@ function renderForecast(){
   if(!price)return'<div class="card" style="text-align:center;padding:40px;color:var(--text3)"><span class="spin">⏳</span><br><br>'+tr.forecastWaiting+'</div>';
   if(S.history.length<10)return'<div class="card" style="text-align:center;padding:40px;color:var(--text3)"><span class="spin">📊</span><br><br>'+tr.forecastLoading+'<br><small style="color:var(--text3);font-size:11px">'+tr.forecastWaitHist+'</small></div>';
   // ── MEJORA 3: Calcular sesgo histórico de forma asíncrona si aún no está cacheado
-  if(S.forecastBias===undefined){S.forecastBias=0;updateForecastBias().then(()=>{if(S.currentTab==='cyclesforecast')renderTab('cyclesforecast');});}
-  if(ML.trained===null&&!ML.training){mlInit().then(()=>{if(S.currentTab==='cyclesforecast')renderTab('cyclesforecast');});}
+  if(S.forecastBias===undefined){S.forecastBias=0;updateForecastBias().then(()=>{if(S.currentTab==='cycles')renderTab('cycles');else if(S.currentTab==='forecast')renderTab('forecast');});}
+  if(ML.trained===null&&!ML.training){mlInit().then(()=>{if(S.currentTab==='cycles')renderTab('cycles');else if(S.currentTab==='forecast')renderTab('forecast');});}
   const{horizons,factors,netScore,taTotal,onChainTotal,macroTotal,ta,regime,regimeDesc,wTA,wOC,wMacro,asymBull,asymBear,divergenceMult,divergenceNote,realVol,biasFix,mlActive}=calcForecast(price);
   if(!OC.loaded)fetchOnChain();
   // Formateja milers amb 1 decimal per evitar col·lisions visuals (p.ex. $74.0K vs $74.1K)
