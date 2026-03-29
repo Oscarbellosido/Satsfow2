@@ -53,7 +53,8 @@
     <div id="tab-news" class="tab-content fade" style="display:none"></div>
     <div id="tab-alerts" class="tab-content fade" style="display:none"></div>
     <div id="tab-macroglobal" class="tab-content fade" style="display:none"></div>
-    <div id="tab-cyclesforecast" class="tab-content fade" style="display:none"></div>
+    <div id="tab-cycles" class="tab-content fade" style="display:none"></div>
+    <div id="tab-forecast" class="tab-content fade" style="display:none"></div>
     <div id="tab-dca" class="tab-content fade" style="display:none"></div>
   </div>
   <div id="tabbar-wrap"><nav id="tabbar">
@@ -65,7 +66,8 @@
     <button class="tab-btn" data-tab="news" onclick="switchTab('news')"><span class="tab-icon">📰</span><span class="tab-label">Noticias</span></button>
     <button class="tab-btn" data-tab="alerts" onclick="switchTab('alerts')"><span class="tab-icon">🔔</span><span class="tab-label">Alertas</span></button>
     <button class="tab-btn" data-tab="macroglobal" onclick="switchTab('macroglobal')"><span class="tab-icon">🌍</span><span class="tab-label">Macro</span></button>
-    <button class="tab-btn" data-tab="cyclesforecast" onclick="switchTab('cyclesforecast')"><span class="tab-icon">🔮</span><span class="tab-label">Cicles</span></button>
+    <button class="tab-btn" data-tab="cycles" onclick="switchTab('cycles')"><span class="tab-icon">🔄</span><span class="tab-label">Cicles</span></button>
+    <button class="tab-btn" data-tab="forecast" onclick="switchTab('forecast')"><span class="tab-icon">🔮</span><span class="tab-label">Previsió</span></button>
     <button class="tab-btn" data-tab="dca" onclick="switchTab('dca')"><span class="tab-icon">📐</span><span class="tab-label">DCA</span></button>
   </nav></div>
   <div id="tab-scroll-fade"></div>
@@ -375,9 +377,9 @@ function setLang(lang,silent){
   S.lang=lang;
   localStorage.setItem('sf-lang',lang);
   document.documentElement.lang=lang;
-  const tabKeys=['home','technical','market','mempool','atm','news','alerts','macroglobal','cyclesforecast','dca'];
-  const tabIcons={home:'🏠',technical:'📊',market:'🏪',mempool:'⛓️',atm:'🏧',news:'📰',alerts:'🔔',macroglobal:'🌍',cyclesforecast:'🔮',dca:'📐'};
-  const tabShort={macroglobal:{es:'Macro',ca:'Macro',en:'Macro'},cyclesforecast:{es:'Cicles',ca:'Cicles',en:'Cycles'}};
+  const tabKeys=['home','technical','market','mempool','atm','news','alerts','macroglobal','cycles','forecast','dca'];
+  const tabIcons={home:'🏠',technical:'📊',market:'🏪',mempool:'⛓️',atm:'🏧',news:'📰',alerts:'🔔',macroglobal:'🌍',cycles:'🔄',forecast:'🔮',dca:'📐'};
+  const tabShort={macroglobal:{es:'Macro',ca:'Macro',en:'Macro'},cycles:{es:'Cicles',ca:'Cicles',en:'Cycles'},forecast:{es:'Previsió',ca:'Previsió',en:'Forecast'}};
   tabKeys.forEach(tab=>{
     const btn=document.querySelector('[data-tab="'+tab+'"]');
     const label=tabShort[tab]?tabShort[tab][lang]||tabShort[tab].es:(t()[tab]||tab);
@@ -1906,8 +1908,8 @@ function startPriceWS(){
 function renderTab(tab){
   const el=document.getElementById('tab-'+tab);if(!el)return;
   // Skeleton map — mostra mentre carrega
-  const skeletonMap={home:skeletonHome,technical:skeletonAnalysis,market:skeletonMarket,mempool:skeletonGeneric,news:skeletonGeneric,macroglobal:skeletonGeneric,cyclesforecast:skeletonGeneric};
-  const map={home:renderHome,technical:renderAnalysis,market:renderMarket,mempool:renderMempool,atm:renderATM,news:renderNews,alerts:renderAlerts,macroglobal:renderMacroGlobal,cyclesforecast:renderCyclesForecast,dca:renderDCA};const afterRender={'dca':()=>setTimeout(calcDCA,50)};
+  const skeletonMap={home:skeletonHome,technical:skeletonAnalysis,market:skeletonMarket,mempool:skeletonGeneric,news:skeletonGeneric,macroglobal:skeletonGeneric,cycles:skeletonGeneric,forecast:skeletonGeneric};
+  const map={home:renderHome,technical:renderAnalysis,market:renderMarket,mempool:renderMempool,atm:renderATM,news:renderNews,alerts:renderAlerts,macroglobal:renderMacroGlobal,cycles:renderCyclesTab,forecast:renderForecast,dca:renderDCA};const afterRender={'dca':()=>setTimeout(calcDCA,50)};
   // El tab ATM no se re-renderiza si el mapa ya está activo — evita destruir Leaflet
   if(tab==='atm'&&S.leafletMap){
     return;
@@ -4555,7 +4557,7 @@ function showToast(msg){
   clearTimeout(t._to);t._to=setTimeout(()=>{t.style.opacity='0';},2500);
 }
 
-function renderCyclesForecast(){
+function renderCyclesTab(){
   const tr=t();
   let rainbowHTML='';
   const rainbow=S.price.usd>0?calcRainbow(S.price.usd):null;
@@ -4581,7 +4583,7 @@ function renderCyclesForecast(){
       +'<div style="font-size:10px;color:var(--text3);margin-top:8px">'+tr.rainbowDisclaimer+'</div>'
       +'</div></div>';
   }
-  return rainbowHTML+renderCycles()+renderForecast();
+  return rainbowHTML+renderCycles();
 }
 function renderDCA(){
   const tr=t();
@@ -4792,7 +4794,8 @@ function showOnboarding(){
     {i:'📰',n:tr.news||'Noticias',d:'Últimas noticias con sentimiento'},
     {i:'🔔',n:tr.alerts||'Alertas',d:'Notificaciones de precio personalizadas'},
     {i:'🌍',n:tr.macroglobal||'Macro & Global',d:'BTC vs S&P500/Oro, adopción, eventos'},
-    {i:'🔮',n:tr.cyclesforecast||'Cicles & Prev.',d:'Rainbow, ciclos, predicciones y ATH'},
+    {i:'🔄',n:tr.cyclesTitle||'Cicles',d:'Rainbow Chart i comparador de cicles BTC'},
+    {i:'🔮',n:tr.forecastTitle||'Previsió',d:'Model probabilístic, projecció ATH i prediccions'},
     {i:'📐',n:tr.dca||'DCA',d:'Calculadora de inversión periódica'},
   ];
   const div=document.createElement('div');
@@ -4843,7 +4846,7 @@ async function init(){
     setTimeout(showOnboarding, 800);
     // Mejora 11: swipe táctil entre tabs
     let _tx=0,_multiTouch=false;
-    const _tabList=['home','technical','market','mempool','atm','news','alerts','macroglobal','cyclesforecast','dca'];
+    const _tabList=['home','technical','market','mempool','atm','news','alerts','macroglobal','cycles','forecast','dca'];
     const _cnt=document.getElementById('content');
     if(_cnt){
       _cnt.addEventListener('touchstart',e=>{_tx=e.changedTouches[0].clientX;_multiTouch=e.touches.length>1;},{passive:true});
