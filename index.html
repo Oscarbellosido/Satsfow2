@@ -1285,7 +1285,7 @@ async function fetchETF(force=false){
   };
   // Intent 1: CoinGlass API pública (sense clau)
   try{
-    const r=await fetch('https://open-api.coinglass.com/public/v2/etf/bitcoin',{signal:AbortSignal.timeout(5000)});
+    const r=await fetch('https://mecai.oscarbellosido.workers.dev/?url='+encodeURIComponent('https://open-api.coinglass.com/public/v2/etf/bitcoin'),{signal:AbortSignal.timeout(5000)});
     if(r.ok){
       const j=await r.json();
       if(j?.data){
@@ -1953,6 +1953,9 @@ function renderHome(){
   const _low=(S.history.length?Math.min(...S.history.map(h=>h.low||h.price).filter(v=>v>0)):0)*eurRate;
   const upd=S.lastUpdated?S.lastUpdated.toLocaleTimeString(S.lang==='ca'?'ca-ES':'es-ES',{hour:'2-digit',minute:'2-digit'}):'—';
   const chart=S.chartType==='area'?areaSVG(chartHistory):candleSVG(chartOHLC);
+  const fgData=S.marketData?.fearGreed;
+  const fgColor=fgData?(fgData.value<=25?'#ef4444':fgData.value<=45?'#f97316':fgData.value<=55?'#eab308':fgData.value<=75?'#84cc16':'#10b981'):'';
+  const fgLabel=fgData?(fgData.value<=25?tr.extreme_fear:fgData.value<=45?tr.fear:fgData.value<=55?tr.neutral2:fgData.value<=75?tr.greed:tr.extreme_greed):'';
   return`<div class="space-y">
   <div class="card">
     <div style="font-size:15px;font-weight:700;margin-bottom:12px">${tr.converter}</div>
@@ -1985,6 +1988,7 @@ function renderHome(){
     <div class="stat-box"><div class="stat-label">24h</div><div class="stat-val" style="color:${pos?'#10b981':'#ef4444'}">${pos?'+':''}${S.change24h.toFixed(2)}%</div></div>
     <div class="stat-box"><div class="stat-label">${tr.updated}</div><div class="stat-val" style="font-size:12px;color:var(--text2)">${upd}</div></div>
   </div>
+  ${fgData?`<div style="display:flex;justify-content:center;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--border);margin-top:2px"><span style="font-size:10px;color:var(--text3)">Fear &amp; Greed</span><span style="font-size:18px;font-weight:800;color:${fgColor}">${fgData.value}</span><span style="font-size:11px;font-weight:600;color:${fgColor}">${fgLabel}</span></div>`:''}
   <div style="font-size:10px;color:var(--text3);text-align:center">${tr.priceSources}: ${S.priceSource||'—'} · Mempool: mempool.space · ${tr.noFinancialAdvice2}</div>
 </div>`;
 }
@@ -2186,12 +2190,7 @@ function renderMarket(){
     etfHTML='<div class="card" style="text-align:center;padding:20px;color:var(--text3)">'
       +'<span class="spin">📈</span><br><br>'+(tr.loading||'Carregant...')+'</div>';
   }
-  return '<div class="space-y">'
-    +'<div class="card"><div style="font-size:15px;font-weight:700;margin-bottom:12px">📊 '+tr.fearGreedTitle+'</div>'
-    +'<div style="display:flex;justify-content:center">'+gaugeSVG+'</div>'
-    +'<div style="font-size:10px;color:var(--text3);text-align:center;margin-top:4px">'+tr.fearGreedSource+'</div></div>'
-    +etfHTML
-    +'</div>';
+  return '<div class="space-y">'+etfHTML+'</div>';
 }
 function renderNews(){
   const tr=t();
@@ -3410,7 +3409,7 @@ async function fetchOnChain(){
 
   // ── ETF Flows: usamos CoinGlass API (gratuita, sin key)
   try{
-    const r=await fetch('https://open-api.coinglass.com/public/v2/indicator/btc_etf_flow_history?token=',{signal:AbortSignal.timeout(8000)});
+    const r=await fetch('https://mecai.oscarbellosido.workers.dev/?url='+encodeURIComponent('https://open-api.coinglass.com/public/v2/indicator/btc_etf_flow_history?token='),{signal:AbortSignal.timeout(8000)});
     if(r.ok){
       const j=await r.json();
       const data=(j.data||[]).slice(0,7); // últimos 7 días
