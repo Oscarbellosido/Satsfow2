@@ -189,7 +189,7 @@ const T={
     etfTodayFlow:'Flujo del día',etfTotalAcum:'Total acumulado',
     etfLast10Days:'Últimos 10 días',etfMainFunds:'ETFs principales',
     etfSinceJan24:'desde lanzamiento (ene. 2024)',
-    etfRetry:'🔄 Actualizar',etfLiveData:'● En directo',etfFallback:'📅 Datos del'
+    etfRetry:'🔄 Actualizar',etfLiveData:'● En directo',etfFallback:'📊 Datos estimados'
   },
   ca:{
     home:'Inici',analysis:'Anàlisi',technical:'Tècnic',market:'Mercat',mempool:'Mempool',
@@ -282,7 +282,7 @@ const T={
     etfTodayFlow:'Flux del dia',etfTotalAcum:'Total acumulat',
     etfLast10Days:'Últims 10 dies',etfMainFunds:'ETFs principals',
     etfSinceJan24:'des del llançament (gen. 2024)',
-    etfRetry:'🔄 Actualitzar',etfLiveData:'● En directe',etfFallback:'📅 Dades del'
+    etfRetry:'🔄 Actualitzar',etfLiveData:'● En directe',etfFallback:'📊 Dades estimades'
   },
   en:{
     home:'Home',analysis:'Analysis',technical:'Technical',market:'Market',mempool:'Mempool',
@@ -368,7 +368,7 @@ const T={
     etfTodayFlow:"Today's flow",etfTotalAcum:'Total accumulated',
     etfLast10Days:'Last 10 days',etfMainFunds:'Main ETFs',
     etfSinceJan24:'since launch (Jan 2024)',
-    etfRetry:'🔄 Refresh',etfLiveData:'● Live',etfFallback:'📅 Data from'
+    etfRetry:'🔄 Refresh',etfLiveData:'● Live',etfFallback:'📊 Estimated data'
   }
 };
 const t=()=>T[S.lang]||T.es;
@@ -1283,7 +1283,30 @@ async function fetchETF(force=false){
     ],
     dataDate:'28 Mar 2026',isLive:false
   };
-  // Intent 1: CoinGlass API pública (sense clau)
+  // Intent 1: Farside API gratuïta (sense key)
+  try{
+    const r=await fetch('https://api.farside.co.uk/btc',{signal:AbortSignal.timeout(6000)});
+    if(r.ok){
+      const j=await r.json();
+      // Farside retorna array de {date, total, ...} o objecte amb flows
+      const arr=Array.isArray(j)?j:(j?.data&&Array.isArray(j.data)?j.data:null);
+      if(arr&&arr.length){
+        const recent=arr.slice(-10);
+        const days10=recent.map(function(x){
+          const dd=String(x.date||x.d||'').split(/[-\/]/).pop()||'';
+          return{date:dd.replace(/^0/,''),flow:parseFloat(x.total||x.flow||x.netFlow||x.net_flow||0)||0};
+        });
+        const last=arr[arr.length-1]||{};
+        const todayFlow=parseFloat(last.total||last.flow||last.netFlow||0)||0;
+        const totalAcum=parseFloat(j.totalAcum||j.total||j.totalNetFlow||0)||FALLBACK.totalAcum;
+        S.etfData={todayFlow,totalAcum,days10:days10.length?days10:FALLBACK.days10,etfs:FALLBACK.etfs,
+          dataDate:new Date().toLocaleDateString('ca-ES',{day:'numeric',month:'short',year:'numeric'}),isLive:true};
+        if(S.currentTab==='market')renderCurrentTab();
+        return;
+      }
+    }
+  }catch{}
+  // Intent 2: CoinGlass via Worker proxy
   try{
     const r=await fetch('https://mecai.oscarbellosido.workers.dev/?url='+encodeURIComponent('https://open-api.coinglass.com/public/v2/etf/bitcoin'),{signal:AbortSignal.timeout(5000)});
     if(r.ok){
@@ -1309,7 +1332,7 @@ async function fetchETF(force=false){
       }
     }
   }catch{}
-  // Tots els intents han fallat per CORS o error — usar fallback
+  // Tots els intents han fallat — usar dades estimades
   if(!S.etfData)S.etfData=FALLBACK;
   if(S.currentTab==='market')renderCurrentTab();
 }
@@ -2163,7 +2186,7 @@ function renderMarket(){
     }).join('');
     const dataTag=etf.isLive
       ?'<span style="font-size:10px;color:#10b981;font-weight:600">'+tr.etfLiveData+'</span>'
-      :'<span style="font-size:10px;color:#94a3b8">'+tr.etfFallback+' '+etf.dataDate+'</span>';
+      :'<span style="font-size:10px;color:#94a3b8">'+tr.etfFallback+'</span>';
     etfHTML='<div class="card">'
       +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">'
       +'<div style="font-size:15px;font-weight:700">📈 '+tr.etfTitle+'</div>'
