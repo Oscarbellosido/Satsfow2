@@ -1,0 +1,16 @@
+{
+  "updated": "2026-03-28",
+  "source": "farside.co.uk",
+  "flows": [
+    {"date": "17 Mar", "IBIT": null, "FBTC": null, "ARKB": null, "total": 312.4},
+    {"date": "18 Mar", "IBIT": null, "FBTC": null, "ARKB": null, "total": -89.3},
+    {"date": "19 Mar", "IBIT": null, "FBTC": null, "ARKB": null, "total": 445.1},
+    {"date": "20 Mar", "IBIT": null, "FBTC": null, "ARKB": null, "total": 178.6},
+    {"date": "21 Mar", "IBIT": null, "FBTC": null, "ARKB": null, "total": -234.8},
+    {"date": "24 Mar", "IBIT": null, "FBTC": null, "ARKB": null, "total": 567.2},
+    {"date": "25 Mar", "IBIT": null, "FBTC": null, "ARKB": null, "total": 123.4},
+    {"date": "26 Mar", "IBIT": null, "FBTC": null, "ARKB": null, "total": -45.7},
+    {"date": "27 Mar", "IBIT": null, "FBTC": null, "ARKB": null, "total": 289.1},
+    {"date": "28 Mar", "IBIT": 89.2, "FBTC": 38.1, "ARKB": 12.4, "total": 156.3}
+  ]
+}
