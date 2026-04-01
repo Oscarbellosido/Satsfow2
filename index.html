@@ -2213,7 +2213,7 @@ function renderMarket(){
     etfHTML='<div class="card" style="text-align:center;padding:20px;color:var(--text3)">'
       +'<span class="spin">📈</span><br><br>'+(tr.loading||'Carregant...')+'</div>';
   }
-  return '<div class="space-y">'+etfHTML+'</div>';
+  return '<div class="space-y">'+etfHTML+renderCorr()+'</div>';
 }
 function renderNews(){
   const tr=t();
@@ -3115,7 +3115,7 @@ function renderGlobal(){
     +'</div>';
 }
 function renderMacroGlobal(){
-  return renderCorr()+renderGlobal();
+  return renderGlobal();
 }
 async function loadWorldMap(){
   const wrap=document.getElementById('world-map-wrap');
