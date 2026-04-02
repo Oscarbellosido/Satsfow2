@@ -1,0 +1,14 @@
+name = "satsfow-etf"
+main = "etf-worker.js"
+compatibility_date = "2024-01-01"
+
+# KV namespace per guardar les dades ETF
+# Per crear-la: wrangler kv:namespace create ETF_DATA
+# Substitueix l'id per el que et retorni la comanda anterior
+[[kv_namespaces]]
+binding = "ETF_DATA"
+id = "SUBSTITUEIX_AQUI_EL_KV_ID"
+
+# Cron: cada dia a les 20:00 UTC
+[triggers]
+crons = ["0 20 * * *"]

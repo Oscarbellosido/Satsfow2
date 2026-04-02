@@ -1283,50 +1283,15 @@ async function fetchETF(force=false){
     ],
     dataDate:'28 Mar 2026',isLive:false
   };
-  // Intent 1: Farside API gratuïta (sense key)
+  // Intent 1: Worker propi (farside.co.uk via Cloudflare edge + KV cache)
   try{
-    const r=await fetch('https://api.farside.co.uk/btc',{signal:AbortSignal.timeout(6000)});
+    const r=await fetch('https://satsfow-etf.oscarbellosido.workers.dev/',{signal:AbortSignal.timeout(6000)});
     if(r.ok){
       const j=await r.json();
-      // Farside retorna array de {date, total, ...} o objecte amb flows
-      const arr=Array.isArray(j)?j:(j?.data&&Array.isArray(j.data)?j.data:null);
-      if(arr&&arr.length){
-        const recent=arr.slice(-10);
-        const days10=recent.map(function(x){
-          const dd=String(x.date||x.d||'').split(/[-\/]/).pop()||'';
-          return{date:dd.replace(/^0/,''),flow:parseFloat(x.total||x.flow||x.netFlow||x.net_flow||0)||0};
-        });
-        const last=arr[arr.length-1]||{};
-        const todayFlow=parseFloat(last.total||last.flow||last.netFlow||0)||0;
-        const totalAcum=parseFloat(j.totalAcum||j.total||j.totalNetFlow||0)||FALLBACK.totalAcum;
-        S.etfData={todayFlow,totalAcum,days10:days10.length?days10:FALLBACK.days10,etfs:FALLBACK.etfs,
-          dataDate:new Date().toLocaleDateString('ca-ES',{day:'numeric',month:'short',year:'numeric'}),isLive:true};
-        if(S.currentTab==='market')renderCurrentTab();
-        return;
-      }
-    }
-  }catch{}
-  // Intent 2: CoinGlass via Worker proxy
-  try{
-    const r=await fetch('https://mecai.oscarbellosido.workers.dev/?url='+encodeURIComponent('https://open-api.coinglass.com/public/v2/etf/bitcoin'),{signal:AbortSignal.timeout(5000)});
-    if(r.ok){
-      const j=await r.json();
-      if(j?.data){
-        const d=j.data;
-        const todayFlow=parseFloat(d.todayNetFlow||d.today_net_flow||0)||0;
-        const totalAcum=parseFloat(d.totalNetFlow||d.total_net_flow||0)||0;
-        const rawDays=d.flowHistory||d.flow_history||[];
-        const days10=Array.isArray(rawDays)?rawDays.slice(-10).map(function(x){
-          const dd=x.date||x.d||'';
-          return{date:String(dd).slice(-2),flow:parseFloat(x.netFlow||x.net_flow||x.flow||0)||0};
-        }):FALLBACK.days10;
-        const rawEtfs=d.etfList||d.etf_list||[];
-        const etfs=Array.isArray(rawEtfs)&&rawEtfs.length>=3?
-          rawEtfs.filter(function(e){return['IBIT','FBTC','ARKB'].includes(e.ticker||e.symbol||'');}).slice(0,3).map(function(e){
-            return{name:e.name||e.ticker,ticker:e.ticker||e.symbol,acum:parseFloat(e.totalNetFlow||e.total_net_flow||0)||0,today:parseFloat(e.todayFlow||e.today_flow||0)||0};
-          }):FALLBACK.etfs;
-        S.etfData={todayFlow,totalAcum,days10:days10.length?days10:FALLBACK.days10,etfs,
-          dataDate:new Date().toLocaleDateString('ca-ES',{day:'numeric',month:'short',year:'numeric'}),isLive:true};
+      if(j&&Array.isArray(j.days10)&&j.days10.length){
+        S.etfData={todayFlow:j.todayFlow||0,totalAcum:j.totalAcum||FALLBACK.totalAcum,
+          days10:j.days10,etfs:j.etfs||FALLBACK.etfs,
+          dataDate:j.dataDate||'',isLive:!!j.isLive};
         if(S.currentTab==='market')renderCurrentTab();
         return;
       }
