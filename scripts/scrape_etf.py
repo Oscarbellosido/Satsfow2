@@ -43,9 +43,9 @@ def main():
         sys.exit(0)
 
     soup = BeautifulSoup(r.text, "html.parser")
-    table = soup.find("table")
+    table = soup.find("table", class_="etf")
     if not table:
-        print("WARNING: No table found on page. Keeping existing JSON.", file=sys.stderr)
+        print("WARNING: No ETF table found on page. Keeping existing JSON.", file=sys.stderr)
         sys.exit(0)
 
     rows = table.find_all("tr")
