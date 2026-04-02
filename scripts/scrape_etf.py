@@ -35,19 +35,23 @@ def parse_val(cells, idx):
 
 def main():
     print(f"Fetching {URL} ...")
-    r = requests.get(URL, headers=HEADERS, timeout=20)
-    r.raise_for_status()
+    try:
+        r = requests.get(URL, headers=HEADERS, timeout=20)
+        r.raise_for_status()
+    except Exception as e:
+        print(f"WARNING: Could not fetch data ({e}). Keeping existing JSON.", file=sys.stderr)
+        sys.exit(0)
 
     soup = BeautifulSoup(r.text, "html.parser")
     table = soup.find("table")
     if not table:
-        print("ERROR: No table found on page", file=sys.stderr)
-        sys.exit(1)
+        print("WARNING: No table found on page. Keeping existing JSON.", file=sys.stderr)
+        sys.exit(0)
 
     rows = table.find_all("tr")
     if not rows:
-        print("ERROR: Table has no rows", file=sys.stderr)
-        sys.exit(1)
+        print("WARNING: Table has no rows. Keeping existing JSON.", file=sys.stderr)
+        sys.exit(0)
 
     # Parse header row to locate column indices
     header_cells = rows[0].find_all(["th", "td"])
@@ -90,8 +94,8 @@ def main():
         )
 
     if not flows:
-        print("ERROR: No data rows found", file=sys.stderr)
-        sys.exit(1)
+        print("WARNING: No data rows found. Keeping existing JSON.", file=sys.stderr)
+        sys.exit(0)
 
     # Keep only the last 10 trading days
     flows = flows[-10:]
