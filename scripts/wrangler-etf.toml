@@ -7,7 +7,7 @@ compatibility_date = "2024-01-01"
 # Substitueix l'id per el que et retorni la comanda anterior
 [[kv_namespaces]]
 binding = "ETF_DATA"
-id = "SUBSTITUEIX_AQUI_EL_KV_ID"
+id = "f35636ac7c7348fe9d1c8edebe785e40"
 
 # Cron: cada dia a les 20:00 UTC
 [triggers]

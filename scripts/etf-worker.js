@@ -111,6 +111,8 @@ function parseETFTable(html) {
     if (cells.length < 2) continue;
     const dateVal = cells[0]?.replace(/<[^>]+>/g, '').trim() || '';
     if (!dateVal) continue;
+    // Salta files de resum (Total, Average, Maximum, Minimum, etc.)
+    if (/^(total|average|avg|max|min|maximum|minimum|ytd)/i.test(dateVal)) continue;
     const ibit  = parseVal(cells, ibitCol);
     const fbtc  = parseVal(cells, fbtcCol);
     const arkb  = parseVal(cells, arkbCol);
