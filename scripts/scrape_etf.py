@@ -67,9 +67,10 @@ def main():
     ibit_col = find_col("IBIT")
     fbtc_col = find_col("FBTC")
     arkb_col = find_col("ARKB")
+    msbt_col = find_col("MSBT")
     total_col = find_col("TOTAL")
 
-    print(f"Columns — IBIT:{ibit_col} FBTC:{fbtc_col} ARKB:{arkb_col} Total:{total_col}")
+    print(f"Columns — IBIT:{ibit_col} FBTC:{fbtc_col} ARKB:{arkb_col} MSBT:{msbt_col} Total:{total_col}")
 
     flows = []
     for row in rows[1:]:
@@ -83,14 +84,15 @@ def main():
         ibit = parse_val(cells, ibit_col)
         fbtc = parse_val(cells, fbtc_col)
         arkb = parse_val(cells, arkb_col)
+        msbt = parse_val(cells, msbt_col)
         total = parse_val(cells, total_col)
 
         # Skip rows with no numeric data at all
-        if all(v is None for v in [ibit, fbtc, arkb, total]):
+        if all(v is None for v in [ibit, fbtc, arkb, msbt, total]):
             continue
 
         flows.append(
-            {"date": date_val, "IBIT": ibit, "FBTC": fbtc, "ARKB": arkb, "total": total}
+            {"date": date_val, "IBIT": ibit, "FBTC": fbtc, "ARKB": arkb, "MSBT": msbt, "total": total}
         )
 
     if not flows:

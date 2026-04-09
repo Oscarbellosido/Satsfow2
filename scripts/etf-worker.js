@@ -90,6 +90,7 @@ function parseETFTable(html) {
   const ibitCol  = col('IBIT');
   const fbtcCol  = col('FBTC');
   const arkbCol  = col('ARKB');
+  const msbtCol  = col('MSBT');
   const totalCol = col('TOTAL');
 
   // Files de dades
@@ -116,9 +117,10 @@ function parseETFTable(html) {
     const ibit  = parseVal(cells, ibitCol);
     const fbtc  = parseVal(cells, fbtcCol);
     const arkb  = parseVal(cells, arkbCol);
+    const msbt  = parseVal(cells, msbtCol);
     const total = parseVal(cells, totalCol);
-    if (ibit === null && fbtc === null && arkb === null && total === null) continue;
-    flows.push({ date: dateVal, IBIT: ibit, FBTC: fbtc, ARKB: arkb, total });
+    if (ibit === null && fbtc === null && arkb === null && msbt === null && total === null) continue;
+    flows.push({ date: dateVal, IBIT: ibit, FBTC: fbtc, ARKB: arkb, MSBT: msbt, total });
   }
 
   if (!flows.length) return null;
@@ -127,11 +129,12 @@ function parseETFTable(html) {
   const last   = last10[last10.length - 1];
 
   // Acumulats des del llançament (gen. 2024)
-  let ibitAcum = 0, fbtcAcum = 0, arkbAcum = 0, totalAcum = 0;
+  let ibitAcum = 0, fbtcAcum = 0, arkbAcum = 0, msbtAcum = 0, totalAcum = 0;
   for (const f of flows) {
     ibitAcum  += f.IBIT  || 0;
     fbtcAcum  += f.FBTC  || 0;
     arkbAcum  += f.ARKB  || 0;
+    msbtAcum  += f.MSBT  || 0;
     totalAcum += f.total || 0;
   }
 
@@ -140,9 +143,10 @@ function parseETFTable(html) {
     totalAcum:  Math.round(totalAcum),
     days10:     last10.map(f => ({ date: String(f.date).split(' ')[0], flow: f.total || 0 })),
     etfs: [
-      { name: 'iShares (IBIT)', ticker: 'IBIT', acum: Math.round(ibitAcum), today: last.IBIT || 0 },
-      { name: 'Fidelity (FBTC)', ticker: 'FBTC', acum: Math.round(fbtcAcum), today: last.FBTC || 0 },
-      { name: 'ARK (ARKB)',      ticker: 'ARKB', acum: Math.round(arkbAcum), today: last.ARKB || 0 },
+      { name: 'iShares (IBIT)',   ticker: 'IBIT', acum: Math.round(ibitAcum), today: last.IBIT || 0 },
+      { name: 'Fidelity (FBTC)',  ticker: 'FBTC', acum: Math.round(fbtcAcum), today: last.FBTC || 0 },
+      { name: 'ARK (ARKB)',       ticker: 'ARKB', acum: Math.round(arkbAcum), today: last.ARKB || 0 },
+      { name: 'Mor. Stanley (MSBT)', ticker: 'MSBT', acum: Math.round(msbtAcum), today: last.MSBT || 0 },
     ],
     dataDate:  last.date,
     updatedAt: new Date().toISOString(),
@@ -162,9 +166,10 @@ function getFallback() {
       {date:'27',flow:289.1},{date:'28',flow:156.3}
     ],
     etfs: [
-      {name:'iShares (IBIT)', ticker:'IBIT', acum:21450, today:89.2},
-      {name:'Fidelity (FBTC)',ticker:'FBTC', acum:8930,  today:38.1},
-      {name:'ARK (ARKB)',     ticker:'ARKB', acum:2580,  today:12.4}
+      {name:'iShares (IBIT)',        ticker:'IBIT', acum:21450, today:89.2},
+      {name:'Fidelity (FBTC)',       ticker:'FBTC', acum:8930,  today:38.1},
+      {name:'ARK (ARKB)',            ticker:'ARKB', acum:2580,  today:12.4},
+      {name:'Mor. Stanley (MSBT)',   ticker:'MSBT', acum:0,     today:0}
     ],
     dataDate: '28 Mar 2026', isLive: false,
   };
