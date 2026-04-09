@@ -2125,13 +2125,28 @@ function renderAutoTechnicalChart(){
     xLbl+=`<text x="${toX(i)}" y="${H-PB+14}" font-size="8" fill="#64748b" text-anchor="middle">${lbl}</text>`;
   }
   const svg=`<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:255px;display:block" preserveAspectRatio="none">${gridH}${candH}${supH}${resH}${trendH}${curH}${curL}${xLbl}</svg>`;
-  const legend=`<div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:8px;font-size:10px;color:var(--text2);align-items:center">
-    <span style="display:flex;align-items:center;gap:4px"><svg width="18" height="8" style="flex-shrink:0"><line x1="0" y1="4" x2="18" y2="4" stroke="#22c55e" stroke-width="2"/></svg>Suport</span>
-    <span style="display:flex;align-items:center;gap:4px"><svg width="18" height="8" style="flex-shrink:0"><line x1="0" y1="4" x2="18" y2="4" stroke="#ef4444" stroke-width="2"/></svg>Resistència</span>
-    <span style="display:flex;align-items:center;gap:4px"><svg width="18" height="8" style="flex-shrink:0"><line x1="0" y1="4" x2="18" y2="4" stroke="#3b82f6" stroke-width="1.5" stroke-dasharray="4,2"/></svg>Tendència alcista</span>
-    <span style="display:flex;align-items:center;gap:4px"><svg width="18" height="8" style="flex-shrink:0"><line x1="0" y1="4" x2="18" y2="4" stroke="#f97316" stroke-width="1.5" stroke-dasharray="4,2"/></svg>Tendència baixista</span>
-    <span style="display:flex;align-items:center;gap:4px"><svg width="18" height="8" style="flex-shrink:0"><line x1="0" y1="4" x2="18" y2="4" stroke="#eab308" stroke-width="1" stroke-dasharray="3,2"/></svg>Preu actual</span>
-  </div>`;
+  const nearestSupport=supportLevels.length?supportLevels.reduce((a,b)=>Math.abs(a.price-currentPrice)<Math.abs(b.price-currentPrice)?a:b):null;
+  const nearestResistance=resistanceLevels.length?resistanceLevels.reduce((a,b)=>Math.abs(a.price-currentPrice)<Math.abs(b.price-currentPrice)?a:b):null;
+  const upTrends=uptrend.length;
+  const downTrends=downtrend.length;
+  const fmtComma=n=>n.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g,',');
+  const legend=`
+<div style="padding:10px;background:#0f172a;border-top:1px solid #1e293b;font-size:12px;color:#94a3b8">
+  <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:8px">
+    <span><span style="color:#22c55e;font-weight:bold">━━</span> Suport — nivell de preu on la demanda ha aturat caigudes anteriors</span>
+    <span><span style="color:#ef4444;font-weight:bold">━━</span> Resistència — nivell on la pressió venedora ha frenat pujades</span>
+    <span><span style="color:#3b82f6;font-weight:bold">━━</span> Tendència alcista — sèrie de mínims creixents</span>
+    <span><span style="color:#f97316;font-weight:bold">━━</span> Tendència baixista — sèrie de màxims decreixents</span>
+    <span><span style="color:#fbbf24;font-weight:bold">- -</span> Preu actual</span>
+  </div>
+  <div style="background:#1e293b;border-radius:6px;padding:8px;color:#cbd5e1;line-height:1.6">
+    ${nearestSupport?`<div>🟢 <b>Suport proper:</b> $${fmtComma(nearestSupport.price)} — si el preu cau fins aquí, és on podria rebotar</div>`:''}
+    ${nearestResistance?`<div>🔴 <b>Resistència propera:</b> $${fmtComma(nearestResistance.price)} — barrera a superar per continuar pujant</div>`:''}
+    ${upTrends>0?`<div>📈 <b>${upTrends} canal alcista</b> detectat — els mínims estan pujant, senyal positiu</div>`:''}
+    ${downTrends>0?`<div>📉 <b>${downTrends} canal baixista</b> detectat — els màxims estan baixant, pressió venedora</div>`:''}
+    ${upTrends===0&&downTrends===0?`<div>↔️ <b>Sense tendència clara</b> detectada en els últims 90 dies</div>`:''}
+  </div>
+</div>`;
   const expandBtn=`<button class="ampliar-btn" onclick="expandAutoTech()" style="align-self:flex-end;padding:3px 10px;background:#1e293b;color:#94a3b8;border:1px solid #334155;border-radius:6px;cursor:pointer;font-size:12px;margin-bottom:6px">⛶ Ampliar</button>`;
   return`<div id="autoTechWrap" style="position:relative"><div class="card"><div style="font-size:15px;font-weight:700;margin-bottom:12px">📐 Anàlisi Tècnic Automàtic</div>${expandBtn}${svg}${legend}</div></div>`;
 }
