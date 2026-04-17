@@ -1291,8 +1291,12 @@ async function fetchETF(force=false){
     if(r.ok){
       const j=await r.json();
       if(j&&Array.isArray(j.days10)&&j.days10.length){
+        const liveEtfs=j.etfs||FALLBACK.etfs;
+        // Afegir sempre ETFs del fallback que no vinguin en les dades live (p.ex. MSBT)
+        const mergedEtfs=liveEtfs.slice();
+        FALLBACK.etfs.forEach(fb=>{if(!mergedEtfs.find(e=>e.ticker===fb.ticker))mergedEtfs.push(fb);});
         S.etfData={todayFlow:j.todayFlow||0,totalAcum:j.totalAcum||FALLBACK.totalAcum,
-          days10:j.days10,etfs:j.etfs||FALLBACK.etfs,
+          days10:j.days10,etfs:mergedEtfs,
           dataDate:j.dataDate||'',isLive:!!j.isLive};
         if(S.currentTab==='market')renderCurrentTab();
         return;
