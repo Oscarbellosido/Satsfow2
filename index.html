@@ -2091,6 +2091,57 @@ function detectSwingPoints(candles,windowSize=5){
   }
   return{swingHighs,swingLows};
 }
+// Detecta patrons clàssics de candlestick a la sèrie de veles donada.
+// Retorna [{idx, type, label, bullish, desc}] on idx és l'índex dins de l'array passat.
+function detectCandlePatterns(candles){
+  const out=[];
+  for(let i=0;i<candles.length;i++){
+    const c=candles[i];
+    if(!c||!c.high||!c.low||!c.open||!c.close)continue;
+    const range=c.high-c.low;
+    if(range<=0)continue;
+    const body=Math.abs(c.close-c.open);
+    const upperWick=c.high-Math.max(c.open,c.close);
+    const lowerWick=Math.min(c.open,c.close)-c.low;
+    const bodyPct=body/range;
+    const isGreen=c.close>=c.open;
+    // Doji: cos molt petit (<10% del rang) — indecisió
+    if(bodyPct<0.1&&range>0){
+      out.push({idx:i,type:'doji',label:'⊕',bullish:null,desc:'Doji — indecisió, possible canvi'});
+      continue;
+    }
+    // Hammer: cos petit a la part alta del rang, metxa inferior llarga (≥2x cos), poca metxa superior
+    // Senyal alcista després de tendència baixista
+    if(bodyPct<0.35&&lowerWick>=body*2&&upperWick<=body*0.8){
+      out.push({idx:i,type:'hammer',label:'🔨',bullish:true,desc:'Martell — possible reversa alcista'});
+      continue;
+    }
+    // Shooting star (martell invertit baixista): cos baix, metxa superior llarga
+    if(bodyPct<0.35&&upperWick>=body*2&&lowerWick<=body*0.8){
+      out.push({idx:i,type:'shooting',label:'⭐',bullish:false,desc:'Estrella fugaç — possible reversa baixista'});
+      continue;
+    }
+    // Engulfing: necessita la vela anterior
+    if(i>0){
+      const p=candles[i-1];
+      const pBody=Math.abs(p.close-p.open);
+      const pGreen=p.close>=p.open;
+      if(pBody>0&&body>pBody*1.05){
+        // Bullish engulfing: prèvia vermella, actual verda que engloba el cos
+        if(!pGreen&&isGreen&&c.open<=p.close&&c.close>=p.open){
+          out.push({idx:i,type:'engulf-bull',label:'▲',bullish:true,desc:'Englobador alcista — pressió compradora forta'});
+          continue;
+        }
+        // Bearish engulfing: prèvia verda, actual vermella que engloba el cos
+        if(pGreen&&!isGreen&&c.open>=p.close&&c.close<=p.open){
+          out.push({idx:i,type:'engulf-bear',label:'▼',bullish:false,desc:'Englobador baixista — pressió venedora forta'});
+          continue;
+        }
+      }
+    }
+  }
+  return out;
+}
 function clusterLevels(points,threshold=0.015){
   if(!points.length)return[];
   const sorted=[...points].sort((a,b)=>a.price-b.price);
@@ -2176,6 +2227,21 @@ function renderAutoTechnicalChart(){
     candH+=`<rect x="${x-Math.max(cW,4)/2}" y="${PT}" width="${Math.max(cW,4)}" height="${chartH}" fill="transparent"/>`;
     candH+=`</g>`;
   }
+  // Patrons de candlestick — només els últims 30 dies per no saturar
+  const patterns=detectCandlePatterns(displayCandles).filter(p=>p.idx>=n-30);
+  let patH='';
+  const patSummary={};
+  for(const p of patterns){
+    const c=displayCandles[p.idx];
+    const x=toX(p.idx);
+    const above=p.bullish===false; // estrella fugaç es marca a sobre
+    const y=above?toY(c.high)-8:toY(c.low)+12;
+    const color=p.bullish===true?'#10b981':p.bullish===false?'#ef4444':'#fbbf24';
+    patH+=`<g><title>${p.desc} (${new Date(c.ts).toLocaleDateString('ca-ES',{day:'2-digit',month:'short'})})</title>`;
+    patH+=`<text x="${x}" y="${y}" font-size="9" fill="${color}" text-anchor="middle" font-weight="700">${p.label}</text>`;
+    patH+=`</g>`;
+    patSummary[p.type]=(patSummary[p.type]||0)+1;
+  }
   let supH='';
   for(const l of supportLevels.slice(0,3)){
     const y=toY(l.price);
@@ -2210,12 +2276,18 @@ function renderAutoTechnicalChart(){
     const c=displayCandles[i],lbl=c.ts?new Date(c.ts).toLocaleDateString('ca-ES',{day:'2-digit',month:'2-digit'}):'';
     xLbl+=`<text x="${toX(i)}" y="${H-PB+14}" font-size="8" fill="#64748b" text-anchor="middle">${lbl}</text>`;
   }
-  const svg=`<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:255px;display:block" preserveAspectRatio="none">${gridH}${candH}${supH}${resH}${trendH}${curH}${curL}${xLbl}</svg>`;
+  const svg=`<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:255px;display:block" preserveAspectRatio="none">${gridH}${candH}${supH}${resH}${trendH}${curH}${curL}${xLbl}${patH}</svg>`;
   const nearestSupport=supportLevels.length?supportLevels.reduce((a,b)=>Math.abs(a.price-currentPrice)<Math.abs(b.price-currentPrice)?a:b):null;
   const nearestResistance=resistanceLevels.length?resistanceLevels.reduce((a,b)=>Math.abs(a.price-currentPrice)<Math.abs(b.price-currentPrice)?a:b):null;
   const hasUpTrend=!!uptrend;
   const hasDownTrend=!!downtrend;
   const fmtComma=n=>n.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g,',');
+  // Resum del patró més recent (últims 5 dies) per la llegenda
+  const recentPatterns=patterns.filter(p=>p.idx>=n-5);
+  const lastPattern=recentPatterns.length?recentPatterns[recentPatterns.length-1]:null;
+  // Dades dels nivells per al botó d'alertes (s'injecten al onclick)
+  const lvlSup=nearestSupport?Math.round(nearestSupport.price):0;
+  const lvlRes=nearestResistance?Math.round(nearestResistance.price):0;
   const legend=`
 <div style="padding:10px;background:#0f172a;border-top:1px solid #1e293b;font-size:12px;color:#94a3b8">
   <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:8px">
@@ -2232,7 +2304,13 @@ function renderAutoTechnicalChart(){
     ${hasUpTrend?`<div>📈 <b>Canal alcista</b> detectat — els mínims estan pujant, senyal positiu</div>`:''}
     ${hasDownTrend?`<div>📉 <b>Canal baixista</b> detectat — els màxims estan baixant, pressió venedora</div>`:''}
     ${!hasUpTrend&&!hasDownTrend?`<div>↔️ <b>Sense tendència clara</b> detectada en els últims 90 dies</div>`:''}
+    ${lastPattern?`<div>${lastPattern.label} <b>${lastPattern.desc}</b> — patró detectat fa ${n-1-lastPattern.idx} dia${n-1-lastPattern.idx===1?'':'s'}</div>`:''}
+    ${patterns.length?`<div style="font-size:10px;color:#64748b;margin-top:4px">📊 Patrons darrers 30 dies: ${Object.entries(patSummary).map(([k,v])=>`${v}× ${({doji:'Doji',hammer:'Martell',shooting:'Estrella fugaç','engulf-bull':'Englobador↑','engulf-bear':'Englobador↓'})[k]||k}`).join(' · ')}</div>`:''}
   </div>
+  ${(lvlSup||lvlRes)?`<div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+    <button onclick="createTechAlerts(${lvlSup},${lvlRes})" style="padding:6px 12px;background:rgba(249,115,22,.12);border:1px solid rgba(249,115,22,.4);border-radius:8px;color:#f97316;font-size:11px;font-weight:600;cursor:pointer">🔔 Crear alertes per aquests nivells</button>
+    <span style="font-size:10px;color:#64748b">avisarà quan trenqui suport/resistència</span>
+  </div>`:''}
 </div>`;
   const expandBtn=`<button class="ampliar-btn" onclick="expandAutoTech(this)" style="align-self:flex-end;padding:3px 10px;background:#1e293b;color:#94a3b8;border:1px solid #334155;border-radius:6px;cursor:pointer;font-size:12px;margin-bottom:6px">⛶ Ampliar</button>`;
   return`<div class="autoTechWrap" style="position:relative"><div class="card"><div style="font-size:15px;font-weight:700;margin-bottom:12px">📐 Anàlisi Tècnic Automàtic</div>${expandBtn}${svg}${legend}</div></div>`;
@@ -2745,15 +2823,17 @@ function renderAlerts(){
     ?'<div style="text-align:center;color:var(--text3);font-size:13px;padding:24px">Sin alertas activas.<br>Añade un precio o porcentaje de cambio.</div>'
     :S.alerts.map(a=>{
       const isPct=a.type==='pct';
+      const isLevel=a.type==='level';
       const label=isPct
         ?(a.condition==='above'?'↑ +':'↓ ')+Math.abs(a.targetPct)+'%'
         :(a.condition==='above'?'↑ ':'↓ ')+(a.currency==='usd'?'$':'€')+a.targetPrice.toLocaleString();
+      const techBadge=isLevel?` <span style="font-size:9px;padding:1px 6px;border-radius:4px;background:rgba(249,115,22,.15);color:#f97316;font-weight:700">📐 ${a.note||'tècnica'}</span>`:'';
       const pctNow=isPct&&a.refPrice?((S.price.usd-a.refPrice)/a.refPrice*100).toFixed(2):null;
       const dot=a.triggered?'<span style="color:#eab308;font-size:16px">⚠️</span>':'<div style="width:8px;height:8px;border-radius:50%;background:'+(a.condition==='above'?'#10b981':'#ef4444')+'"></div>';
-      const sub=a.triggered?'¡DISPARADA!'+(a.recurring?' · 🔄 se rearmará':''):isPct?('Ref: $'+Math.round(a.refPrice).toLocaleString()+' · Ahora: '+(pctNow>0?'+':'')+pctNow+'%'):(a.recurring?'🔄 Recurrente':'Pendiente');
+      const sub=a.triggered?'¡DISPARADA!'+(a.recurring?' · 🔄 se rearmará':''):isPct?('Ref: $'+Math.round(a.refPrice).toLocaleString()+' · Ahora: '+(pctNow>0?'+':'')+pctNow+'%'):isLevel?'Avís quan trenqui aquest nivell':(a.recurring?'🔄 Recurrente':'Pendiente');
       return '<div class="alert-item '+(a.triggered?'triggered':'')+'">'
         +'<div style="display:flex;align-items:center;gap:10px">'+dot
-        +'<div><div style="font-size:13px;font-weight:600">'+label+'</div>'
+        +'<div><div style="font-size:13px;font-weight:600">'+label+techBadge+'</div>'
         +'<div style="font-size:10px;color:var(--text3)">'+sub+'</div></div></div>'
         +`<button onclick="removeAlert('${a.id}')" style="background:none;border:none;color:var(--text3);font-size:18px;padding:4px;cursor:pointer">✕</button></div>`;
     }).join('');
@@ -2802,6 +2882,37 @@ async function activateNotifs(){const r=await requestNotifPerm();if(r==='granted
 function addAlert(){const t=document.getElementById('alert-target'),cur=document.getElementById('alert-curr'),rec=document.getElementById('alert-recurring');if(!t||!cur)return;const val=parseFloat(t.value);if(isNaN(val)||val<=0)return;const curr=cur.value,price=curr==='usd'?S.price.usd:S.price.eur;S.alerts.push({id:Date.now().toString(),type:'price',targetPrice:val,currency:curr,condition:val>price?'above':'below',triggered:false,recurring:rec?rec.checked:false});saveAlerts();navigator.serviceWorker?.ready.then(reg=>reg.active?.postMessage({type:'CHECK_ALERTS',alerts:S.alerts}));t.value='';renderTab('alerts');}
 function addPctAlert(){const t=document.getElementById('alert-pct'),d=document.getElementById('alert-pct-dir'),rec=document.getElementById('alert-pct-recurring');if(!t||!d)return;const pct=parseFloat(t.value);if(isNaN(pct)||pct<=0)return;const dir=d.value;S.alerts.push({id:Date.now().toString(),type:'pct',targetPct:dir==='above'?pct:-pct,condition:dir,refPrice:S.price.usd,triggered:false,recurring:rec?rec.checked:false});saveAlerts();t.value='';renderTab('alerts');}
 function removeAlert(id){S.alerts=S.alerts.filter(a=>a.id!==id);saveAlerts();renderTab('alerts');}
+// #9: Crea alertes automàtiques pels nivells de suport/resistència detectats al gràfic tècnic
+function createTechAlerts(supportPrice,resistancePrice){
+  const cur=S.price.usd||0;
+  if(!cur)return;
+  let added=0;
+  const now=Date.now();
+  // Suport: alerta quan el preu cau per sota
+  if(supportPrice>0&&supportPrice<cur){
+    // Evita duplicats: si ja existeix una alerta level idèntica, no la creem
+    const exists=S.alerts.some(a=>a.type==='level'&&a.condition==='below'&&Math.abs(a.targetPrice-supportPrice)<1);
+    if(!exists){
+      S.alerts.push({id:String(now)+'_sup',type:'level',targetPrice:supportPrice,currency:'usd',condition:'below',triggered:false,recurring:false,note:'Suport tècnic'});
+      added++;
+    }
+  }
+  // Resistència: alerta quan el preu puja per sobre
+  if(resistancePrice>0&&resistancePrice>cur){
+    const exists=S.alerts.some(a=>a.type==='level'&&a.condition==='above'&&Math.abs(a.targetPrice-resistancePrice)<1);
+    if(!exists){
+      S.alerts.push({id:String(now)+'_res',type:'level',targetPrice:resistancePrice,currency:'usd',condition:'above',triggered:false,recurring:false,note:'Resistència tècnica'});
+      added++;
+    }
+  }
+  saveAlerts();
+  navigator.serviceWorker?.ready.then(reg=>reg.active?.postMessage({type:'CHECK_ALERTS',alerts:S.alerts}));
+  if(added>0){
+    showNotif('🔔 Alertes creades',`${added} alerta${added>1?'es':''} per nivells tècnics afegida${added>1?'es':''}.`);
+  }else{
+    showNotif('ℹ️ Alertes',`Ja tens alertes per aquests nivells.`);
+  }
+}
 function checkAlerts(){if(!S.price.usd)return;let changed=false;S.alerts=S.alerts.map(a=>{const p=a.currency==='usd'?S.price.usd:S.price.eur;if(a.triggered&&a.recurring){const crossedBack=a.condition==='above'?p<a.targetPrice:p>a.targetPrice;if(crossedBack){changed=true;return{...a,triggered:false};}return a;}if(a.triggered)return a;const hit=a.condition==='above'?p>=a.targetPrice:p<=a.targetPrice;if(hit){const sym=a.currency==='usd'?'$':'€';const tr=t();showNotif('⚡ Alerta SatsFlow',`BTC ${a.condition==='above'?tr.alertAbove:tr.alertBelow} ${sym}${a.targetPrice.toLocaleString()} — $${S.price.usd.toLocaleString()}`);changed=true;return{...a,triggered:true};}return a;});if(changed){saveAlerts();if(S.currentTab==='alerts')renderTab('alerts');}}
 async function fetchCorr(){
   S.corrError=null;
@@ -3014,26 +3125,57 @@ function renderCorr(){
   const btcGold=corrInfo(d.corrBtcGold);
   const btcMstr=d.corrBtcMstr!=null?corrInfo(d.corrBtcMstr):null;
   const btcOil=d.corrBtcOil!=null?corrInfo(d.corrBtcOil):null;
+  // #8: toggles per cada actiu (visibilitat persistida a S._corrShow). Per defecte tots actius.
+  if(!S._corrShow)S._corrShow={btc:true,spy:true,gold:true,mstr:true,oil:true};
+  const visible=S._corrShow;
+  // Rendiment final (% des de l'inici del període) per a cada actiu
+  const finalReturn=arr=>arr&&arr.length>=2?(arr[arr.length-1]-arr[0]):null;
+  const returns={
+    btc:finalReturn(d.btc),
+    spy:finalReturn(d.spy),
+    gold:finalReturn(d.gold),
+    mstr:d.mstr?finalReturn(d.mstr):null,
+    oil:d.oil?finalReturn(d.oil):null
+  };
   const chartSVG=(()=>{
     const W=300,H=120,P=8;
-    const allVals=[...d.btc,...d.spy,...d.gold,...(d.mstr||[]),...(d.oil||[])];
-    const min=Math.min(...allVals)-2, max=Math.max(...allVals)+2, range=max-min||1;
+    // Recalcula min/max només amb les sèries visibles per ajustar bé l'escala
+    const visArrays=[];
+    if(visible.btc)visArrays.push(...d.btc);
+    if(visible.spy)visArrays.push(...d.spy);
+    if(visible.gold)visArrays.push(...d.gold);
+    if(visible.mstr&&d.mstr)visArrays.push(...d.mstr);
+    if(visible.oil&&d.oil)visArrays.push(...d.oil);
+    if(!visArrays.length)visArrays.push(...d.btc);
+    const min=Math.min(...visArrays)-2, max=Math.max(...visArrays)+2, range=max-min||1;
     const toX=i=>P+(i/(d.len-1))*(W-P*2);
     const toY=v=>P+(1-(v-min)/range)*(H-P*2);
-    const line=(arr,color)=>{
+    const line=(arr,color,dash)=>{
       const pts=arr.map((v,i)=>`${toX(i)},${toY(v)}`).join(' ');
-      return`<polyline points="${pts}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round"/>`;
+      return`<polyline points="${pts}" fill="none" stroke="${color}" stroke-width="${dash?'1.5':'2'}" ${dash?'stroke-dasharray="'+dash+'"':''} stroke-linejoin="round"/>`;
     };
     const y100=toY(100);
     return`<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:130px" preserveAspectRatio="none">
       <line x1="${P}" y1="${y100}" x2="${W-P}" y2="${y100}" stroke="var(--border)" stroke-dasharray="4 3" stroke-width="1"/>
-      ${line(d.gold,'#eab308')}
-      ${line(d.spy,'#3b82f6')}
-      ${d.oil?`<polyline points="${d.oil.map((v,i)=>`${toX(i)},${toY(v)}`).join(' ')}" fill="none" stroke="#92400e" stroke-width="1.5" stroke-dasharray="6 3" stroke-linejoin="round"/>`:''}
-      ${d.mstr?`<polyline points="${d.mstr.map((v,i)=>`${toX(i)},${toY(v)}`).join(' ')}" fill="none" stroke="#a855f7" stroke-width="1.5" stroke-dasharray="5 3" stroke-linejoin="round"/>`:''}
-      ${line(d.btc,'#f97316')}
+      ${visible.gold?line(d.gold,'#eab308'):''}
+      ${visible.spy?line(d.spy,'#3b82f6'):''}
+      ${visible.oil&&d.oil?line(d.oil,'#92400e','6 3'):''}
+      ${visible.mstr&&d.mstr?line(d.mstr,'#a855f7','5 3'):''}
+      ${visible.btc?line(d.btc,'#f97316'):''}
     </svg>`;
   })();
+  // Toggle pill per cada actiu amb el seu rendiment final
+  const togglePill=(key,label,color,available=true)=>{
+    if(!available)return'';
+    const r=returns[key];
+    const on=visible[key];
+    const retStr=r==null?'':(r>=0?'+':'')+r.toFixed(1)+'%';
+    const retCol=r==null?'#94a3b8':r>=0?'#10b981':'#ef4444';
+    return `<button onclick="toggleCorrSeries('${key}')" style="display:inline-flex;align-items:center;gap:6px;padding:4px 9px;border-radius:7px;border:1px solid ${on?color:'var(--border)'};background:${on?color+'18':'transparent'};color:${on?color:'var(--text3)'};font-size:11px;font-weight:600;cursor:pointer;opacity:${on?'1':'.55'}">
+      <span>${on?'●':'○'} ${label}</span>
+      ${retStr?`<span style="color:${on?retCol:'var(--text3)'};font-weight:800">${retStr}</span>`:''}
+    </button>`;
+  };
   const rollSVG=(arr,color)=>{
     const valid=arr.filter(v=>v!=null);
     if(!valid.length) return '';
@@ -3062,17 +3204,17 @@ function renderCorr(){
         ${periods.map(p=>`<button style="padding:4px 8px;border-radius:7px;border:1px solid var(--border);background:${S.corrPeriod===p?'#f97316':'var(--bg2)'};color:${S.corrPeriod===p?'#fff':'var(--text2)'};font-size:11px" onclick="setCorrPeriod('${p}')">${p==='365'?'1A':p+'D'}</button>`).join('')}
       </div>
     </div>
-    <!-- Leyenda -->
-    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px;font-size:11px">
-      <span style="color:#f97316;font-weight:600">● BTC</span>
-      <span style="color:#3b82f6;font-weight:600">● S&P500</span>
-      <span style="color:#eab308;font-weight:600">● Oro</span>
-      ${d.oil?`<span style="color:#92400e;font-weight:600">● ${tr.corrOilLabel||'Oil (WTI)'}</span>`:''}
-      ${d.mstr?'<span style="color:#a855f7;font-weight:600">● MSTR</span>':''}
+    <!-- Toggle pills + rendiment final per cada actiu -->
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">
+      ${togglePill('btc','BTC','#f97316')}
+      ${togglePill('spy','S&P500','#3b82f6')}
+      ${togglePill('gold','Or','#eab308')}
+      ${togglePill('oil',tr.corrOilLabel||'Oil','#92400e',!!d.oil)}
+      ${togglePill('mstr','MSTR','#a855f7',!!d.mstr)}
     </div>
     <!-- Gráfico normalizado base 100 -->
     ${chartSVG}
-    <div style="font-size:10px;color:var(--text3);text-align:center;margin-top:4px">Rendimiento normalizado (base 100 = inicio del periodo)</div>
+    <div style="font-size:10px;color:var(--text3);text-align:center;margin-top:4px">Clica un actiu per amagar/mostrar · Rendiment normalitzat (base 100 = inici del període)</div>
   </div>
   <!-- Correlaciones -->
   <div class="card">
@@ -3183,6 +3325,12 @@ function setCorrPeriod(p){
   S.corrPeriod=p;
   S.corrData=null;
   loadCorr();
+}
+// #8: alterna visibilitat d'una sèrie al gràfic comparat (Macro)
+function toggleCorrSeries(key){
+  if(!S._corrShow)S._corrShow={btc:true,spy:true,gold:true,mstr:true,oil:true};
+  S._corrShow[key]=!S._corrShow[key];
+  renderTab('macroglobal');
 }
 const COUNTRY_DATA=[
   {name:'El Salvador',code:'SV',lat:13.7,lng:-88.9,status:'legal',label:'Moneda de curso legal',color:'#10b981'},
@@ -5195,7 +5343,15 @@ async function init(){
     try{if(S.lang&&S.lang!=='es')setLang(S.lang,true);}catch(e){}
     try{if(S.morningAlert?.enabled)scheduleMorningCheck();}catch(e){}
     setTimeout(async()=>{
-      try{await Promise.all([fetchOHLC().catch(()=>{}),fetchMempool().catch(()=>{}),fetchMarket().catch(()=>{}),fetchMining().catch(()=>{}),fetchNews().catch(()=>{}),fetchCycleHistory().catch(()=>{}),fetchBlockInfo().catch(()=>{}),fetchETF().catch(()=>{})]);}catch{}
+      // #10: prefetch agressiu de tots els tabs en background — quan l'usuari canviï
+      // de tab les dades ja hi seran. fetchOnChain afegit perquè Forecast el necessita.
+      try{await Promise.all([
+        fetchOHLC().catch(()=>{}),fetchMempool().catch(()=>{}),
+        fetchMarket().catch(()=>{}),fetchMining().catch(()=>{}),
+        fetchNews().catch(()=>{}),fetchCycleHistory().catch(()=>{}),
+        fetchBlockInfo().catch(()=>{}),fetchETF().catch(()=>{}),
+        (typeof fetchOnChain==='function'?fetchOnChain().catch(()=>{}):Promise.resolve())
+      ]);}catch{}
       try{renderCurrentTab();}catch{}
     },200);
     setInterval(async()=>{try{await fetchPrice();checkAlerts();renderCurrentTab();}catch{}},60000);
