@@ -2276,7 +2276,10 @@ function renderAutoTechnicalChart(){
     const c=displayCandles[i],lbl=c.ts?new Date(c.ts).toLocaleDateString('ca-ES',{day:'2-digit',month:'2-digit'}):'';
     xLbl+=`<text x="${toX(i)}" y="${H-PB+14}" font-size="8" fill="#64748b" text-anchor="middle">${lbl}</text>`;
   }
-  const svg=`<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:255px;display:block" preserveAspectRatio="none">${gridH}${candH}${supH}${resH}${trendH}${curH}${curL}${xLbl}${patH}</svg>`;
+  // Emmagatzemar dades per al tooltip tàctil (mòbil)
+  const _chartId='atc_'+Date.now()+'_'+Math.floor(Math.random()*9999);
+  (window._atcDataStore=window._atcDataStore||{})[_chartId]={candles:displayCandles,patterns,n,PL:8,PR:72,W,H};
+  const svg=`<svg id="${_chartId}" viewBox="0 0 ${W} ${H}" style="width:100%;height:255px;display:block;touch-action:none" preserveAspectRatio="none" ontouchstart="techChartTouch(event,this)">${gridH}${candH}${supH}${resH}${trendH}${curH}${curL}${xLbl}${patH}</svg>`;
   const nearestSupport=supportLevels.length?supportLevels.reduce((a,b)=>Math.abs(a.price-currentPrice)<Math.abs(b.price-currentPrice)?a:b):null;
   const nearestResistance=resistanceLevels.length?resistanceLevels.reduce((a,b)=>Math.abs(a.price-currentPrice)<Math.abs(b.price-currentPrice)?a:b):null;
   const hasUpTrend=!!uptrend;
@@ -2298,7 +2301,7 @@ function renderAutoTechnicalChart(){
     <span><span style="color:#fbbf24;font-weight:bold">- -</span> Preu actual</span>
   </div>
   <div style="background:#1e293b;border-radius:6px;padding:8px;color:#cbd5e1;line-height:1.6">
-    <div style="font-size:10px;color:#64748b;margin-bottom:4px">💡 Passa el ratolí sobre les veles per veure OHLC i variació diària</div>
+    <div style="font-size:10px;color:#64748b;margin-bottom:4px">💡 Toca (mòbil) o passa el ratolí (PC) sobre les veles per veure dades OHLC i variació diària</div>
     ${nearestSupport?`<div>🟢 <b>Suport proper:</b> $${fmtComma(nearestSupport.price)} — si el preu cau fins aquí, és on podria rebotar</div>`:''}
     ${nearestResistance?`<div>🔴 <b>Resistència propera:</b> $${fmtComma(nearestResistance.price)} — barrera a superar per continuar pujant</div>`:''}
     ${hasUpTrend?`<div>📈 <b>Canal alcista</b> detectat — els mínims estan pujant, senyal positiu</div>`:''}
@@ -2361,6 +2364,75 @@ function expandAutoTech(btn) {
     closeBtn.onclick = function(){ expandAutoTech(closeBtn); };
     wrap.insertBefore(closeBtn, wrap.firstChild);
   }
+}
+// ─── Tooltip tàctil per al gràfic tècnic automàtic (mòbil / Android) ──────────
+// SVG <title> no funciona amb touch; aquest handler mostra un div flotant.
+function techChartTouch(evt, svgEl) {
+  evt.preventDefault();
+  const d = (window._atcDataStore||{})[svgEl.id];
+  if (!d) return;
+  const touch = evt.touches[0] || evt.changedTouches[0];
+  if (!touch) return;
+  const rect = svgEl.getBoundingClientRect();
+  const scaleX = d.W / rect.width;
+  const svgX = (touch.clientX - rect.left) * scaleX;
+  const { candles, patterns, n, PL, PR, W } = d;
+  const chartW = W - PL - PR;
+  // Índex de la vela més propera
+  const rawI = (svgX - PL) / chartW * Math.max(n - 1, 1);
+  const ci = Math.max(0, Math.min(n - 1, Math.round(rawI)));
+  const c = candles[ci];
+  if (!c) return;
+  const dateStr = c.ts ? new Date(c.ts).toLocaleDateString('ca-ES',{day:'2-digit',month:'short',year:'numeric'}) : '';
+  const chgPct = c.open > 0 ? ((c.close - c.open) / c.open * 100) : 0;
+  const fmt = v => '$' + Math.round(v).toString().replace(/\B(?=(\d{3})+(?!\d))/g,',');
+  let html = `<div style="font-weight:700;margin-bottom:5px;color:#e2e8f0">${dateStr}</div>`;
+  html += `<div style="display:grid;grid-template-columns:auto auto;gap:2px 10px">`;
+  html += `<span style="color:#64748b">O</span><b>${fmt(c.open)}</b>`;
+  html += `<span style="color:#64748b">H</span><b>${fmt(c.high)}</b>`;
+  html += `<span style="color:#64748b">L</span><b>${fmt(c.low)}</b>`;
+  html += `<span style="color:#64748b">C</span><b>${fmt(c.close)}</b>`;
+  html += `</div>`;
+  html += `<div style="margin-top:4px;font-weight:600;color:${chgPct>=0?'#10b981':'#ef4444'}">${chgPct>=0?'+':''}${chgPct.toFixed(2)}%</div>`;
+  // Patró de candlestick proper al punt tocat
+  const hitPat = patterns.find(p => {
+    const px = PL + (p.idx / Math.max(n - 1, 1)) * chartW;
+    return Math.abs(svgX - px) < 18;
+  });
+  if (hitPat) {
+    html += `<div style="margin-top:7px;border-top:1px solid #334155;padding-top:6px;color:#fbbf24">${hitPat.label} <b>${hitPat.desc}</b></div>`;
+  }
+  _showTechTooltip(html, touch.clientX, touch.clientY);
+}
+function _showTechTooltip(html, cx, cy) {
+  let tt = document.getElementById('tech-tooltip');
+  if (!tt) {
+    tt = document.createElement('div');
+    tt.id = 'tech-tooltip';
+    tt.style.cssText = 'position:fixed;z-index:9998;background:#1e293b;border:1px solid #334155;border-radius:10px;padding:10px 13px;font-size:12px;color:#e2e8f0;pointer-events:none;box-shadow:0 4px 20px rgba(0,0,0,.65);line-height:1.55;min-width:140px;transition:opacity .2s';
+    document.body.appendChild(tt);
+    // Tap anywhere = tancar
+    document.addEventListener('touchstart', e => {
+      if (!e.target.closest('svg[id^="atc_"]')) { tt.style.opacity='0'; }
+    }, {passive:true});
+  }
+  tt.innerHTML = html;
+  tt.style.opacity = '1';
+  tt.style.display = 'block';
+  const w = 165, margin = 10;
+  let left = cx + 14;
+  let top = cy - 90;
+  if (left + w > window.innerWidth - margin) left = cx - w - 14;
+  if (left < margin) left = margin;
+  if (top < margin) top = margin;
+  if (top + 200 > window.innerHeight - margin) top = window.innerHeight - 210;
+  tt.style.left = left + 'px';
+  tt.style.top = top + 'px';
+  clearTimeout(tt._t);
+  tt._t = setTimeout(() => {
+    tt.style.opacity = '0';
+    setTimeout(() => { if (tt.style.opacity === '0') tt.style.display = 'none'; }, 250);
+  }, 3500);
 }
 function renderAnalysis(){
   const tr=t();
