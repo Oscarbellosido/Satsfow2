@@ -15,7 +15,7 @@ Desplegament automàtic via `.github/workflows/deploy.yml` a cada push a `main`.
 | Tab | Icona | Contingut |
 |-----|-------|-----------|
 | `home` | 🏠 | Preu BTC (USD/EUR), gràfic de preus, Fear & Greed, conversió sats |
-| `technical` | 📊 | Gràfics OHLC (candlestick), indicadors tècnics |
+| `technical` | 📊 | Gràfics OHLC (candlestick), indicadors tècnics, gràfic tècnic automàtic |
 | `market` | 🏪 | ETF Bitcoin (fluxos), dominància BTC, mapa d'adopció |
 | `mempool` | ⛓️ | Fees recomanades, mempool, blocs recents, halving countdown |
 | `atm` | 🏧 | Mapa d'ATMs Bitcoin (Leaflet + OpenStreetMap) |
@@ -23,7 +23,7 @@ Desplegament automàtic via `.github/workflows/deploy.yml` a cada push a `main`.
 | `alerts` | 🔔 | Alertes de preu personalitzades (via Service Worker) |
 | `macroglobal` | 🌍 | Correlació BTC vs MSTR/SPY/GLD/WTI, dominància, mapa legal |
 | `cycles` | 🔄 | Cicles de mercat BTC, Rainbow Chart, Stock-to-Flow |
-| `forecast` | 🔮 | Prediccions de preu basades en cicles |
+| `forecast` | 🔮 | Prediccions de preu + gràfic tècnic automàtic (suports/resistències/tendències) |
 | `dca` | 📐 | Calculadora DCA (Dollar Cost Averaging) |
 
 ---
@@ -51,7 +51,9 @@ Tot l'estat de l'app viu en l'objecte `S` (definit a la línia ~79):
    - Fa scraping de `farside.co.uk/bitcoin-etf-flow-all-data/` des de l'edge de CF
    - Guarda a KV (cache 2 dies), s'actualitza cada dia a les **20:00 UTC** via cron
    - Endpoint de forçar actualització: `/fetch`
-2. Fallback hardcoded (últimes dades conegudes)
+2. Fallback hardcoded (últimes dades conegudes: IBIT, FBTC, ARKB)
+
+**Fusió live + fallback:** quan el worker retorna dades en directe, es fusionen amb els ETFs del fallback per evitar que ETFs nous desapareguin si el worker encara no els coneix (`fetchETF`, ~línia 1290).
 
 ### Mempool / Mining
 - `mempool.space/api` — fees, blocs, hashrate, dificultat
@@ -120,6 +122,17 @@ scripts/
 - Cloudflare Workers (edge functions) + KV storage
 - Leaflet.js (mapes ATM)
 - GitHub Pages (hosting estàtic)
+
+---
+
+## Gràfic tècnic automàtic (`renderAutoTechnicalChart`)
+Funció independent (~línia 2061) que genera un gràfic de veles SVG amb:
+- **Suports** (verd) i **resistències** (vermell) detectats automàticament per swing points + clustering
+- **Canals de tendència** alcista (blau) i baixista (taronja) per regressió lineal
+- **Llegenda interpretativa** amb el suport/resistència més proper al preu actual i resum dels canals detectats
+- Botó "Ampliar" per veure a pantalla completa (`expandAutoTech`)
+
+S'usa a **dos llocs**: tab `technical` i tab `forecast` (entre el panell ML i els rangs per horitzó).
 
 ---
 
