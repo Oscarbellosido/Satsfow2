@@ -2048,7 +2048,7 @@ function renderHome(){
       </div>
     </div>
     <div class="period-wrap">${['1','7','30','90','365'].map(d=>`<button class="period-btn ${S.days===d?'active':''}" onclick="setPeriod('${d}')">${d==='1'?'24h':d==='365'?'1A':d+'D'}</button>`).join('')}</div>
-    <div id="chart-wrap" style="background:#0a1628;border-radius:12px;padding:6px 4px 2px;margin:0 -4px;cursor:crosshair" onmousemove="chartHover(event)" ontouchstart="chartHover(event.touches[0])" ontouchmove="chartHover(event.touches[0])" onmouseleave="chartLeave()" ontouchend="chartLeave()" ontouchcancel="chartLeave()">${chart||'<div style="text-align:center;color:var(--text3);padding:40px">'+tr.loading+'</div>'}</div>
+    <div id="chart-wrap" style="background:#0a1628;border-radius:12px;padding:6px 4px 2px;margin:0 -4px;cursor:crosshair" onmousemove="chartHover(event)" ontouchstart="event.preventDefault();chartHover(event.touches[0])" ontouchmove="event.preventDefault();chartHover(event.touches[0])" onmouseleave="chartLeave()" ontouchend="chartLeave()" ontouchcancel="chartLeave()">${chart||'<div style="text-align:center;color:var(--text3);padding:40px">'+tr.loading+'</div>'}</div>
     ${S.showRSI&&S.history.length>=14?renderRSIChart():''}
   </div>
   <div class="grid-3">
