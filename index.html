@@ -37,6 +37,7 @@
         <div style="display:flex;align-items:center;gap:6px">
           <div id="header-change" style="font-size:11px;font-weight:600"></div>
           <div id="header-eur" style="font-size:10px;color:var(--text3);font-family:monospace"></div>
+          <div id="header-updated" style="font-size:9px;color:var(--text3);font-family:monospace" title="Última actualització"></div>
         </div>
       </div>
       <button class="btn-icon" id="refresh-btn" title="Actualizar precio" onclick="manualRefresh()" style="font-size:14px">🔄</button>
@@ -76,6 +77,9 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 const BUILD_TS='202603220001';
+// Logger: només mostra informacionals si DEBUG=true (activar via localStorage 'sf-debug')
+const DEBUG=localStorage.getItem('sf-debug')==='1';
+const LOG=DEBUG?console.log.bind(console):()=>{};
 const S={price:{usd:0,eur:0},change24h:0,marketCap:0,history:[],ohlc:[],mempool:null,marketData:null,miningData:null,news:[],alerts:[],days:'30',chartType:'area',chartCurrency:localStorage.getItem('sf-chart-cur')||'usd',dark:localStorage.getItem('sf-theme')!=='light',notifPerm:window.Notification?.permission||'unsupported',atmLoaded:false,leafletMap:null,lastUpdated:null,feeLevel:'hour',txSize:250,currentTab:'home',corrData:null,corrPeriod:'30',dominanceHistory:[],rainbowData:null,dominanceYearData:null,historyTA:[],lang:localStorage.getItem('sf-lang')||'es',morningAlert:JSON.parse(localStorage.getItem('sf-morning')||'null'),blockHeight:null,blocksToHalving:null,halvingPct:null,corrCached:null,
   // Mejora 7: seguimiento de datos obsoletos
   dataAge:{},
@@ -88,6 +92,15 @@ const S={price:{usd:0,eur:0},change24h:0,marketCap:0,history:[],ohlc:[],mempool:
   _priceFetchedAt:0,
   etfData:null
 };
+// Hidratació ràpida: si tenim OHLC tècnic cachejat (<15 min), el carreguem ja per renderitzar instantàniament
+try{
+  const _cached=JSON.parse(localStorage.getItem('sf-ohlc-ta')||'null');
+  if(_cached&&Array.isArray(_cached.d)&&(Date.now()-_cached.t)<900000){
+    S.ohlcTA=_cached.d;
+  }
+  const _lu=parseInt(localStorage.getItem('sf-last-updated')||'0',10);
+  if(_lu>0)S.lastUpdated=new Date(_lu);
+}catch{}
 // Mejora 8: throttle de APIs — previene llamadas duplicadas concurrentes
 const _fetching=new Set();
 async function _once(key,fn){if(_fetching.has(key))return;_fetching.add(key);try{await fn();}finally{_fetching.delete(key);}}
@@ -554,9 +567,9 @@ async function loadPredictions(){
 async function purgeInvalidSnapshots(){
   const preds=await loadPredictions();
   const invalid=preds.filter(p=>!(p.week?.bear>0));
-  console.log('[purge] total:',preds.length,'invalid:',invalid.length);
+  LOG('[purge] total:',preds.length,'invalid:',invalid.length);
   for(const p of invalid){
-    console.log('[purge] deleting',p.date,'bear=',p.week?.bear);
+    LOG('[purge] deleting',p.date,'bear=',p.week?.bear);
     await deletePrediction(p.date);
   }
   const tr=t();
@@ -646,7 +659,7 @@ async function saveSnapshotIfNeeded(manual=false){
         if(keys.length>400)keys.slice(0,keys.length-400).forEach(k=>delete log[k]);
         localStorage.setItem('sf-pricelog',JSON.stringify(log));
       }catch{}
-      console.log('[SatsFlow] Snapshot diario guardado:',snap.date,'BTC $'+snap.price.toLocaleString());
+      LOG('[SatsFlow] Snapshot diario guardado:',snap.date,'BTC $'+snap.price.toLocaleString());
       if(S.currentTab==='forecast')renderTab('forecast');
     }
   }catch(e){console.warn('autoSnapshot:',e);}
@@ -705,6 +718,45 @@ function getPriceAtDate(targetDate){
   }catch{return null;}
 }
 
+// Calcula mètriques de backtest per a un horitzó concret (week/month).
+// Retorna: {hits, total, accuracy, mae, biasPct} on mae és l'error mitjà absolut entre
+// preu real i predicció base, en %, i biasPct és el sesgo mitjà signat (positiu=optimista).
+async function computeBacktestMetrics(horizon){
+  try{
+    const allPreds=await loadPredictions();
+    if(!allPreds.length)return null;
+    const horizonDays=horizon==='month'?30:7;
+    const dayMs=86400000;
+    const now=Date.now();
+    const resolveReal=(snap)=>{
+      const target=new Date(snap.ts+horizonDays*dayMs).toISOString().slice(0,10);
+      const t=allPreds.find(p=>p.date===target||p.date?.startsWith(target));
+      if(t)return t.price;
+      return getPriceAtDate(target);
+    };
+    let hits=0,total=0,sumErr=0,sumSigned=0;
+    allPreds.forEach(snap=>{
+      const age=(now-snap.ts)/dayMs;
+      if(age<horizonDays)return;
+      const range=horizon==='month'?snap.month:snap.week;
+      if(!range||!range.base)return;
+      const real=resolveReal(snap);
+      if(!real)return;
+      total++;
+      if(real>=range.bear&&real<=range.bull)hits++;
+      const errPct=(real-range.base)/range.base*100;
+      sumErr+=Math.abs(errPct);
+      sumSigned+=errPct;
+    });
+    if(total===0)return{hits:0,total:0,accuracy:null,mae:null,biasPct:null};
+    return{
+      hits,total,
+      accuracy:Math.round(hits/total*100),
+      mae:sumErr/total,
+      biasPct:sumSigned/total
+    };
+  }catch{return null;}
+}
 function outcomeIcon(snap,realPrice,range){
   const r=range||snap.week;
   if(!realPrice||!r)return '';
@@ -938,7 +990,7 @@ if('serviceWorker' in navigator){
       const swUrl=base+'sw.js?v='+BUILD_TS;
       // updateViaCache:'none' → el navegador SIEMPRE comprueba sw.js en red, nunca desde caché
       const reg=await navigator.serviceWorker.register(swUrl,{scope:base,updateViaCache:'none'});
-      console.log('[SW] registrado:',reg.scope);
+      LOG('[SW] registrado:',reg.scope);
 
       // Forzar comprobación de actualización cada vez que carga la app
       reg.update().catch(()=>{});
@@ -952,7 +1004,7 @@ if('serviceWorker' in navigator){
         if(!newSW)return;
         newSW.addEventListener('statechange',()=>{
           if(newSW.state==='installed'&&navigator.serviceWorker.controller){
-            console.log('[SW] nueva versión disponible — mostrando banner');
+            LOG('[SW] nueva versión disponible — mostrando banner');
             // NO fer reload() automàtic: si la caché és obsoleta i la xarxa és lenta
             // (típic al matí) el reload deixa la pantalla en blanc sense recuperació.
             // En lloc d'això, mostrem un banner discret perquè l'usuari decideixi.
@@ -1069,7 +1121,7 @@ async function fetchPrice(){
     }
 
     // Log de diagnóstico — visible en consola del navegador
-    console.log('[SatsFlow] Fuentes precio:',
+    LOG('[SatsFlow] Fuentes precio:',
       'Binance.com='+(bnComR.status==='fulfilled'?bnComR.value.status:'ERR'),
       'BinanceVision='+(bnVisionR.status==='fulfilled'?bnVisionR.value.status:'ERR'),
       'CoinGecko='+(cgR.status==='fulfilled'?cgR.value.status:'ERR'),
@@ -1199,8 +1251,11 @@ async function fetchPrice(){
     if(Array.isArray(klinesTA)&&klinesTA.length>=30){
       S.historyTA=klinesTA.map(k=>({price:parseFloat(k[4]),time:k[0],vol:parseFloat(k[5])}));
       S.ohlcTA=klinesTA.map(k=>({ts:k[0],open:parseFloat(k[1]),high:parseFloat(k[2]),low:parseFloat(k[3]),close:parseFloat(k[4])}));
+      // Cache OHLC tècnic a localStorage (TTL 15 min) — instant on reload
+      try{localStorage.setItem('sf-ohlc-ta',JSON.stringify({t:Date.now(),d:S.ohlcTA}));}catch{}
     }
     S.lastUpdated=new Date();
+    try{localStorage.setItem('sf-last-updated',S.lastUpdated.getTime());}catch{}
     updateHeader();
 
     } // cierre del bloque klines local
@@ -1508,11 +1563,31 @@ function candleSVG(data){
   </svg>`;
 }
 
+function relativeTime(date){
+  if(!date)return'';
+  const s=Math.max(0,Math.floor((Date.now()-date.getTime())/1000));
+  if(s<10)return'ara';
+  if(s<60)return'fa '+s+'s';
+  if(s<3600)return'fa '+Math.floor(s/60)+'m';
+  if(s<86400)return'fa '+Math.floor(s/3600)+'h';
+  return'fa '+Math.floor(s/86400)+'d';
+}
+function updateHeaderUpdated(){
+  const u=document.getElementById('header-updated');
+  if(!u)return;
+  if(!S.lastUpdated){u.textContent='';return;}
+  const txt=relativeTime(S.lastUpdated);
+  u.textContent='· '+txt;
+  // Marca en taronja si fa >5 min
+  const stale=(Date.now()-S.lastUpdated.getTime())>300000;
+  u.style.color=stale?'#f97316':'var(--text3)';
+}
 function updateHeader(){
   const p=document.getElementById('header-price'),ch=document.getElementById('header-change'),eu=document.getElementById('header-eur');
   if(p)p.textContent='$'+S.price.usd.toLocaleString();
   if(ch){const pos=S.change24h>=0;ch.textContent=(pos?'▲ +':'▼ ')+Math.abs(S.change24h).toFixed(2)+'%';ch.style.color=pos?'#10b981':'#ef4444';}
   if(eu&&S.price.eur>0)eu.textContent='€'+S.price.eur.toLocaleString();
+  updateHeaderUpdated();
   if(S.price.usd>0){
     const btc=parseFloat(S.conv_btc)||1;
     S.conv_btc=btc;
@@ -1839,7 +1914,7 @@ function startPriceWS(){
   if(_ws&&(_ws.readyState===0||_ws.readyState===1))return; // ya conectado
   try{
     _ws=new WebSocket('wss://stream.binance.com:9443/ws/btcusdt@miniTicker');
-    _ws.onopen=()=>{_wsRetries=0;console.log('[WS] Conectado');
+    _ws.onopen=()=>{_wsRetries=0;LOG('[WS] Conectado');
       // Indicador visual
       const d=document.getElementById('ws-dot');if(d){d.style.background='#10b981';d.title='Precio en tiempo real';}
     };
@@ -2086,12 +2161,20 @@ function renderAutoTechnicalChart(){
     gridH+=`<text x="${W-PR+3}" y="${y+3}" font-size="8" fill="#64748b" font-family="monospace">$${fmtN(Math.round(p),0)}</text>`;
   }
   let candH='';
+  const fmtTip=v=>'$'+v.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g,',');
   for(let i=0;i<n;i++){
     const c=displayCandles[i],up=c.close>=c.open,col=up?'#10b981':'#ef4444';
     const x=toX(i),yH=toY(c.high),yL=toY(c.low),yO=toY(c.open),yC=toY(c.close);
     const bT=Math.min(yO,yC),bH=Math.max(1.5,Math.abs(yO-yC));
+    const dateStr=c.ts?new Date(c.ts).toLocaleDateString('ca-ES',{day:'2-digit',month:'short',year:'numeric'}):'';
+    const chgPct=c.open>0?((c.close-c.open)/c.open*100):0;
+    const tip=`${dateStr}\nObertura:  ${fmtTip(c.open)}\nMàxim:     ${fmtTip(c.high)}\nMínim:     ${fmtTip(c.low)}\nTanc.:     ${fmtTip(c.close)}\nVar.:      ${chgPct>=0?'+':''}${chgPct.toFixed(2)}%`;
+    candH+=`<g><title>${tip}</title>`;
     candH+=`<line x1="${x}" y1="${yH}" x2="${x}" y2="${yL}" stroke="${col}" stroke-width="1" opacity=".7"/>`;
     candH+=`<rect x="${x-cW/2}" y="${bT}" width="${cW}" height="${bH}" fill="${col}" rx="1"/>`;
+    // Zona invisible més ampla per facilitar el hover
+    candH+=`<rect x="${x-Math.max(cW,4)/2}" y="${PT}" width="${Math.max(cW,4)}" height="${chartH}" fill="transparent"/>`;
+    candH+=`</g>`;
   }
   let supH='';
   for(const l of supportLevels.slice(0,3)){
@@ -2130,8 +2213,8 @@ function renderAutoTechnicalChart(){
   const svg=`<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:255px;display:block" preserveAspectRatio="none">${gridH}${candH}${supH}${resH}${trendH}${curH}${curL}${xLbl}</svg>`;
   const nearestSupport=supportLevels.length?supportLevels.reduce((a,b)=>Math.abs(a.price-currentPrice)<Math.abs(b.price-currentPrice)?a:b):null;
   const nearestResistance=resistanceLevels.length?resistanceLevels.reduce((a,b)=>Math.abs(a.price-currentPrice)<Math.abs(b.price-currentPrice)?a:b):null;
-  const upTrends=uptrend.length;
-  const downTrends=downtrend.length;
+  const hasUpTrend=!!uptrend;
+  const hasDownTrend=!!downtrend;
   const fmtComma=n=>n.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g,',');
   const legend=`
 <div style="padding:10px;background:#0f172a;border-top:1px solid #1e293b;font-size:12px;color:#94a3b8">
@@ -2143,18 +2226,24 @@ function renderAutoTechnicalChart(){
     <span><span style="color:#fbbf24;font-weight:bold">- -</span> Preu actual</span>
   </div>
   <div style="background:#1e293b;border-radius:6px;padding:8px;color:#cbd5e1;line-height:1.6">
+    <div style="font-size:10px;color:#64748b;margin-bottom:4px">💡 Passa el ratolí sobre les veles per veure OHLC i variació diària</div>
     ${nearestSupport?`<div>🟢 <b>Suport proper:</b> $${fmtComma(nearestSupport.price)} — si el preu cau fins aquí, és on podria rebotar</div>`:''}
     ${nearestResistance?`<div>🔴 <b>Resistència propera:</b> $${fmtComma(nearestResistance.price)} — barrera a superar per continuar pujant</div>`:''}
-    ${upTrends>0?`<div>📈 <b>${upTrends} canal alcista</b> detectat — els mínims estan pujant, senyal positiu</div>`:''}
-    ${downTrends>0?`<div>📉 <b>${downTrends} canal baixista</b> detectat — els màxims estan baixant, pressió venedora</div>`:''}
-    ${upTrends===0&&downTrends===0?`<div>↔️ <b>Sense tendència clara</b> detectada en els últims 90 dies</div>`:''}
+    ${hasUpTrend?`<div>📈 <b>Canal alcista</b> detectat — els mínims estan pujant, senyal positiu</div>`:''}
+    ${hasDownTrend?`<div>📉 <b>Canal baixista</b> detectat — els màxims estan baixant, pressió venedora</div>`:''}
+    ${!hasUpTrend&&!hasDownTrend?`<div>↔️ <b>Sense tendència clara</b> detectada en els últims 90 dies</div>`:''}
   </div>
 </div>`;
-  const expandBtn=`<button class="ampliar-btn" onclick="expandAutoTech()" style="align-self:flex-end;padding:3px 10px;background:#1e293b;color:#94a3b8;border:1px solid #334155;border-radius:6px;cursor:pointer;font-size:12px;margin-bottom:6px">⛶ Ampliar</button>`;
-  return`<div id="autoTechWrap" style="position:relative"><div class="card"><div style="font-size:15px;font-weight:700;margin-bottom:12px">📐 Anàlisi Tècnic Automàtic</div>${expandBtn}${svg}${legend}</div></div>`;
+  const expandBtn=`<button class="ampliar-btn" onclick="expandAutoTech(this)" style="align-self:flex-end;padding:3px 10px;background:#1e293b;color:#94a3b8;border:1px solid #334155;border-radius:6px;cursor:pointer;font-size:12px;margin-bottom:6px">⛶ Ampliar</button>`;
+  return`<div class="autoTechWrap" style="position:relative"><div class="card"><div style="font-size:15px;font-weight:700;margin-bottom:12px">📐 Anàlisi Tècnic Automàtic</div>${expandBtn}${svg}${legend}</div></div>`;
 }
-function expandAutoTech() {
-  const wrap = document.getElementById('autoTechWrap');
+function expandAutoTech(btn) {
+  // Si rebem el botó, busquem el wrap més proper. Si no, el primer visible (compatibilitat)
+  let wrap = btn ? btn.closest('.autoTechWrap') : null;
+  if (!wrap) {
+    const wraps = document.querySelectorAll('.autoTechWrap');
+    wrap = Array.from(wraps).find(w => w.offsetParent !== null) || wraps[0];
+  }
   if (!wrap) return;
 
   if (wrap._expanded) {
@@ -2191,7 +2280,7 @@ function expandAutoTech() {
     closeBtn.className = 'close-tech-btn';
     closeBtn.textContent = '✕ Tancar';
     closeBtn.style.cssText = 'align-self:flex-end;padding:6px 16px;background:#ef4444;color:white;border:none;border-radius:6px;cursor:pointer;font-size:14px;flex-shrink:0';
-    closeBtn.onclick = expandAutoTech;
+    closeBtn.onclick = function(){ expandAutoTech(closeBtn); };
     wrap.insertBefore(closeBtn, wrap.firstChild);
   }
 }
@@ -2547,7 +2636,7 @@ async function loadATM(){
       if(r.ok){
         const j=await r.json();
         const items=Array.isArray(j)?j:(j?.elements||j?.data||[]);
-        console.log('BTCMap raw count:',items.length);
+        LOG('BTCMap raw count:',items.length);
         atms=items.filter(e=>{
           const tags=e.osm_json?.tags||e.tags||{};
           return tags['payment:bitcoin']==='yes'||tags['payment:lightning']==='yes'||
@@ -2562,7 +2651,7 @@ async function loadATM(){
           let type=amenity==='atm'?'🏧 ATM':amenity==='bank'?'🏦 Banco':'🏪 Comercio';
           return{lat:elat,lng:elng,name:tags.name||tags.operator||'Punto Bitcoin',op:tags.operator||tags.brand||'',type,lightning:tags['payment:lightning']==='yes'};
         }).filter(e=>e.lat!=null&&e.lng!=null);
-        console.log('BTCMap filtered:',atms.length);
+        LOG('BTCMap filtered:',atms.length);
       }
     }catch(err){console.warn('BTCMap:',err);}
     if(atms.length===0){
@@ -2572,7 +2661,7 @@ async function loadATM(){
         if(r2.ok){
           const j2=await r2.json();
           atms=(j2.elements||[]).map(e=>({lat:e.lat,lng:e.lon,name:e.tags?.name||e.tags?.operator||'Punto Bitcoin',op:e.tags?.operator||'',type:e.tags?.amenity==='atm'?'🏧 ATM':'🏪 Comercio',lightning:e.tags?.['payment:lightning']==='yes'})).filter(e=>e.lat&&e.lng);
-          console.log('Overpass results:',atms.length);
+          LOG('Overpass results:',atms.length);
         }
       }catch(err2){console.warn('Overpass:',err2);}
     }
@@ -3688,7 +3777,7 @@ async function updateForecastBias(){
       const recent=errors.slice(0,Math.min(10,errors.length));
       const avgErr=recent.reduce((a,b)=>a+b,0)/recent.length;
       S.forecastBias=Math.max(-0.15,Math.min(0.15,avgErr)); // máx ±15% de corrección
-      console.log('[SatsFlow] Forecast bias calculado:',S.forecastBias.toFixed(3),'(n='+recent.length+')');
+      LOG('[SatsFlow] Forecast bias calculado:',S.forecastBias.toFixed(3),'(n='+recent.length+')');
     }else{
       S.forecastBias=0;
     }
@@ -3768,7 +3857,7 @@ async function mlTrain(){
     ML.trained=true;
     await ML.model.save('localstorage://sf-ml-model');
     localStorage.setItem('sf-ml-meta',JSON.stringify({accuracy:ML.accuracy,samplesUsed:ML.samplesUsed,lastTrained:ML.lastTrained}));
-    console.log('[ML] Entrenado accuracy='+ML.accuracy+'% n='+ML.samplesUsed);
+    LOG('[ML] Entrenado accuracy='+ML.accuracy+'% n='+ML.samplesUsed);
     ML.training=false;
     return{accuracy:ML.accuracy,n:ML.samplesUsed};
   }catch(e){console.error('[ML]',e);ML.training=false;return{error:e.message};}
@@ -3794,7 +3883,7 @@ async function mlInit(){
       const meta=JSON.parse(localStorage.getItem('sf-ml-meta')||'null');
       if(meta){ML.accuracy=meta.accuracy;ML.samplesUsed=meta.samplesUsed;ML.lastTrained=meta.lastTrained;}
       ML.trained=true;
-      console.log('[ML] Modelo cargado accuracy='+ML.accuracy+'%');
+      LOG('[ML] Modelo cargado accuracy='+ML.accuracy+'%');
     }else{
       await mlTrain();
     }
@@ -4446,6 +4535,63 @@ function renderForecastRangeBar(cur, bearP, baseP, bullP){
     +'</div>'
     +'</div>';
 }
+// Targeta resum de backtest amb mètriques agregades (encerts, MAE, biaix) per setmana/mes
+function renderBacktestSummary(week,month){
+  // Cap horitzó té cap predicció resolta — no mostrem res per evitar soroll
+  if((!week||week.total===0)&&(!month||month.total===0)){
+    return'<div class="card" style="background:rgba(99,102,241,.04);border:1px dashed rgba(99,102,241,.25)">'
+      +'<div style="font-size:13px;font-weight:700;margin-bottom:6px">🎯 Backtest del model</div>'
+      +'<div style="font-size:11px;color:var(--text3);line-height:1.5">Encara no hi ha prediccions resoltes (calen ≥7 dies des d\'una predicció setmanal). El model començarà a mostrar el seu encert real aquí quan el primer snapshot maduri.</div>'
+      +'</div>';
+  }
+  const accColor=a=>a==null?'#94a3b8':a>=60?'#10b981':a>=40?'#eab308':'#ef4444';
+  const accLabel=a=>a==null?'—':a>=70?'Excel·lent':a>=55?'Bo':a>=40?'Acceptable':a>=25?'Fluix':'Pobre';
+  const biasLabel=b=>{
+    if(b==null)return'';
+    if(Math.abs(b)<2)return'<span style="color:#10b981">equilibrat</span>';
+    return b>0?'<span style="color:#f97316">tendeix a quedar-se curt (real per sobre del base '+b.toFixed(1)+'%)</span>'
+              :'<span style="color:#3b82f6">tendeix a passar-se (real per sota del base '+Math.abs(b).toFixed(1)+'%)</span>';
+  };
+  const horizonCard=(label,icon,m)=>{
+    if(!m||m.total===0){
+      return'<div style="padding:12px;background:var(--bg);border-radius:10px;border:1px solid var(--border);opacity:.55">'
+        +'<div style="font-size:11px;font-weight:700;color:var(--text3);margin-bottom:4px">'+icon+' '+label+'</div>'
+        +'<div style="font-size:10px;color:var(--text3)">Sense dades resoltes encara</div>'
+        +'</div>';
+    }
+    const c=accColor(m.accuracy);
+    return'<div style="padding:12px;background:var(--bg);border-radius:10px;border:1px solid '+c+'33">'
+      +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">'
+      +'<div style="font-size:11px;font-weight:700;color:var(--text2)">'+icon+' '+label+'</div>'
+      +'<div style="font-size:9px;color:var(--text3)">'+m.total+' resolt'+(m.total===1?'':'s')+'</div>'
+      +'</div>'
+      +'<div style="display:flex;align-items:baseline;gap:6px;margin-bottom:6px">'
+      +'<div style="font-size:24px;font-weight:900;color:'+c+';line-height:1">'+m.accuracy+'%</div>'
+      +'<div style="font-size:11px;color:'+c+';font-weight:700">'+accLabel(m.accuracy)+'</div>'
+      +'</div>'
+      +'<div style="background:var(--bg3);border-radius:999px;height:5px;margin-bottom:6px">'
+      +'<div style="height:100%;border-radius:999px;background:'+c+';width:'+m.accuracy+'%"></div></div>'
+      +'<div style="font-size:10px;color:var(--text3);line-height:1.5">'
+      +'Error mitjà absolut: <b style="color:var(--text2)">'+m.mae.toFixed(1)+'%</b> '
+      +'<span style="color:var(--text3)">· '+m.hits+' dins de rang / '+m.total+'</span>'
+      +'</div>'
+      +(m.biasPct!=null?'<div style="font-size:10px;margin-top:4px">Biaix: '+biasLabel(m.biasPct)+'</div>':'')
+      +'</div>';
+  };
+  return'<div class="card" style="background:linear-gradient(135deg,rgba(16,185,129,.04),rgba(99,102,241,.04));border:1px solid rgba(99,102,241,.2)">'
+    +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">'
+    +'<div style="font-size:14px;font-weight:700">🎯 Backtest del model</div>'
+    +'<div style="font-size:10px;color:var(--text3)">precisió real sobre l\'historial</div>'
+    +'</div>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">'
+    +horizonCard('Setmanal (7d)','📅',week)
+    +horizonCard('Mensual (30d)','📆',month)
+    +'</div>'
+    +'<div style="font-size:10px;color:var(--text3);margin-top:10px;line-height:1.5">'
+    +'<b>Com es calcula:</b> per cada predicció amb prou antiguitat, comparem el preu real al cap de N dies amb el rang Bear/Base/Bull predit. <b>Encert</b> = real dins del rang. <b>Error mitjà</b> = distància en % entre real i base. Cap mètrica és garantia futura.'
+    +'</div>'
+    +'</div>';
+}
 function renderForecast(){
   try{
   const tr=t();
@@ -4663,6 +4809,7 @@ function renderForecast(){
     +'</div>'
     +'</div>'
     +mlCard
+    +'<div id="backtest-summary-container"></div>'
     +renderAutoTechnicalChart()
     +'<div class="card">'
     +'<div style="font-size:15px;font-weight:700;margin-bottom:4px">📅 Rangos por horizonte</div>'
@@ -4711,6 +4858,12 @@ function renderForecast(){
     const el=document.getElementById('pred-history-container');
     if(el)el.innerHTML=histHTML;
   }).catch(e=>console.warn('historial:',e));
+  // Resum de backtest (mètriques agregades de prediccions resoltes)
+  Promise.all([computeBacktestMetrics('week'),computeBacktestMetrics('month')]).then(([w,m])=>{
+    const el=document.getElementById('backtest-summary-container');
+    if(!el)return;
+    el.innerHTML=renderBacktestSummary(w,m);
+  }).catch(e=>console.warn('backtest:',e));
   return html;
   }catch(e){
     console.error('renderForecast error:',e);
@@ -5093,6 +5246,8 @@ async function init(){
     setInterval(async()=>{try{await Promise.all([fetchMarket(),fetchMining(),fetchETF()]);if(S.currentTab==='market')renderTab('market');}catch{}},120000);
     setInterval(async()=>{try{await fetchNews();if(S.currentTab==='news')renderTab('news');}catch{}},300000);
     setInterval(async()=>{try{await fetchBlockInfo();}catch{}},120000);
+    // Refresc del text "fa Xm" del header cada 30s (no fa fetch, només actualitza UI)
+    setInterval(updateHeaderUpdated,30000);
     // Snapshot diario de predicciones
     try{scheduleDailySnapshot();}catch(e){console.warn('scheduleDailySnapshot:',e);}
   }catch(e){
@@ -5134,7 +5289,7 @@ function _checkZombie(attempt) {
   }
   // Tras 3 intentos (20s total) precio sigue a 0
   const reloadCount = parseInt(sessionStorage.getItem('sf-reloads')||'0');
-  console.log('[SatsFlow] Zombie tras 20s, recarga #' + reloadCount);
+  LOG('[SatsFlow] Zombie tras 20s, recarga #' + reloadCount);
   if (reloadCount < 3) {
     sessionStorage.setItem('sf-reloads', reloadCount + 1);
     _saveTS();
@@ -5184,7 +5339,7 @@ document.addEventListener('visibilitychange', () => {
   if (inactiveH > 6) {
     setTimeout(()=>{
       if(!S.price||S.price.usd===0){
-        console.log('[SatsFlow] >6h inactiva + precio=0 tras reintento — recargando');
+        LOG('[SatsFlow] >6h inactiva + precio=0 tras reintento — recargando');
         _saveTS();
         window.location.reload();
       }
@@ -5199,7 +5354,7 @@ document.addEventListener('visibilitychange', () => {
 // Sense aquest handler, l'app pot quedar congelada amb dades antigues.
 window.addEventListener('pageshow', (e) => {
   if (!e.persisted) return; // càrrega normal, no bfcache
-  console.log('[SatsFlow] Restaurat des de bfcache → re-fetch');
+  LOG('[SatsFlow] Restaurat des de bfcache → re-fetch');
   S._priceFetchedAt = 0;
   if (!_ws || _ws.readyState === 2 || _ws.readyState === 3) { startPriceWS(); }
   fetchPrice().then(() => renderCurrentTab()).catch(() => { try { renderCurrentTab(); } catch {} });
