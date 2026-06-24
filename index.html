@@ -2521,6 +2521,27 @@ function calcRainbow(price){
   }
   return{bands:priceBands,currentBand,center};
 }
+function calcPiCycle(){
+  const hist=S.historyTA&&S.historyTA.length>S.history.length?S.historyTA:S.history;
+  if(!hist||hist.length<30)return null;
+  const prices=hist.map(h=>h.price);
+  const n=prices.length;
+  const sma=days=>prices.slice(-days).reduce((a,b)=>a+b,0)/Math.min(days,n);
+  const ma111=sma(111);
+  const ma350x2=sma(Math.min(350,n))*2;
+  const distance=((ma111-ma350x2)/ma350x2)*100;
+  // Historic convergence trend: compare last 7 days of gap
+  const ma111prev=prices.slice(-Math.min(118,n),-7).reduce((a,b)=>a+b,0)/Math.min(111,n-7);
+  const ma350x2prev=prices.slice(-Math.min(357,n),-7).reduce((a,b)=>a+b,0)/Math.min(350,n-7)*2;
+  const prevDist=((ma111prev-ma350x2prev)/ma350x2prev)*100;
+  const converging=distance>prevDist; // gap closing (moving toward crossover)
+  let status,statusColor,statusIcon,risk;
+  if(ma111>=ma350x2){status='CREUAMENT — Possible top de cicle';statusColor='#ef4444';statusIcon='🔴';risk=100;}
+  else if(distance>-5){status='Molt a prop del creuament';statusColor='#f97316';statusIcon='🟠';risk=85;}
+  else if(distance>-20){status='Convergint cap al top';statusColor='#eab308';statusIcon='🟡';risk=50;}
+  else{status='Lluny del top de cicle';statusColor='#10b981';statusIcon='🟢';risk=Math.max(5,Math.round(100+distance*2));}
+  return{ma111:Math.round(ma111),ma350x2:Math.round(ma350x2),distance,converging,status,statusColor,statusIcon,risk,hasEnoughData:n>=350};
+}
 function calcPowerLaw(price){
   const genesis=new Date('2009-01-03').getTime();
   const days=(Date.now()-genesis)/(1000*60*60*24);
@@ -5312,7 +5333,47 @@ function renderCyclesTab(){
       +'<div style="font-size:10px;color:var(--text3);margin-top:8px">⚠️ Només orientatiu. Model estadístic, no garantia de cap preu futur.</div>'
       +'</div>';
   }
-  return rainbowHTML+powerLawHTML+renderCycles();
+  // ── Millora #2: Pi Cycle Top Indicator ──
+  let piHTML='';
+  const pi=calcPiCycle();
+  if(pi){
+    const fmt=p=>'$'+(p>=1000?(p/1000).toFixed(1)+'K':p);
+    const distAbs=Math.abs(pi.distance).toFixed(1);
+    const riskBarColor=pi.risk>=80?'#ef4444':pi.risk>=50?'#f97316':pi.risk>=25?'#eab308':'#10b981';
+    piHTML='<div class="card">'
+      +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">'
+      +'<div style="font-size:15px;font-weight:700">🔵 Pi Cycle Top</div>'
+      +'<span style="font-size:16px">'+pi.statusIcon+'</span>'
+      +'</div>'
+      +'<div style="font-size:11px;color:var(--text3);margin-bottom:12px">Creuament MA111 vs MA350×2 — ha encertat tots els tops de cicle BTC (2013, 2017, 2021) amb pocs dies de marge.</div>'
+      +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">'
+      +'<div style="text-align:center;padding:10px;background:var(--bg);border-radius:8px;border:1px solid rgba(167,139,250,.3)">'
+      +'<div style="font-size:9px;color:var(--text3);margin-bottom:3px">MA 111 dies</div>'
+      +'<div style="font-size:15px;font-weight:800;color:#a78bfa">'+fmt(pi.ma111)+'</div>'
+      +'</div>'
+      +'<div style="text-align:center;padding:10px;background:var(--bg);border-radius:8px;border:1px solid rgba(59,130,246,.3)">'
+      +'<div style="font-size:9px;color:var(--text3);margin-bottom:3px">MA 350 dies × 2</div>'
+      +'<div style="font-size:15px;font-weight:800;color:#3b82f6">'+fmt(pi.ma350x2)+'</div>'
+      +'</div>'
+      +'</div>'
+      +'<div style="margin-bottom:10px">'
+      +'<div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text3);margin-bottom:4px">'
+      +'<span>Risc de top de cicle</span>'
+      +'<span style="font-weight:700;color:'+riskBarColor+'">'+pi.risk+'%</span>'
+      +'</div>'
+      +'<div style="background:var(--bg3);border-radius:999px;height:8px;overflow:hidden">'
+      +'<div style="height:100%;border-radius:999px;background:'+riskBarColor+';width:'+pi.risk+'%;transition:width 1s"></div>'
+      +'</div>'
+      +'</div>'
+      +'<div style="padding:10px;background:'+pi.statusColor+'0d;border:1px solid '+pi.statusColor+'33;border-radius:8px;margin-bottom:8px">'
+      +'<div style="font-size:11px;font-weight:700;color:'+pi.statusColor+'">'+pi.status+'</div>'
+      +'<div style="font-size:10px;color:var(--text3);margin-top:3px">Distància: MA111 és '+distAbs+'% '+(pi.distance<0?'per sota de':'per sobre de')+' MA350×2 · '+(pi.converging?'⚠️ Convergint':'✅ Divergint')+'</div>'
+      +'</div>'
+      +(!pi.hasEnoughData?'<div style="font-size:10px;color:#eab308;padding:6px 8px;background:rgba(234,179,8,.08);border-radius:6px">⚠️ Idealment calen 350+ dies de dades. Els valors actuals usen '+Math.min(S.history.length,S.historyTA?.length||0)+' dies.</div>':'')
+      +'<div style="font-size:10px;color:var(--text3);margin-top:8px">⚠️ Indicador de tendència, no garantia. Sempre complementa amb altres senyals.</div>'
+      +'</div>';
+  }
+  return rainbowHTML+powerLawHTML+piHTML+renderCycles();
 }
 function renderDCA(){
   const tr=t();
