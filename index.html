@@ -4913,6 +4913,55 @@ function renderTechnicalOutlook(){
     +'<div style="font-size:10px;color:var(--text3);text-align:center">📅 Basat en els últims 90 dies · Actualitzat en temps real</div>'
     +'</div>';
 }
+function renderFanChart(currentPrice, horizons){
+  const hist=S.history.slice(-30);
+  if(!hist||hist.length<5)return'';
+  const fanDays=S._fanDays||30;
+  const h=horizons.find(x=>x.days===fanDays)||horizons[1];
+  if(!h||!h.bear||!h.bull)return'';
+  const allPx=hist.map(p=>p.price).concat([h.bear,h.base,h.bull]);
+  const pMin=Math.min(...allPx)*0.97, pMax=Math.max(...allPx)*1.03;
+  if(pMax<=pMin)return'';
+  const W=300,H=110,PX=6,PY=10,w=W-PX*2,hh=H-PY*2;
+  const nH=hist.length,nF=Math.min(fanDays,60);
+  const tot=nH+nF;
+  const xH=i=>(PX+i/(tot-1)*w).toFixed(1);
+  const xE=(PX+w).toFixed(1);
+  const yP=p=>(PY+(1-(p-pMin)/(pMax-pMin))*hh).toFixed(1);
+  const histPts=hist.map((pt,i)=>xH(i)+','+yP(pt.price)).join(' ');
+  const lX=xH(nH-1),lY=yP(currentPrice);
+  const fmtK=p=>p>=1e6?'$'+(p/1e6).toFixed(1)+'M':p>=1000?'$'+(p/1000).toFixed(0)+'K':'$'+p;
+  const horizBtns=horizons.map(ho=>{
+    const act=ho.days===fanDays;
+    return '<button onclick="S._fanDays='+ho.days+';renderTab(\'forecast\')" style="padding:3px 9px;font-size:9px;font-weight:'+(act?'800':'400')+';border-radius:6px;border:1px solid '+(act?'#3b82f6':'var(--border)')+';background:'+(act?'rgba(59,130,246,.15)':'var(--bg)')+';color:'+(act?'#3b82f6':'var(--text3)')+';cursor:pointer">'+ho.icon+' '+ho.label+'</button>';
+  }).join('');
+  const bullY=yP(h.bull),baseY=yP(h.base),bearY=yP(h.bear);
+  return '<div style="margin-bottom:14px">'
+    +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">'
+    +'<div style="font-size:11px;color:var(--text3);font-weight:600">📈 Ventall de projeccions</div>'
+    +'<div style="display:flex;gap:4px">'+horizBtns+'</div>'
+    +'</div>'
+    +'<div style="overflow:hidden;border-radius:10px;border:1px solid var(--border);background:#0a1628">'
+    +'<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:120px;display:block" preserveAspectRatio="none">'
+    +'<path d="M'+lX+','+lY+' L'+xE+','+bullY+' L'+xE+','+bearY+' Z" fill="rgba(59,130,246,.10)" stroke="none"/>'
+    +'<polyline points="'+histPts+'" fill="none" stroke="#f97316" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>'
+    +'<line x1="'+lX+'" y1="'+lY+'" x2="'+xE+'" y2="'+bearY+'" stroke="#ef4444" stroke-width="1.5" stroke-dasharray="5 3" stroke-linecap="round"/>'
+    +'<line x1="'+lX+'" y1="'+lY+'" x2="'+xE+'" y2="'+baseY+'" stroke="#eab308" stroke-width="1.5" stroke-dasharray="5 3" stroke-linecap="round"/>'
+    +'<line x1="'+lX+'" y1="'+lY+'" x2="'+xE+'" y2="'+bullY+'" stroke="#10b981" stroke-width="1.5" stroke-dasharray="5 3" stroke-linecap="round"/>'
+    +'<line x1="'+lX+'" y1="'+PY+'" x2="'+lX+'" y2="'+(H-PY)+'" stroke="rgba(255,255,255,.2)" stroke-width="1" stroke-dasharray="3 3"/>'
+    +'<text x="'+(+xE-3)+'" y="'+(+bullY-3)+'" text-anchor="end" fill="#10b981" font-size="9" font-weight="700">'+fmtK(h.bull)+'</text>'
+    +'<text x="'+(+xE-3)+'" y="'+(+baseY-3)+'" text-anchor="end" fill="#eab308" font-size="9" font-weight="700">'+fmtK(h.base)+'</text>'
+    +'<text x="'+(+xE-3)+'" y="'+(+bearY+11)+'" text-anchor="end" fill="#ef4444" font-size="9" font-weight="700">'+fmtK(h.bear)+'</text>'
+    +'<text x="'+(+lX-3)+'" y="'+(PY+9)+'" text-anchor="end" fill="rgba(148,163,184,.5)" font-size="7">ARA</text>'
+    +'</svg></div>'
+    +'<div style="display:flex;justify-content:center;gap:14px;margin-top:5px">'
+    +'<span style="font-size:9px;color:#f97316">— Historial</span>'
+    +'<span style="font-size:9px;color:#10b981">— Alcista</span>'
+    +'<span style="font-size:9px;color:#eab308">— Base</span>'
+    +'<span style="font-size:9px;color:#ef4444">— Baixista</span>'
+    +'</div>'
+    +'</div>';
+}
 function renderForecast(){
   try{
   const tr=t();
@@ -5156,6 +5205,7 @@ function renderForecast(){
     +'<div class="card">'
     +'<div style="font-size:15px;font-weight:700;margin-bottom:4px">📅 Rangos por horizonte</div>'
     +'<div style="font-size:11px;color:var(--text3);margin-bottom:14px">Precio actual: <b style="color:#f97316;font-size:13px">$'+Math.round(price).toLocaleString()+'</b>'+(ta?' · RSI: <b style="color:var(--text)">'+ta.lastRSI.toFixed(0)+'</b> · Señal TA: <b style="color:var(--text)">'+ta.signal+'</b>':'')+'</div>'
+    +renderFanChart(price,horizons)
     +horizonCards
     +'</div>'
     +'<div style="background:rgba(99,102,241,.08);border:1px solid rgba(99,102,241,.3);border-radius:12px;padding:12px">'
