@@ -2521,6 +2521,28 @@ function calcRainbow(price){
   }
   return{bands:priceBands,currentBand,center};
 }
+function calcPowerLaw(price){
+  const genesis=new Date('2009-01-03').getTime();
+  const days=(Date.now()-genesis)/(1000*60*60*24);
+  const log10d=Math.log10(days);
+  const A=5.84;
+  // Three lines: historical floor (bear bottoms), fair value center, historical cap (bull tops)
+  const floor=Math.pow(10,A*log10d-18.10);
+  const fair=Math.pow(10,A*log10d-17.01);
+  const cap=Math.pow(10,A*log10d-16.10);
+  // Log-linear position within corridor [0=floor, 100=cap]
+  const logFloor=A*log10d-18.10, logCap=A*log10d-16.10;
+  const logPrice=Math.log10(price);
+  const position=Math.max(0,Math.min(100,Math.round((logPrice-logFloor)/(logCap-logFloor)*100)));
+  const ratio=price/fair;
+  let zone,zoneColor;
+  if(position<20){zone='Subvalorat (zona de compra màxima)';zoneColor='#3b82f6';}
+  else if(position<40){zone='Per sota del fair value';zoneColor='#22c55e';}
+  else if(position<60){zone='Al voltant del fair value';zoneColor='#84cc16';}
+  else if(position<80){zone='Per sobre del fair value';zoneColor='#eab308';}
+  else{zone='Sobrevalorat (zona de distribució)';zoneColor='#ef4444';}
+  return{floor:Math.round(floor),fair:Math.round(fair),cap:Math.round(cap),ratio,position,zone,zoneColor};
+}
 function analyzeSentiment(title){
   const txt=title.toLowerCase();
   const bull=['sube','subida','máximo','record','supera','alcanza','adopción','aprueba','compra','acumula','bull','rally','verde','crece','positivo','boom','logro','avance','dispara','eleva','histórico','etf','institucional'];
@@ -5253,7 +5275,44 @@ function renderCyclesTab(){
       +'<div style="font-size:10px;color:var(--text3);margin-top:8px">'+tr.rainbowDisclaimer+'</div>'
       +'</div></div>';
   }
-  return rainbowHTML+renderCycles();
+  // ── Millora #3: Power Law Corridor ──
+  let powerLawHTML='';
+  if(S.price.usd>0){
+    const pl=calcPowerLaw(S.price.usd);
+    const fmtPL=p=>'$'+(p>=1e6?(p/1e6).toFixed(2)+'M':p>=1000?(p/1000).toFixed(1)+'K':p.toFixed(0));
+    const barPct=pl.position;
+    const barGradient='linear-gradient(90deg,#3b82f6 0%,#22c55e 25%,#84cc16 45%,#eab308 70%,#ef4444 100%)';
+    powerLawHTML='<div class="card">'
+      +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">'
+      +'<div style="font-size:15px;font-weight:700">📐 Power Law Corridor</div>'
+      +'<span style="font-size:10px;font-weight:700;padding:2px 9px;border-radius:999px;background:'+pl.zoneColor+'22;color:'+pl.zoneColor+'">'+pl.position+'%</span>'
+      +'</div>'
+      +'<div style="font-size:11px;color:var(--text3);margin-bottom:14px">Regressió log-log des del bloc gènesi (2009). Model secular independent del cicle halving.</div>'
+      +'<div style="position:relative;height:10px;border-radius:999px;overflow:hidden;background:'+barGradient+';margin-bottom:22px">'
+      +'<div style="position:absolute;left:'+barPct+'%;top:-2px;transform:translateX(-50%);width:4px;height:14px;background:white;border-radius:2px;box-shadow:0 0 4px rgba(0,0,0,.5)"></div>'
+      +'</div>'
+      +'<div style="display:flex;justify-content:space-between;font-size:9px;color:var(--text3);margin-top:-18px;margin-bottom:14px">'
+      +'<span>Suport (0%)</span><span>Fair value (50%)</span><span>Resistència (100%)</span>'
+      +'</div>'
+      +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:12px">'
+      +[
+        {l:'Suport (floor)',v:fmtPL(pl.floor),c:'#3b82f6'},
+        {l:'Fair Value',v:fmtPL(pl.fair),c:'#84cc16'},
+        {l:'Resistència (cap)',v:fmtPL(pl.cap),c:'#ef4444'},
+      ].map(x=>'<div style="text-align:center;padding:8px 4px;background:var(--bg);border-radius:8px;border:1px solid '+x.c+'33">'
+        +'<div style="font-size:9px;color:var(--text3);margin-bottom:3px">'+x.l+'</div>'
+        +'<div style="font-size:13px;font-weight:800;color:'+x.c+'">'+x.v+'</div>'
+        +'</div>'
+      ).join('')
+      +'</div>'
+      +'<div style="padding:10px;background:'+pl.zoneColor+'0d;border:1px solid '+pl.zoneColor+'33;border-radius:8px">'
+      +'<div style="font-size:11px;font-weight:700;color:'+pl.zoneColor+';margin-bottom:2px">📍 Posició actual: '+pl.zone+'</div>'
+      +'<div style="font-size:10px;color:var(--text3)">Preu actual '+pl.ratio.toFixed(2)+'x el fair value · Posició '+pl.position+'% del corredor</div>'
+      +'</div>'
+      +'<div style="font-size:10px;color:var(--text3);margin-top:8px">⚠️ Només orientatiu. Model estadístic, no garantia de cap preu futur.</div>'
+      +'</div>';
+  }
+  return rainbowHTML+powerLawHTML+renderCycles();
 }
 function renderDCA(){
   const tr=t();
