@@ -4999,6 +4999,27 @@ function renderForecast(){
       }).join('')
       +'</div>';
   }).join('');
+  // ── Millora #4: Top factors extrems del dia ──
+  const extremeFactors=[...factors].sort((a,b)=>Math.abs(b.score)-Math.abs(a.score)).slice(0,5).filter(f=>Math.abs(f.score)>=0.06);
+  const extremeHTML=extremeFactors.length>0
+    ?'<div style="margin-bottom:14px;padding:12px;background:rgba(99,102,241,.06);border:1px solid rgba(99,102,241,.2);border-radius:10px">'
+      +'<div style="font-size:11px;font-weight:700;color:#818cf8;margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">⚡ Senyals extrems avui</div>'
+      +'<div style="display:flex;flex-direction:column;gap:5px">'
+      +extremeFactors.map(f=>{
+        const col=f.score>0?'#10b981':'#ef4444';
+        const icon=Math.abs(f.score)>=0.12?'🔥':'⚡';
+        const pcts=(f.score>=0?'+':'')+Math.round(f.score*100)+'pts';
+        return '<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:'+col+'0d;border:1px solid '+col+'33;border-radius:8px">'
+          +'<span>'+icon+'</span>'
+          +'<div style="flex:1;min-width:0">'
+          +'<div style="font-size:11px;font-weight:700;color:'+col+'">'+f.name+'</div>'
+          +'<div style="font-size:10px;color:var(--text3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:220px">'+f.desc+'</div>'
+          +'</div>'
+          +'<div style="font-size:12px;font-weight:800;color:'+col+';flex-shrink:0">'+pcts+'</div>'
+          +'</div>';
+      }).join('')
+      +'</div></div>'
+    :'';
   const onChainBadge=OC.loaded
     ?'<span style="font-size:10px;color:#10b981;font-weight:600">✅ Datos on-chain en tiempo real</span>'
     :'<span style="font-size:10px;color:#eab308;font-weight:600"><span class="spin" style="font-size:10px">⏳</span> Cargando datos on-chain...</span>';
@@ -5117,6 +5138,7 @@ function renderForecast(){
     +'</div>'
     +'<div class="card">'
     +'<div style="font-size:15px;font-weight:700;margin-bottom:14px">🧩 Factores del modelo</div>'
+    +extremeHTML
     +factorsHTML
     +'</div>'
     +'<div class="card" style="background:var(--bg)">'
