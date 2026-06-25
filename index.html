@@ -2540,20 +2540,22 @@ function calcCycleScore(){
     score+=rbScore;
     comps.push({n:'Rainbow Chart',v:rb.currentBand.label,d:rbScore});
   }
-  // 3. MVRV-Z Score (OC.mvrvZ)
-  if(OC.mvrvZ!==null&&OC.mvrvZ!==undefined){
-    const mz=OC.mvrvZ;
-    const mzD=mz<0?12:mz<2?5:mz<4?-5:mz<6?-14:-22;
+  // 3. MVRV-Z Score — OC.mvrvZ és {value, signal}, no un número directe
+  if(OC.mvrvZ&&typeof OC.mvrvZ.value==='number'&&isFinite(OC.mvrvZ.value)){
+    const mz=OC.mvrvZ.value,sig=OC.mvrvZ.signal;
+    const mzD=sig==='extreme_undervalued'?15:sig==='undervalued'?8:sig==='fair_value'?0:sig==='overvalued'?-12:-20;
     score+=mzD;comps.push({n:'MVRV-Z',v:mz.toFixed(2),d:mzD});
   }
-  // 4. Puell Multiple (OC.puellMultiple)
-  if(OC.puellMultiple!==null&&OC.puellMultiple!==undefined){
-    const pm=OC.puellMultiple;
-    const pmD=pm<0.5?12:pm<1?5:pm<2?0:pm<4?-8:-18;
-    score+=pmD;comps.push({n:'Puell Multiple',v:pm.toFixed(2),d:pmD});
+  // 4. Puell proxy — OC.puellMultiple és {signal, hashChange, ...}, no un número
+  if(OC.puellMultiple&&OC.puellMultiple.signal){
+    const{signal,hashChange}=OC.puellMultiple;
+    const pmD=signal==='miner_capitulation'?-15:signal==='miner_stress'?-5:signal==='miner_accumulation'?8:signal==='miner_confidence'?5:0;
+    score+=pmD;
+    const chStr=typeof hashChange==='number'&&isFinite(hashChange)?(hashChange>=0?'+':'')+hashChange.toFixed(1)+'%':signal;
+    comps.push({n:'Puell proxy',v:chStr,d:pmD});
   }
   // 5. Hashrate trend (OC.hashrate.change30d)
-  if(OC.hashrate){
+  if(OC.hashrate&&typeof OC.hashrate.change30d==='number'&&isFinite(OC.hashrate.change30d)){
     const ch=OC.hashrate.change30d;
     const hrD=ch>10?8:ch>3?4:ch>-3?0:ch>-10?-4:-8;
     score+=hrD;comps.push({n:'Hashrate 30d',v:(ch>=0?'+':'')+ch.toFixed(1)+'%',d:hrD});
@@ -5473,7 +5475,7 @@ function renderCyclesTab(){
       +'</div>'
       +'<div style="padding:10px;background:'+pl.zoneColor+'0d;border:1px solid '+pl.zoneColor+'33;border-radius:8px">'
       +'<div style="font-size:11px;font-weight:700;color:'+pl.zoneColor+';margin-bottom:2px">📍 Posició actual: '+pl.zone+'</div>'
-      +'<div style="font-size:10px;color:var(--text3)">Preu actual '+pl.ratio.toFixed(2)+'x el fair value · Posició '+pl.position+'% del corredor</div>'
+      +'<div style="font-size:10px;color:var(--text3)">Preu actual '+(isFinite(pl.ratio)?pl.ratio.toFixed(2):'—')+'x el fair value · Posició '+pl.position+'% del corredor</div>'
       +'</div>'
       +'<div style="font-size:10px;color:var(--text3);margin-top:8px">⚠️ Només orientatiu. Model estadístic, no garantia de cap preu futur.</div>'
       +'</div>';
