@@ -4097,7 +4097,24 @@ async function updateForecastBias(){
 /* ══════ ML: TensorFlow.js · Ajuste adaptativo de pesos ══════ */
 const ML={model:null,trained:null,training:false,accuracy:null,samplesUsed:0,lastTrained:null,blend:0.40,lastError:null,diag:null};
 
-function mlRender(){if(S.currentTab==='cycles')renderTab('cycles');else if(S.currentTab==='forecast')renderTab('forecast');}
+// Refresca el panell ML. Per defecte només substitueix la targeta (#ml-card):
+// renderTab() reescriu l'innerHTML de tota la pestanya, cosa que provoca un flaix
+// i torna l'scroll a dalt — feia l'efecte que el botó "Entrenar ahora" no feia res.
+// Amb full=true (els pesos han canviat) sí que cal re-renderitzar, però conservant l'scroll.
+function mlRender(full){
+  const card=document.getElementById('ml-card');
+  if(!full&&card&&S._mlW){
+    card.outerHTML=renderMLCard(S._mlW.wTA,S._mlW.wOC,S._mlW.wMacro);
+    return;
+  }
+  const tab=S.currentTab==='cycles'?'cycles':S.currentTab==='forecast'?'forecast':null;
+  if(!tab)return;
+  const sc=document.scrollingElement||document.documentElement;
+  const y=sc.scrollTop;
+  renderTab(tab);
+  sc.scrollTop=y;
+  setTimeout(()=>{sc.scrollTop=y;},0);
+}
 
 // Carrega tfjs (una sola vegada) i força el backend CPU.
 // El model és minúscul (10→16→8→3): la CPU entrena en ~0.5s contra ~3s amb WebGL
@@ -4246,18 +4263,91 @@ function mlGetWeights(ctx){
 async function mlRetrainUI(){
   if(ML.training)return;
   // training=true abans del render: evita que renderForecast dispari mlInit en paral·lel
+  // dispose() abans de descartar-lo: si no, les variables del model antic segueixen
+  // registrades a l'engine de tfjs i crear-ne un de nou peta amb
+  // "Variable with name dense_Dense1/bias was already registered".
+  try{if(ML.model&&ML.model.dispose)ML.model.dispose();}catch(e){console.warn('[ML] dispose:',e);}
   ML.training=true;ML.model=null;ML.trained=null;ML.lastError=null;
   mlRender();
-  try{await mlEnsureTF();}catch(e){ML.training=false;ML.trained=false;ML.lastError='tf_load_fail';mlRender();showNotif('🧠 SatsFlow','No s\'ha pogut carregar TensorFlow.js. Comprova la connexió.');return;}
+  // fit() amb yieldEvery:'never' bloqueja el fil principal fins que acaba; sense
+  // aquesta pausa (macrotasca) el navegador no arriba a pintar l'estat "Entrenando…"
+  // i el clic sembla no tenir cap efecte.
+  await new Promise(r=>setTimeout(r,60));
+  try{await mlEnsureTF();}catch(e){ML.training=false;ML.trained=false;ML.lastError='tf_load_fail';mlRender();return;}
   try{await tf.io.removeModel('localstorage://sf-ml-model');}catch{}
   try{localStorage.removeItem('sf-ml-meta');}catch{}
   ML.training=false; // mlTrain el torna a activar immediatament
   const r=await mlTrain();
-  mlRender();
-  if(r&&r.error==='insufficient')showNotif('🧠 SatsFlow','Falten dades: '+(r.n||0)+' prediccions útils de 5 necessàries.');
-  else if(r&&r.error==='train_timeout')showNotif('🧠 SatsFlow','L\'entrenament s\'ha bloquejat en aquest dispositiu.');
-  else if(r&&r.error)showNotif('🧠 SatsFlow','Error entrenant el model: '+r.error);
-  else if(r&&r.accuracy!=null)showNotif('🧠 SatsFlow','Model entrenat: '+r.accuracy+'% precisió amb '+r.n+' mostres.');
+  // Només si ha entrenat canvien els pesos del forecast i cal re-renderitzar tot;
+  // si ha fallat, n'hi ha prou d'actualitzar la targeta amb el motiu.
+  mlRender(!!(r&&r.accuracy!=null));
+  const card=document.getElementById('ml-card');
+  if(card&&card.scrollIntoView)card.scrollIntoView({block:'nearest',behavior:'smooth'});
+}
+
+
+// Targeta del panell ML. Viu fora de renderForecast perque mlRender() la pugui
+// refrescar sola, sense reconstruir tota la pestanya (que provocava un flaix i
+// feia saltar l scroll a dalt, com si el boto no fes res).
+function renderMLCard(wTA,wOC,wMacro){
+  const mlDays=ML.lastTrained?Math.floor((Date.now()-ML.lastTrained)/86400000):null;
+  const mlAgeStr=mlDays===null?'–':mlDays===0?'hoy':mlDays===1?'ayer':mlDays+'d atrás';
+  const mlD=ML.diag;
+  const mlWhy=ML.lastError==='tf_load_fail'
+    ?'No se pudo cargar TensorFlow.js (¿sin conexión o CDN bloqueado?). Reintenta con red.'
+    :ML.lastError==='train_timeout'
+      ?'El entrenamiento se bloqueó en este dispositivo. Pulsa para reintentar.'
+      :(ML.lastError&&ML.lastError!=='insufficient')
+        ?'Error entrenando el modelo: '+ML.lastError
+        :'Necesita ≥5 predicciones con 7+ días de antigüedad.'
+          +(mlD?' Ahora: <b>'+mlD.resolved+' útiles</b> de '+mlD.aged+' con 7+ días ('+mlD.total+' guardadas).'
+            +(mlD.aged>mlD.resolved?' Faltan '+(mlD.aged-mlD.resolved)+' por no tener precio real a 7 días.':''):'');
+  // Només la càrrega inicial (encara no sabem res i no s'està entrenant) ensenya la
+  // targeta buida: si no, en clicar "Entrenar ahora" el botó desapareixia enmig de
+  // l'entrenament i semblava que el clic no hagués fet res.
+  return (ML.trained===null&&!ML.training)
+    ?'<div class="card" id="ml-card" style="border:1px solid rgba(167,139,250,.2);background:rgba(167,139,250,.03)">'
+      +'<div style="display:flex;justify-content:space-between;align-items:center">'
+      +'<div style="font-size:14px;font-weight:700">🧠 ML adaptativo</div>'
+      +'<span style="font-size:10px;color:#6b7280"><span class="spin">⚙️</span> Iniciando...</span>'
+      +'</div></div>'
+    :'<div class="card" id="ml-card" style="border:1px solid rgba(167,139,250,'+(ML.trained?'.3':'.15')+');background:rgba(167,139,250,'+(ML.trained?'.05':'.02')+')">'
+      +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">'
+      +'<div style="font-size:14px;font-weight:700">🧠 ML adaptativo</div>'
+      +(ML.training
+        ?'<span style="font-size:10px;color:#f97316"><span class="spin">⚙️</span> Entrenando...</span>'
+        :ML.trained
+          ?'<span style="font-size:10px;background:rgba(16,185,129,.15);color:#10b981;padding:2px 8px;border-radius:999px;font-weight:700">● Activo</span>'
+          :(ML.lastError&&ML.lastError!=='insufficient')
+            ?'<span style="font-size:10px;color:#ef4444">⚠️ Error</span>'
+            :'<span style="font-size:10px;color:#6b7280">Sin datos suficientes</span>')
+      +'</div>'
+      +(ML.training
+        ?'<div style="font-size:11px;color:var(--text2);line-height:1.5;margin-bottom:10px">Entrenando con el historial de predicciones… tarda un par de segundos.</div>'
+        :ML.trained
+        ?'<div style="font-size:11px;color:var(--text2);line-height:1.5;margin-bottom:10px">TensorFlow.js aprende qué categorías predicen mejor el precio real. Pesos ajustados al <b>'+Math.round(ML.blend*100)+'%</b> según el historial.</div>'
+         +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:10px">'
+         +[{l:'Precisión',v:ML.accuracy+'%',c:'#a78bfa'},{l:'Muestras',v:ML.samplesUsed,c:'#60a5fa'},{l:'Entrenado',v:mlAgeStr,c:'#34d399'}].map(x=>
+           '<div style="text-align:center;padding:8px 4px;background:var(--bg);border-radius:8px">'
+           +'<div style="font-size:9px;color:var(--text3);margin-bottom:3px">'+x.l+'</div>'
+           +'<div style="font-size:14px;font-weight:800;color:'+x.c+'">'+x.v+'</div>'
+           +'</div>'
+         ).join('')
+         +'</div>'
+         +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;margin-bottom:10px">'
+         +[{l:'Técnico',w:wTA},{l:'On-chain',w:wOC},{l:'Macro',w:wMacro}].map(x=>{
+           const pct=Math.round(x.w*100);
+           return '<div style="background:var(--bg);border-radius:6px;padding:6px 8px">'
+             +'<div style="font-size:9px;color:var(--text3);margin-bottom:3px">'+x.l+'</div>'
+             +'<div style="background:var(--bg3);border-radius:999px;height:4px;margin-bottom:3px">'
+             +'<div style="height:100%;border-radius:999px;background:#a78bfa;width:'+pct+'%"></div></div>'
+             +'<div style="font-size:11px;font-weight:800;color:#a78bfa">'+pct+'%</div>'
+             +'</div>';
+         }).join('')
+         +'</div>'
+        :'<div style="font-size:11px;color:var(--text3);margin-bottom:10px;line-height:1.5">'+mlWhy+'</div>')
+      +'<button onclick="mlRetrainUI()" '+(ML.training?'disabled ':'')+'style="width:100%;padding:8px;background:rgba(167,139,250,.12);border:1px solid rgba(167,139,250,.4);border-radius:8px;color:#a78bfa;font-size:12px;font-weight:600;cursor:pointer">🔄 '+(ML.training?'Entrenando...':(ML.trained?'Reentrenar modelo':'Entrenar ahora'))+'</button>'
+      +'</div>';
 }
 
 function calcForecast(currentPrice){
@@ -5056,7 +5146,7 @@ function renderForecast(){
   if(S.history.length<10)return'<div class="card" style="text-align:center;padding:40px;color:var(--text3)"><span class="spin">📊</span><br><br>'+tr.forecastLoading+'<br><small style="color:var(--text3);font-size:11px">'+tr.forecastWaitHist+'</small></div>';
   // ── MEJORA 3: Calcular sesgo histórico de forma asíncrona si aún no está cacheado
   if(S.forecastBias===undefined){S.forecastBias=0;updateForecastBias().then(()=>{if(S.currentTab==='cycles')renderTab('cycles');else if(S.currentTab==='forecast')renderTab('forecast');});}
-  if(ML.trained===null&&!ML.training){mlInit().then(()=>{if(S.currentTab==='cycles')renderTab('cycles');else if(S.currentTab==='forecast')renderTab('forecast');});}
+  if(ML.trained===null&&!ML.training){mlInit().then(()=>mlRender(ML.trained===true));}
   const{horizons,factors,netScore,taTotal,onChainTotal,macroTotal,ta,regime,regimeDesc,wTA,wOC,wMacro,asymBull,asymBear,divergenceMult,divergenceNote,realVol,biasFix,mlActive}=calcForecast(price);
   if(!OC.loaded)fetchOnChain();
   // Formateja milers amb 1 decimal per evitar col·lisions visuals (p.ex. $74.0K vs $74.1K)
@@ -5201,60 +5291,9 @@ function renderForecast(){
   const onChainBadge=OC.loaded
     ?'<span style="font-size:10px;color:#10b981;font-weight:600">✅ Datos on-chain en tiempo real</span>'
     :'<span style="font-size:10px;color:#eab308;font-weight:600"><span class="spin" style="font-size:10px">⏳</span> Cargando datos on-chain...</span>';
-  // ── Panel ML ──
-  const mlDays=ML.lastTrained?Math.floor((Date.now()-ML.lastTrained)/86400000):null;
-  const mlAgeStr=mlDays===null?'–':mlDays===0?'hoy':mlDays===1?'ayer':mlDays+'d atrás';
-  const mlD=ML.diag;
-  const mlWhy=ML.lastError==='tf_load_fail'
-    ?'No se pudo cargar TensorFlow.js (¿sin conexión o CDN bloqueado?). Reintenta con red.'
-    :ML.lastError==='train_timeout'
-      ?'El entrenamiento se bloqueó en este dispositivo. Pulsa para reintentar.'
-      :(ML.lastError&&ML.lastError!=='insufficient')
-        ?'Error entrenando el modelo: '+ML.lastError
-        :'Necesita ≥5 predicciones con 7+ días de antigüedad.'
-          +(mlD?' Ahora: <b>'+mlD.resolved+' útiles</b> de '+mlD.aged+' con 7+ días ('+mlD.total+' guardadas).'
-            +(mlD.aged>mlD.resolved?' Faltan '+(mlD.aged-mlD.resolved)+' por no tener precio real a 7 días.':''):'');
-  const mlCard=ML.trained===null
-    ?'<div class="card" style="border:1px solid rgba(167,139,250,.2);background:rgba(167,139,250,.03)">'
-      +'<div style="display:flex;justify-content:space-between;align-items:center">'
-      +'<div style="font-size:14px;font-weight:700">🧠 ML adaptativo</div>'
-      +'<span style="font-size:10px;color:#6b7280"><span class="spin">⚙️</span> Iniciando...</span>'
-      +'</div></div>'
-    :'<div class="card" style="border:1px solid rgba(167,139,250,'+(ML.trained?'.3':'.15')+');background:rgba(167,139,250,'+(ML.trained?'.05':'.02')+')">'
-      +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">'
-      +'<div style="font-size:14px;font-weight:700">🧠 ML adaptativo</div>'
-      +(ML.training
-        ?'<span style="font-size:10px;color:#f97316"><span class="spin">⚙️</span> Entrenando...</span>'
-        :ML.trained
-          ?'<span style="font-size:10px;background:rgba(16,185,129,.15);color:#10b981;padding:2px 8px;border-radius:999px;font-weight:700">● Activo</span>'
-          :(ML.lastError&&ML.lastError!=='insufficient')
-            ?'<span style="font-size:10px;color:#ef4444">⚠️ Error</span>'
-            :'<span style="font-size:10px;color:#6b7280">Sin datos suficientes</span>')
-      +'</div>'
-      +(ML.trained
-        ?'<div style="font-size:11px;color:var(--text2);line-height:1.5;margin-bottom:10px">TensorFlow.js aprende qué categorías predicen mejor el precio real. Pesos ajustados al <b>'+Math.round(ML.blend*100)+'%</b> según el historial.</div>'
-         +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:10px">'
-         +[{l:'Precisión',v:ML.accuracy+'%',c:'#a78bfa'},{l:'Muestras',v:ML.samplesUsed,c:'#60a5fa'},{l:'Entrenado',v:mlAgeStr,c:'#34d399'}].map(x=>
-           '<div style="text-align:center;padding:8px 4px;background:var(--bg);border-radius:8px">'
-           +'<div style="font-size:9px;color:var(--text3);margin-bottom:3px">'+x.l+'</div>'
-           +'<div style="font-size:14px;font-weight:800;color:'+x.c+'">'+x.v+'</div>'
-           +'</div>'
-         ).join('')
-         +'</div>'
-         +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;margin-bottom:10px">'
-         +[{l:'Técnico',w:wTA},{l:'On-chain',w:wOC},{l:'Macro',w:wMacro}].map(x=>{
-           const pct=Math.round(x.w*100);
-           return '<div style="background:var(--bg);border-radius:6px;padding:6px 8px">'
-             +'<div style="font-size:9px;color:var(--text3);margin-bottom:3px">'+x.l+'</div>'
-             +'<div style="background:var(--bg3);border-radius:999px;height:4px;margin-bottom:3px">'
-             +'<div style="height:100%;border-radius:999px;background:#a78bfa;width:'+pct+'%"></div></div>'
-             +'<div style="font-size:11px;font-weight:800;color:#a78bfa">'+pct+'%</div>'
-             +'</div>';
-         }).join('')
-         +'</div>'
-        :'<div style="font-size:11px;color:var(--text3);margin-bottom:10px;line-height:1.5">'+mlWhy+'</div>')
-      +'<button onclick="mlRetrainUI()" '+(ML.training?'disabled ':'')+'style="width:100%;padding:8px;background:rgba(167,139,250,.12);border:1px solid rgba(167,139,250,.4);border-radius:8px;color:#a78bfa;font-size:12px;font-weight:600;cursor:pointer">🔄 '+(ML.training?'Entrenando...':(ML.trained?'Reentrenar modelo':'Entrenar ahora'))+'</button>'
-      +'</div>';
+  // ── Panel ML ── (targeta autònoma: es pot refrescar sense re-renderitzar la pestanya)
+  S._mlW={wTA,wOC,wMacro};
+  const mlCard=renderMLCard(wTA,wOC,wMacro);
   const html='<div class="space-y">'
     +'<div id="technical-outlook-container">'+renderTechnicalOutlook()+'</div>'
     +'<div style="background:rgba(234,179,8,.08);border:1px solid rgba(234,179,8,.3);border-radius:12px;padding:12px;display:flex;gap:10px">'

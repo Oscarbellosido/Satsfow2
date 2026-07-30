@@ -152,6 +152,11 @@ ha predit millor el preu real, i ajusta els pesos del forecast al 40% (`ML.blend
   l'entrenament penjat per sempre sense error. Hi ha també un timeout de 45s.
 - **Diagnòstic:** `ML.lastError` (`tf_load_fail` | `train_timeout` | `insufficient`) i
   `ML.diag` ({total, aged, resolved}) es mostren al panell perquè es vegi la causa real.
+- **UI:** la targeta és `renderMLCard()` amb `id="ml-card"`; `mlRender()` només substitueix
+  aquesta targeta (re-renderitzar tota la pestanya feia un flaix i saltava l'scroll a dalt).
+  Només quan canvien els pesos es re-renderitza tot, conservant la posició d'scroll.
+- **Reentrenar:** cal `ML.model.dispose()` abans de crear-ne un de nou, o tfjs llança
+  "Variable with name dense_Dense1/bias was already registered".
 
 ---
 
