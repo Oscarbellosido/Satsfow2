@@ -16,12 +16,12 @@ Desplegament automàtic via `.github/workflows/deploy.yml` a cada push a `main`.
 |-----|-------|-----------|
 | `home` | 🏠 | Preu BTC (USD/EUR), gràfic de preus, Fear & Greed, conversió sats |
 | `technical` | 📊 | Gràfics OHLC (candlestick), indicadors tècnics, gràfic tècnic automàtic |
-| `market` | 🏪 | ETF Bitcoin (fluxos), dominància BTC, mapa d'adopció |
+| `market` | 🏪 | Termòmetre (Fear & Greed + dominància + cap. total), ETF Bitcoin (fluxos) |
 | `mempool` | ⛓️ | Fees recomanades, mempool, blocs recents, halving countdown |
 | `atm` | 🏧 | Mapa d'ATMs Bitcoin (Leaflet + OpenStreetMap) |
 | `news` | 📰 | Notícies Bitcoin filtrades per IA |
 | `alerts` | 🔔 | Alertes de preu personalitzades (via Service Worker) |
-| `macroglobal` | 🌍 | Correlació BTC vs MSTR/SPY/GLD/WTI, dominància, mapa legal |
+| `macroglobal` | 🌍 | Propers esdeveniments, dominància BTC històrica, mapa d'adopció, correlació BTC vs MSTR/SPY/GLD/WTI |
 | `cycles` | 🔄 | Cicles de mercat BTC, Rainbow Chart, Stock-to-Flow |
 | `forecast` | 🔮 | Prediccions de preu + gràfic tècnic automàtic (suports/resistències/tendències) |
 | `dca` | 📐 | Calculadora DCA (Dollar Cost Averaging) |
@@ -52,6 +52,16 @@ Tot l'estat de l'app viu en l'objecte `S` (definit a la línia ~79):
    - Guarda a KV (cache 2 dies), s'actualitza cada dia a les **20:00 UTC** via cron
    - Endpoint de forçar actualització: `/fetch`
 2. Fallback hardcoded (últimes dades conegudes: IBIT, FBTC, ARKB)
+
+**Dies sense publicar:** farside no publica fins al tancament i el worker converteix
+les cel·les buides en `0` (`last.total || 0`). La targeta detecta el cas amb una
+heurística — dia amb *tots* els fons a zero — i mostra l'últim flux publicat amb un
+"hoy sin publicar" en lloc d'un fals `+0M`. No s'ha canviat el worker perquè emeti
+`null`: els clients amb la PWA cachejada fan `todayFlow.toFixed()` i petarien.
+
+**Total acumulat:** és net de *tots* els ETF, inclosos els que no es llisten (GBTC i
+les seves sortides), per això pot ser inferior a l'acumulat d'IBIT tot sol. La targeta
+mostra una fila "Otros (incl. GBTC)" amb la diferència perquè la suma quadri a la vista.
 
 **Fusió live + fallback:** quan el worker retorna dades en directe, es fusionen amb els ETFs del fallback per evitar que ETFs nous desapareguin si el worker encara no els coneix (`fetchETF`, ~línia 1290).
 
