@@ -103,3 +103,9 @@ button{cursor:pointer;font-family:'Inter',sans-serif}
 .onboard-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;max-height:52vh;overflow-y:auto;margin:10px 0}
 .onboard-item{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:10px;background:var(--bg3);font-size:11px}
 .onboard-item-icon{font-size:18px;flex-shrink:0;width:24px;text-align:center}
+
+/* Blocs plegables (detalls del càlcul, llista completa de factors) */
+details>summary{cursor:pointer}
+details>summary::-webkit-details-marker{display:none}
+details>summary::before{content:'▸ ';display:inline-block;transition:transform .15s}
+details[open]>summary::before{content:'▾ '}

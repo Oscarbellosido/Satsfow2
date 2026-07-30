@@ -157,6 +157,22 @@ ha predit millor el preu real, i ajusta els pesos del forecast al 40% (`ML.blend
   Només quan canvien els pesos es re-renderitza tot, conservant la posició d'scroll.
 - **Reentrenar:** cal `ML.model.dispose()` abans de crear-ne un de nou, o tfjs llança
   "Variable with name dense_Dense1/bias was already registered".
+- **Influència variable (`mlEffectiveBlend`):** el ML no toca els pesos fins que la seva
+  precisió supera el 50% per més d'un error estàndard (`MLC.minSamples`=20 mostres
+  mínimes, escalat fins a `ML.blend`=40% quan l'avantatge arriba a `MLC.fullEdge`=10
+  punts). Amb poques mostres el "54% de precisió" és soroll, i barrejar-lo al 40%
+  contaminava el model base. `ML.blendUsed` és el % realment aplicat i es mostra al panell.
+
+## Estructura de la pestanya Previsió
+Ordre de targetes: perspectiva tècnica → disclaimer → **🔮 Señal global** (titular +
+règim, amb `<details>` "Detalles del cálculo") → **🎯 Calidad del modelo** (fusiona en
+una sola targeta el backtest per horitzó, la correcció de biaix i el panell ML, que
+abans eren tres targetes amb tres percentatges no comparables) → rangs per horitzó →
+factors (extrems visibles, els ~29-36 restants dins un `<details>`) → gràfic tècnic
+automàtic → historial de prediccions.
+
+La pestanya és **tota en castellà** (idioma per defecte de l'app). Els textos narratius
+que genera `calcForecast` no passen per `t()`: si algun dia es tradueix, cal fer-ho allà.
 
 ---
 

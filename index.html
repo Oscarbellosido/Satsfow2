@@ -763,13 +763,13 @@ function outcomeIcon(snap,realPrice,range){
   const{bear,bull,base}=r;
   if(realPrice>=bear&&realPrice<=bull){
     const scenario=realPrice<(bear+base)/2?'📉 Bajista':realPrice<(base+bull)/2?'📊 Base':'📈 Alcista';
-    return'<span style="color:#10b981;font-weight:700">✅ Dins rang</span> <span style="font-size:10px;color:var(--text3)">('+scenario+')</span>';
+    return'<span style="color:#10b981;font-weight:700">✅ Dentro del rango</span> <span style="font-size:10px;color:var(--text3)">('+scenario+')</span>';
   }else if(realPrice<bear){
     const pct=((bear-realPrice)/bear*100).toFixed(1);
-    return'<span style="color:#ef4444;font-weight:700">❌ Per sota</span> <span style="font-size:10px;color:var(--text3)">('+pct+'% sota el bear)</span>';
+    return'<span style="color:#ef4444;font-weight:700">❌ Por debajo</span> <span style="font-size:10px;color:var(--text3)">('+pct+'% bajo el bear)</span>';
   }else{
     const pct=((realPrice-bull)/bull*100).toFixed(1);
-    return'<span style="color:#f97316;font-weight:700">🚀 Per sobre</span> <span style="font-size:10px;color:var(--text3)">('+pct+'% sobre el bull)</span>';
+    return'<span style="color:#f97316;font-weight:700">🚀 Por encima</span> <span style="font-size:10px;color:var(--text3)">('+pct+'% sobre el bull)</span>';
   }
 }
 
@@ -809,7 +809,7 @@ async function renderPredictionHistory(){
 
   const horizonBar='<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:12px;align-items:center">'
     +'<span style="font-size:10px;color:var(--text3);margin-right:2px">'+tr.histEval+'</span>'
-    +horizonBtn('week','📅 Setmanal (7d)')+horizonBtn('month','📆 Mensual (30d)')
+    +horizonBtn('week','📅 Semanal (7d)')+horizonBtn('month','📆 Mensual (30d)')
     +'</div>';
 
   // Mini gràfic SVG evolució
@@ -828,7 +828,7 @@ async function renderPredictionHistory(){
       +' '+chartPreds.map((_,i)=>toX(chartPreds.length-1-i).toFixed(1)+','+toY(bears[chartPreds.length-1-i]).toFixed(1)).join(' ');
     const pricePts=chartPreds.map((p,i)=>toX(i).toFixed(1)+','+toY(p.price).toFixed(1)).join(' ');
     chartHTML='<div style="background:#0a1628;border-radius:10px;padding:8px 6px 4px;margin-bottom:12px">'
-      +'<div style="font-size:10px;color:var(--text3);margin-bottom:4px;padding:0 2px">📈 Preu real vs rang predit ('+(horizon==='month'?'1 mes':'1 setmana')+')</div>'
+      +'<div style="font-size:10px;color:var(--text3);margin-bottom:4px;padding:0 2px">📈 Precio real vs rango predicho ('+(horizon==='month'?'1 mes':'1 semana')+')</div>'
       +'<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:70px" preserveAspectRatio="none">'
       +'<polygon points="'+bandPts+'" fill="rgba(59,130,246,.15)"/>'
       +'<polyline points="'+chartPreds.map((_,i)=>toX(i).toFixed(1)+','+toY(bulls[i]).toFixed(1)).join(' ')+'" fill="none" stroke="rgba(16,185,129,.5)" stroke-width="1" stroke-dasharray="3 2"/>'
@@ -842,7 +842,7 @@ async function renderPredictionHistory(){
       +'</svg>'
       +'<div style="display:flex;justify-content:space-between;font-size:9px;color:var(--text3);padding:0 2px">'
       +'<span>'+new Date(chartPreds[0].ts).toLocaleDateString(S.lang==='ca'?'ca-ES':'es-ES',{day:'2-digit',month:'short'})+'</span>'
-      +'<span style="color:#10b981">— Bull</span><span style="color:#f97316">— Preu real</span><span style="color:#ef4444">— Bear</span>'
+      +'<span style="color:#10b981">— Bull</span><span style="color:#f97316">— Precio real</span><span style="color:#ef4444">— Bear</span>'
       +'<span>'+new Date(chartPreds[chartPreds.length-1].ts).toLocaleDateString(S.lang==='ca'?'ca-ES':'es-ES',{day:'2-digit',month:'short'})+'</span>'
       +'</div></div>';
   }
@@ -894,16 +894,16 @@ async function renderPredictionHistory(){
       if(resolvedAge&&activeRange){
         const realPrice=snapToRealPrice(snap)||S.price.usd;
         outcomeHTML='<div style="margin-top:5px;font-size:11px">'+outcomeIcon(snap,realPrice,activeRange)+'</div>';
-        if(realPrice) outcomeHTML+='<div style="font-size:9px;color:var(--text3);margin-top:2px">Preu real: $'+Math.round(realPrice).toLocaleString()+'</div>';
+        if(realPrice) outcomeHTML+='<div style="font-size:9px;color:var(--text3);margin-top:2px">Precio real: $'+Math.round(realPrice).toLocaleString()+'</div>';
       } else {
         const daysLeft=Math.ceil(horizonDays-age);
-        outcomeHTML='<div style="margin-top:5px;font-size:10px;color:var(--text3)">⏳ '+daysLeft+'d per resolució '+(horizon==='month'?'mensual':'setmanal')+'</div>';
+        outcomeHTML='<div style="margin-top:5px;font-size:10px;color:var(--text3)">⏳ '+daysLeft+'d para resolución '+(horizon==='month'?'mensual':'semanal')+'</div>';
       }
 
       const scoreColor=snap.netScore>0.05?'#10b981':snap.netScore<-0.05?'#ef4444':'#eab308';
       const w=snap.week, m=snap.month;
       const showRange=horizon==='month'&&m?m:w;
-      const rangeLabel=horizon==='month'&&m?'📆 1 MES':'📅 1 SETMANA';
+      const rangeLabel=horizon==='month'&&m?'📆 1 MES':'📅 1 SEMANA';
 
       return'<div style="padding:11px;border-radius:10px;background:var(--bg);border:1px solid var(--border);margin-bottom:8px">'
         +'<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">'
@@ -911,7 +911,7 @@ async function renderPredictionHistory(){
         +'<div style="font-size:13px;font-weight:800;color:#f97316">$'+snap.price.toLocaleString()+'</div></div>'
         +'<div style="text-align:right"><div style="font-size:9px;color:var(--text3)">Score</div><div style="font-size:13px;font-weight:800;color:'+scoreColor+'">'+((snap.netScore||0)>=0?'+':'')+((snap.netScore||0)*100).toFixed(1)+'</div></div>'
         +'</div>'
-        +'<div style="font-size:9px;color:var(--text3);margin-bottom:3px;font-weight:600">'+rangeLabel+(horizon==='month'&&!m?' <span style="color:#ef4444">(sense dades mensuals)</span>':'')+'</div>'
+        +'<div style="font-size:9px;color:var(--text3);margin-bottom:3px;font-weight:600">'+rangeLabel+(horizon==='month'&&!m?' <span style="color:#ef4444">(sin datos mensuales)</span>':'')+'</div>'
         +(showRange?'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:3px;font-size:10px;margin-bottom:4px">'
           +'<div style="background:rgba(239,68,68,.08);border-radius:5px;padding:3px;text-align:center"><div style="color:var(--text3)">Bear</div><div style="font-weight:700;color:#ef4444">$'+showRange.bear.toLocaleString()+'</div></div>'
           +'<div style="background:rgba(234,179,8,.08);border-radius:5px;padding:3px;text-align:center"><div style="color:var(--text3)">Base</div><div style="font-weight:700;color:#eab308">$'+showRange.base.toLocaleString()+'</div></div>'
@@ -936,8 +936,8 @@ async function renderPredictionHistory(){
 
   const accuracy=total>0?Math.round(hits/total*100):null;
   const accuracyBadge=accuracy!==null
-    ?'<div style="font-size:12px;font-weight:700;color:'+(accuracy>=60?'#10b981':accuracy>=40?'#eab308':'#ef4444')+'">'+accuracy+'% encert ('+hits+'/'+total+') · '+(horizon==='month'?'1M':'7D')+'</div>'
-    :'<div style="font-size:11px;color:var(--text3)">Encert calculat en '+(horizon==='month'?'30':'7')+' dies</div>';
+    ?'<div style="font-size:12px;font-weight:700;color:'+(accuracy>=60?'#10b981':accuracy>=40?'#eab308':'#ef4444')+'">'+accuracy+'% acierto ('+hits+'/'+total+') · '+(horizon==='month'?'1M':'7D')+'</div>'
+    :'<div style="font-size:11px;color:var(--text3)">Acierto calculado a '+(horizon==='month'?'30':'7')+' días</div>';
 
   let biasHTML='';
   if(total>=3){
@@ -4095,7 +4095,9 @@ async function updateForecastBias(){
 }
 
 /* ══════ ML: TensorFlow.js · Ajuste adaptativo de pesos ══════ */
-const ML={model:null,trained:null,training:false,accuracy:null,samplesUsed:0,lastTrained:null,blend:0.40,lastError:null,diag:null};
+const ML={model:null,trained:null,training:false,accuracy:null,samplesUsed:0,lastTrained:null,blend:0.40,lastError:null,diag:null,blendUsed:0};
+// Llindars de confiança del ML (veure mlEffectiveBlend)
+const MLC={minSamples:20,fullEdge:10};
 
 // Refresca el panell ML. Per defecte només substitueix la targeta (#ml-card):
 // renderTab() reescriu l'innerHTML de tota la pestanya, cosa que provoca un flaix
@@ -4248,6 +4250,20 @@ async function mlInit(){
   }catch(e){console.warn('[ML] init:',e);ML.trained=false;ML.lastError=e.message||'error';}
 }
 
+// Quina influència real ha de tenir el ML sobre els pesos del forecast.
+// Amb 24 mostres, l'error estàndard d'una precisió del 54% és de ±10 punts: no es
+// pot distingir de l'atzar, i barrejar-ho al 40% és injectar soroll al model base.
+// Exigim un mínim de mostres i que la precisió superi el 50% amb marge estadístic
+// (1 error estàndard), i escalem des d'aquí fins al màxim de ML.blend.
+function mlEffectiveBlend(){
+  const n=ML.samplesUsed||0, acc=ML.accuracy;
+  if(!ML.trained||acc==null||n<MLC.minSamples)return 0;
+  const se=Math.sqrt(0.25/n)*100;              // error estàndard d'una proporció, en punts
+  const edge=acc-50-se;                        // avantatge sobre l'atzar, ja descomptat el soroll
+  if(edge<=0)return 0;
+  return ML.blend*Math.min(1,edge/MLC.fullEdge);
+}
+
 function mlGetWeights(ctx){
   if(!ML.trained||!ML.model||typeof tf==='undefined')return null;
   try{
@@ -4262,11 +4278,11 @@ function mlGetWeights(ctx){
 
 async function mlRetrainUI(){
   if(ML.training)return;
-  // training=true abans del render: evita que renderForecast dispari mlInit en paral·lel
   // dispose() abans de descartar-lo: si no, les variables del model antic segueixen
   // registrades a l'engine de tfjs i crear-ne un de nou peta amb
   // "Variable with name dense_Dense1/bias was already registered".
   try{if(ML.model&&ML.model.dispose)ML.model.dispose();}catch(e){console.warn('[ML] dispose:',e);}
+  // training=true abans del render: evita que renderForecast dispari mlInit en paral·lel
   ML.training=true;ML.model=null;ML.trained=null;ML.lastError=null;
   mlRender();
   // fit() amb yieldEvery:'never' bloqueja el fil principal fins que acaba; sense
@@ -4293,6 +4309,11 @@ function renderMLCard(wTA,wOC,wMacro){
   const mlDays=ML.lastTrained?Math.floor((Date.now()-ML.lastTrained)/86400000):null;
   const mlAgeStr=mlDays===null?'–':mlDays===0?'hoy':mlDays===1?'ayer':mlDays+'d atrás';
   const mlD=ML.diag;
+  const mlInfluence=Math.round(mlEffectiveBlend()*100);
+  // Per què encara no influeix, tot i estar entrenat
+  const mlWhyIdle=(ML.samplesUsed||0)<MLC.minSamples
+    ?'Con '+(ML.samplesUsed||0)+' muestras (mínimo '+MLC.minSamples+') el acierto todavía no se distingue del azar.'
+    :'Un '+Math.round(ML.accuracy||0)+'% de acierto con '+ML.samplesUsed+' muestras no supera al azar con margen suficiente.';
   const mlWhy=ML.lastError==='tf_load_fail'
     ?'No se pudo cargar TensorFlow.js (¿sin conexión o CDN bloqueado?). Reintenta con red.'
     :ML.lastError==='train_timeout'
@@ -4306,18 +4327,20 @@ function renderMLCard(wTA,wOC,wMacro){
   // targeta buida: si no, en clicar "Entrenar ahora" el botó desapareixia enmig de
   // l'entrenament i semblava que el clic no hagués fet res.
   return (ML.trained===null&&!ML.training)
-    ?'<div class="card" id="ml-card" style="border:1px solid rgba(167,139,250,.2);background:rgba(167,139,250,.03)">'
+    ?'<div id="ml-card" style="border:1px solid rgba(167,139,250,.2);background:rgba(167,139,250,.03);border-radius:12px;padding:12px">'
       +'<div style="display:flex;justify-content:space-between;align-items:center">'
       +'<div style="font-size:14px;font-weight:700">🧠 ML adaptativo</div>'
       +'<span style="font-size:10px;color:#6b7280"><span class="spin">⚙️</span> Iniciando...</span>'
       +'</div></div>'
-    :'<div class="card" id="ml-card" style="border:1px solid rgba(167,139,250,'+(ML.trained?'.3':'.15')+');background:rgba(167,139,250,'+(ML.trained?'.05':'.02')+')">'
+    :'<div id="ml-card" style="border-radius:12px;padding:12px;border:1px solid rgba(167,139,250,'+(ML.trained?'.3':'.15')+');background:rgba(167,139,250,'+(ML.trained?'.05':'.02')+')">'
       +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">'
       +'<div style="font-size:14px;font-weight:700">🧠 ML adaptativo</div>'
       +(ML.training
         ?'<span style="font-size:10px;color:#f97316"><span class="spin">⚙️</span> Entrenando...</span>'
+        :(ML.trained&&mlInfluence>0)
+          ?'<span style="font-size:10px;background:rgba(16,185,129,.15);color:#10b981;padding:2px 8px;border-radius:999px;font-weight:700">● Activo · '+mlInfluence+'%</span>'
         :ML.trained
-          ?'<span style="font-size:10px;background:rgba(16,185,129,.15);color:#10b981;padding:2px 8px;border-radius:999px;font-weight:700">● Activo</span>'
+          ?'<span style="font-size:10px;background:rgba(148,163,184,.15);color:#94a3b8;padding:2px 8px;border-radius:999px;font-weight:700">● Entrenado · en espera</span>'
           :(ML.lastError&&ML.lastError!=='insufficient')
             ?'<span style="font-size:10px;color:#ef4444">⚠️ Error</span>'
             :'<span style="font-size:10px;color:#6b7280">Sin datos suficientes</span>')
@@ -4325,16 +4348,19 @@ function renderMLCard(wTA,wOC,wMacro){
       +(ML.training
         ?'<div style="font-size:11px;color:var(--text2);line-height:1.5;margin-bottom:10px">Entrenando con el historial de predicciones… tarda un par de segundos.</div>'
         :ML.trained
-        ?'<div style="font-size:11px;color:var(--text2);line-height:1.5;margin-bottom:10px">TensorFlow.js aprende qué categorías predicen mejor el precio real. Pesos ajustados al <b>'+Math.round(ML.blend*100)+'%</b> según el historial.</div>'
+        ?'<div style="font-size:11px;color:var(--text2);line-height:1.5;margin-bottom:10px">TensorFlow.js aprende qué categorías predicen mejor el precio real.</div>'
+         +(mlInfluence>0
+           ?'<div style="font-size:11px;color:#a78bfa;line-height:1.5;margin-bottom:10px">Ahora mismo mueve los pesos del modelo un <b>'+mlInfluence+'%</b>.</div>'
+           :'<div style="font-size:11px;color:var(--text3);line-height:1.5;margin-bottom:10px;padding:8px;background:var(--bg);border-radius:8px">⚖️ <b>Influencia actual: 0%.</b> '+mlWhyIdle+' Hasta entonces no toca las predicciones.</div>')
          +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:10px">'
-         +[{l:'Precisión',v:ML.accuracy+'%',c:'#a78bfa'},{l:'Muestras',v:ML.samplesUsed,c:'#60a5fa'},{l:'Entrenado',v:mlAgeStr,c:'#34d399'}].map(x=>
+         +[{l:'Precisión',v:Math.round(ML.accuracy)+'%',c:'#a78bfa'},{l:'Muestras',v:ML.samplesUsed,c:'#60a5fa'},{l:'Entrenado',v:mlAgeStr,c:'#34d399'}].map(x=>
            '<div style="text-align:center;padding:8px 4px;background:var(--bg);border-radius:8px">'
            +'<div style="font-size:9px;color:var(--text3);margin-bottom:3px">'+x.l+'</div>'
            +'<div style="font-size:14px;font-weight:800;color:'+x.c+'">'+x.v+'</div>'
            +'</div>'
          ).join('')
          +'</div>'
-         +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;margin-bottom:10px">'
+         +(mlInfluence>0?'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;margin-bottom:10px">'
          +[{l:'Técnico',w:wTA},{l:'On-chain',w:wOC},{l:'Macro',w:wMacro}].map(x=>{
            const pct=Math.round(x.w*100);
            return '<div style="background:var(--bg);border-radius:6px;padding:6px 8px">'
@@ -4344,7 +4370,7 @@ function renderMLCard(wTA,wOC,wMacro){
              +'<div style="font-size:11px;font-weight:800;color:#a78bfa">'+pct+'%</div>'
              +'</div>';
          }).join('')
-         +'</div>'
+         +'</div>':'')
         :'<div style="font-size:11px;color:var(--text3);margin-bottom:10px;line-height:1.5">'+mlWhy+'</div>')
       +'<button onclick="mlRetrainUI()" '+(ML.training?'disabled ':'')+'style="width:100%;padding:8px;background:rgba(167,139,250,.12);border:1px solid rgba(167,139,250,.4);border-radius:8px;color:#a78bfa;font-size:12px;font-weight:600;cursor:pointer">🔄 '+(ML.training?'Entrenando...':(ML.trained?'Reentrenar modelo':'Entrenar ahora'))+'</button>'
       +'</div>';
@@ -4820,9 +4846,13 @@ function calcForecast(currentPrice){
 
   // ── MEJORA ML: Ajuste de pesos via TensorFlow.js
   const mlW=mlGetWeights({taTotal,onChainTotal,macroTotal,fg,dom,regime});
-  const mlActive=mlW!==null;
+  // La influència depèn de la mostra i de l'avantatge real sobre l'atzar: amb poques
+  // prediccions resoltes el ML no toca res, encara que el model estigui entrenat.
+  const mlBlend=mlW?mlEffectiveBlend():0;
+  ML.blendUsed=Math.round(mlBlend*100);
+  const mlActive=mlW!==null&&mlBlend>0;
   if(mlActive){
-    const b=ML.blend;
+    const b=mlBlend;
     wTA=wTA*(1-b)+mlW.wTA*b;
     wOC=wOC*(1-b)+mlW.wOC*b;
     wMacro=wMacro*(1-b)+mlW.wMacro*b;
@@ -4978,31 +5008,30 @@ function renderForecastRangeBar(cur, bearP, baseP, bullP){
 function renderBacktestSummary(week,month){
   // Cap horitzó té cap predicció resolta — no mostrem res per evitar soroll
   if((!week||week.total===0)&&(!month||month.total===0)){
-    return'<div class="card" style="background:rgba(99,102,241,.04);border:1px dashed rgba(99,102,241,.25)">'
-      +'<div style="font-size:13px;font-weight:700;margin-bottom:6px">🎯 Backtest del model</div>'
-      +'<div style="font-size:11px;color:var(--text3);line-height:1.5">Encara no hi ha prediccions resoltes (calen ≥7 dies des d\'una predicció setmanal). El model començarà a mostrar el seu encert real aquí quan el primer snapshot maduri.</div>'
+    return'<div style="padding:10px 12px;background:var(--bg);border:1px dashed rgba(99,102,241,.25);border-radius:10px;font-size:11px;color:var(--text3);line-height:1.5">'
+      +'Todavía no hay predicciones resueltas (hacen falta ≥7 días desde una predicción semanal). El acierto real aparecerá aquí cuando el primer snapshot madure.'
       +'</div>';
   }
   const accColor=a=>a==null?'#94a3b8':a>=60?'#10b981':a>=40?'#eab308':'#ef4444';
-  const accLabel=a=>a==null?'—':a>=70?'Excel·lent':a>=55?'Bo':a>=40?'Acceptable':a>=25?'Fluix':'Pobre';
+  const accLabel=a=>a==null?'—':a>=70?'Excelente':a>=55?'Bueno':a>=40?'Aceptable':a>=25?'Flojo':'Pobre';
   const biasLabel=b=>{
     if(b==null)return'';
-    if(Math.abs(b)<2)return'<span style="color:#10b981">equilibrat</span>';
-    return b>0?'<span style="color:#f97316">tendeix a quedar-se curt (real per sobre del base '+b.toFixed(1)+'%)</span>'
-              :'<span style="color:#3b82f6">tendeix a passar-se (real per sota del base '+Math.abs(b).toFixed(1)+'%)</span>';
+    if(Math.abs(b)<2)return'<span style="color:#10b981">equilibrado</span>';
+    return b>0?'<span style="color:#f97316">se queda corto (real por encima del base '+b.toFixed(1)+'%)</span>'
+              :'<span style="color:#3b82f6">se pasa (real por debajo del base '+Math.abs(b).toFixed(1)+'%)</span>';
   };
   const horizonCard=(label,icon,m)=>{
     if(!m||m.total===0){
       return'<div style="padding:12px;background:var(--bg);border-radius:10px;border:1px solid var(--border);opacity:.55">'
         +'<div style="font-size:11px;font-weight:700;color:var(--text3);margin-bottom:4px">'+icon+' '+label+'</div>'
-        +'<div style="font-size:10px;color:var(--text3)">Sense dades resoltes encara</div>'
+        +'<div style="font-size:10px;color:var(--text3)">Sin datos resueltos todavía</div>'
         +'</div>';
     }
     const c=accColor(m.accuracy);
     return'<div style="padding:12px;background:var(--bg);border-radius:10px;border:1px solid '+c+'33">'
       +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">'
       +'<div style="font-size:11px;font-weight:700;color:var(--text2)">'+icon+' '+label+'</div>'
-      +'<div style="font-size:9px;color:var(--text3)">'+m.total+' resolt'+(m.total===1?'':'s')+'</div>'
+      +'<div style="font-size:9px;color:var(--text3)">'+m.total+' resuelt'+(m.total===1?'o':'os')+'</div>'
       +'</div>'
       +'<div style="display:flex;align-items:baseline;gap:6px;margin-bottom:6px">'
       +'<div style="font-size:24px;font-weight:900;color:'+c+';line-height:1">'+m.accuracy+'%</div>'
@@ -5011,24 +5040,41 @@ function renderBacktestSummary(week,month){
       +'<div style="background:var(--bg3);border-radius:999px;height:5px;margin-bottom:6px">'
       +'<div style="height:100%;border-radius:999px;background:'+c+';width:'+m.accuracy+'%"></div></div>'
       +'<div style="font-size:10px;color:var(--text3);line-height:1.5">'
-      +'Error mitjà absolut: <b style="color:var(--text2)">'+m.mae.toFixed(1)+'%</b> '
-      +'<span style="color:var(--text3)">· '+m.hits+' dins de rang / '+m.total+'</span>'
+      +'Error medio absoluto: <b style="color:var(--text2)">'+m.mae.toFixed(1)+'%</b> '
+      +'<span style="color:var(--text3)">· '+m.hits+' dentro de rango / '+m.total+'</span>'
       +'</div>'
-      +(m.biasPct!=null?'<div style="font-size:10px;margin-top:4px">Biaix: '+biasLabel(m.biasPct)+'</div>':'')
+      +(m.biasPct!=null?'<div style="font-size:10px;margin-top:4px">Sesgo: '+biasLabel(m.biasPct)+'</div>':'')
       +'</div>';
   };
-  return'<div class="card" style="background:linear-gradient(135deg,rgba(16,185,129,.04),rgba(99,102,241,.04));border:1px solid rgba(99,102,241,.2)">'
-    +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">'
-    +'<div style="font-size:14px;font-weight:700">🎯 Backtest del model</div>'
-    +'<div style="font-size:10px;color:var(--text3)">precisió real sobre l\'historial</div>'
-    +'</div>'
-    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">'
-    +horizonCard('Setmanal (7d)','📅',week)
+  return'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">'
+    +horizonCard('Semanal (7d)','📅',week)
     +horizonCard('Mensual (30d)','📆',month)
+    +'</div>';
+}
+
+// Targeta única de qualitat del model. Abans hi havia tres percentatges en tres
+// targetes seguides (encert del backtest, precisió del ML i correcció històrica)
+// que semblaven comparables i no ho són: aquí van junts i etiquetats.
+function renderModelQuality(week,month,biasFix,mlCard){
+  const bt=renderBacktestSummary(week,month);
+  const bias=Math.round((biasFix||0)*100);
+  return'<div class="card" style="background:linear-gradient(135deg,rgba(16,185,129,.04),rgba(99,102,241,.04));border:1px solid rgba(99,102,241,.2)">'
+    +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">'
+    +'<div style="font-size:15px;font-weight:700">🎯 Calidad del modelo</div>'
+    +'<div style="font-size:10px;color:var(--text3)">medido sobre tu historial</div>'
     +'</div>'
-    +'<div style="font-size:10px;color:var(--text3);margin-top:10px;line-height:1.5">'
-    +'<b>Com es calcula:</b> per cada predicció amb prou antiguitat, comparem el preu real al cap de N dies amb el rang Bear/Base/Bull predit. <b>Encert</b> = real dins del rang. <b>Error mitjà</b> = distància en % entre real i base. Cap mètrica és garantia futura.'
-    +'</div>'
+    +'<div style="font-size:11px;color:var(--text3);line-height:1.5;margin-bottom:10px">Qué tal ha acertado hasta ahora, no qué va a pasar.</div>'
+    +'<div style="font-size:10px;color:var(--text3);font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">1 · Acierto de los rangos</div>'
+    +bt
+    +'<div style="font-size:10px;color:var(--text3);margin-top:8px;line-height:1.5">Para cada predicción ya vencida comparamos el precio real con el rango Bear/Base/Bull. <b>Acierto</b> = el precio real cayó dentro del rango.</div>'
+    +'<div style="height:1px;background:var(--border);margin:12px 0"></div>'
+    +'<div style="font-size:10px;color:var(--text3);font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">2 · Corrección de sesgo</div>'
+    +(Math.abs(bias)>=1
+      ?'<div style="font-size:11px;color:var(--text2);line-height:1.5">Las predicciones pasadas se han quedado '+(bias>0?'<b style="color:#f97316">cortas</b>':'<b style="color:#3b82f6">largas</b>')+' de media, así que al precio base se le aplica <b style="color:#818cf8">'+(bias>=0?'+':'')+bias+'%</b>.</div>'
+      :'<div style="font-size:11px;color:var(--text3);line-height:1.5">Sin sesgo apreciable: no se aplica ninguna corrección al precio base.</div>')
+    +'<div style="height:1px;background:var(--border);margin:12px 0"></div>'
+    +'<div style="font-size:10px;color:var(--text3);font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">3 · Componente ML</div>'
+    +mlCard
     +'</div>';
 }
 function renderTechnicalOutlook(){
@@ -5041,7 +5087,7 @@ function renderTechnicalOutlook(){
       }
     },2000);
     return '<div class="card" style="text-align:center;padding:20px;color:var(--text3)">'
-      +'<span class="spin">📊</span> Carregant dades tècniques…'
+      +'<span class="spin">📊</span> Cargando datos técnicos…'
       +'</div>';
   }
   if(!price)return'';
@@ -5271,7 +5317,7 @@ function renderForecast(){
   const extremeFactors=[...factors].sort((a,b)=>Math.abs(b.score)-Math.abs(a.score)).slice(0,5).filter(f=>Math.abs(f.score)>=0.06);
   const extremeHTML=extremeFactors.length>0
     ?'<div style="margin-bottom:14px;padding:12px;background:rgba(99,102,241,.06);border:1px solid rgba(99,102,241,.2);border-radius:10px">'
-      +'<div style="font-size:11px;font-weight:700;color:#818cf8;margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">⚡ Senyals extrems avui</div>'
+      +'<div style="font-size:11px;font-weight:700;color:#818cf8;margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">⚡ Señales extremas hoy</div>'
       +'<div style="display:flex;flex-direction:column;gap:5px">'
       +extremeFactors.map(f=>{
         const col=f.score>0?'#10b981':'#ef4444';
@@ -5294,6 +5340,22 @@ function renderForecast(){
   // ── Panel ML ── (targeta autònoma: es pot refrescar sense re-renderitzar la pestanya)
   S._mlW={wTA,wOC,wMacro};
   const mlCard=renderMLCard(wTA,wOC,wMacro);
+  // Els tres blocs del titular: la llista completa d'indicadors ja surt a "Factores
+  // del modelo" amb valors reals, així que aquí només hi va el pes que té cada bloc.
+  const blocks=[
+    {l:'Técnico',s:taTotal,w:wTA,i:'📐',tip:'RSI, Stoch RSI, MACD, OBV, ADX, Bollinger y SMA.'},
+    {l:'On-chain',s:onChainTotal,w:wOC,i:'⛓️',tip:'Hashrate, direcciones, volumen, netflow, OI, Funding Rate, SOPR, MVRV-Z, SSR y Puell Multiple.'},
+    {l:'Macro',s:macroTotal,w:wMacro,i:'🌐',tip:'Ciclo halving, flujos ETF, Fear & Greed, dominancia, S&P500/Oro, M2, DXY, Rainbow Chart e interés retail.'}
+  ];
+  // Detall del càlcul plegat: són dades de context, no el titular.
+  const detailsHTML='<details style="margin-top:8px">'
+    +'<summary style="font-size:10px;color:var(--text3);cursor:pointer;padding:4px 0;list-style:none">⚙️ Detalles del cálculo</summary>'
+    +'<div style="font-size:10px;color:var(--text3);line-height:1.6;padding:6px 0 0">'
+    +blocks.map(b=>'<div style="margin-bottom:4px"><b style="color:var(--text2)">'+b.i+' '+b.l+' ('+Math.round(b.w*100)+'%):</b> '+b.tip+'</div>').join('')
+    +'<div style="margin-top:6px">📊 Volatilidad realizada (14d): <b style="color:var(--text2)">'+(realVol*100).toFixed(1)+'%</b> anualizada</div>'
+    +(divergenceMult>1?'<div style="color:#eab308;margin-top:3px">'+divergenceNote+'</div>':'')
+    +(mlActive?'<div style="color:#a78bfa;margin-top:3px">🧠 Pesos ajustados por ML ('+ML.blendUsed+'% de influencia)</div>':'')
+    +'</div></details>';
   const html='<div class="space-y">'
     +'<div id="technical-outlook-container">'+renderTechnicalOutlook()+'</div>'
     +'<div style="background:rgba(234,179,8,.08);border:1px solid rgba(234,179,8,.3);border-radius:12px;padding:12px;display:flex;gap:10px">'
@@ -5306,18 +5368,14 @@ function renderForecast(){
     +onChainBadge
     +'</div>'
     +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px">'
-    +[
-      {l:'Técnico',s:taTotal,i:'📐',tip:'RSI, Stoch RSI, MACD, OBV, ADX, Bollinger y SMA calculados con precio real.'},
-      {l:'On-chain',s:onChainTotal,i:'⛓️',tip:'Hashrate, direcciones, volumen, netflow, OI, Funding Rate, SOPR, MVRV-Z, SSR y Puell Multiple.'},
-      {l:'Macro',s:macroTotal,i:'🌐',tip:'Ciclo halving, ETFs flows, Fear & Greed, dominancia, S&P500/Oro, M2, DXY, Rainbow Chart e interés retail.'}
-    ].map(b=>'<div style="padding:10px 8px;background:var(--bg);border-radius:10px;border:1px solid '+blockColor(b.s)+'44">'
+    +blocks.map(b=>'<div style="padding:10px 8px;background:var(--bg);border-radius:10px;border:1px solid '+blockColor(b.s)+'44">'
       +'<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">'
       +'<span style="font-size:18px">'+b.i+'</span>'
       +'<span style="font-size:12px;font-weight:700;color:var(--text)">'+b.l+'</span>'
       +'</div>'
       +'<div style="font-size:13px;font-weight:800;color:'+blockColor(b.s)+';margin-bottom:4px">'+blockLabel(b.s)+'</div>'
       +blockBar(b.s)
-      +'<div style="font-size:10px;color:var(--text3);margin-top:6px;line-height:1.4">'+b.tip+'</div>'
+      +'<div style="font-size:10px;color:var(--text3);margin-top:6px;font-weight:700">'+Math.round(b.w*100)+'% del peso</div>'
       +'</div>'
     ).join('')
     +'</div>'
@@ -5330,15 +5388,10 @@ function renderForecast(){
     +'<div style="margin-top:10px;padding:8px 10px;background:var(--bg);border-radius:8px;border:1px solid var(--border)">'
     +'<div style="font-size:10px;color:var(--text3);margin-bottom:2px">🎯 Régimen detectado</div>'
     +'<div style="font-size:11px;color:var(--text2)">'+regimeDesc+'</div>'
-    +'<div style="font-size:10px;color:var(--text3);margin-top:4px">Pesos: Técnico '+Math.round(wTA*100)+'% · On-chain '+Math.round(wOC*100)+'% · Macro '+Math.round(wMacro*100)+'%</div>'
-    +(divergenceMult>1?'<div style="font-size:10px;color:#eab308;margin-top:4px">'+divergenceNote+'</div>':'')
-    +(Math.abs(biasFix)>=0.01?'<div style="font-size:10px;color:#818cf8;margin-top:3px">🔧 Corrección histórica aplicada: '+(biasFix>=0?'+':'')+Math.round(biasFix*100)+'% sobre precio base ('+Math.abs(Math.round(biasFix*100))+'% de sesgo detectado en predicciones pasadas).</div>':'')
-    +'<div style="font-size:10px;color:var(--text3);margin-top:3px">📊 Volatilidad realizada (14d): '+(realVol*100).toFixed(1)+'% anualizada</div>'
-    +(mlActive?'<div style="font-size:10px;color:#a78bfa;margin-top:3px">🧠 Pesos ajustados por ML · '+ML.accuracy+'% acc · '+ML.samplesUsed+' muestras</div>':'')
+    +detailsHTML
     +'</div>'
     +'</div>'
-    +mlCard
-    +'<div id="backtest-summary-container"></div>'
+    +'<div id="model-quality-container"></div>'
     +'<div class="card">'
     +'<div style="font-size:15px;font-weight:700;margin-bottom:4px">📅 Rangos por horizonte</div>'
     +'<div style="font-size:11px;color:var(--text3);margin-bottom:14px">Precio actual: <b style="color:#f97316;font-size:13px">$'+Math.round(price).toLocaleString()+'</b>'+(ta?' · RSI: <b style="color:var(--text)">'+ta.lastRSI.toFixed(0)+'</b> · Señal TA: <b style="color:var(--text)">'+ta.signal+'</b>':'')+'</div>'
@@ -5369,7 +5422,10 @@ function renderForecast(){
     +'<div class="card">'
     +'<div style="font-size:15px;font-weight:700;margin-bottom:14px">🧩 Factores del modelo</div>'
     +extremeHTML
-    +factorsHTML
+    // Els ~29 factors amb la seva descripció són una paret de text: a la vista només
+    // hi deixem els extrems, i la llista completa queda a un pas de distància.
+    +'<details><summary style="font-size:11px;color:#818cf8;cursor:pointer;padding:8px 10px;background:rgba(99,102,241,.06);border:1px solid rgba(99,102,241,.2);border-radius:8px;font-weight:600;list-style:none">📋 Ver los '+factors.length+' factores del modelo</summary>'
+    +'<div style="padding-top:12px">'+factorsHTML+'</div></details>'
     +'</div>'
     +'<div class="card" style="background:var(--bg)">'
     +'<div style="font-size:13px;font-weight:700;margin-bottom:8px">📖 Metodología v2</div>'
@@ -5388,11 +5444,13 @@ function renderForecast(){
     const el=document.getElementById('pred-history-container');
     if(el)el.innerHTML=histHTML;
   }).catch(e=>console.warn('historial:',e));
-  // Resum de backtest (mètriques agregades de prediccions resoltes)
+  // Qualitat del model: backtest + correcció històrica + ML, tot en una targeta.
+  // Abans eren tres targetes seguides amb tres percentatges que semblaven comparables.
+  S._mq={mlCard,biasFix};
   Promise.all([computeBacktestMetrics('week'),computeBacktestMetrics('month')]).then(([w,m])=>{
-    const el=document.getElementById('backtest-summary-container');
-    if(!el)return;
-    el.innerHTML=renderBacktestSummary(w,m);
+    S._mq.week=w;S._mq.month=m;
+    const el=document.getElementById('model-quality-container');
+    if(el)el.innerHTML=renderModelQuality(w,m,biasFix,mlCard);
   }).catch(e=>console.warn('backtest:',e));
   return html;
   }catch(e){
