@@ -199,7 +199,9 @@ const T={
     // Mejora 7: datos obsoletos
     staleData:'Datos desactualizados · última actualización hace',
     etfTitle:'ETF Bitcoin — Flujo de Capital',
-    marketThermo:'Termómetro del mercado',domOthers:'Otras',totalMcap:'Cap. total cripto',
+    marketThermo:'Termómetro del mercado',
+    taDaily40:'últimos 40 días',macdSignalLine:'Señal (EMA9)',taTimeframe:'Velas diarias · 90 días de historial',
+    taSrNote:'Niveles detectados por swing points sobre las velas diarias, los mismos que marca el gráfico de abajo.',bbRange:'Canal Bollinger (20d, ±2σ)',domOthers:'Otras',totalMcap:'Cap. total cripto',
     etfNoDataToday:'hoy sin publicar',etfLastFlow:'Último flujo publicado',etfDataAt:'Datos a',
     etfOthers:'Otros (incl. GBTC)',etfDayShort:'día',etfNetNote:'Neto de todos los ETF: incluye las salidas de GBTC, por eso el total puede ser menor que un fondo concreto.',
     etfTodayFlow:'Flujo del día',etfTotalAcum:'Total acumulado',
@@ -295,7 +297,9 @@ const T={
     tooltipBollinger:"Bandes de Bollinger: canal de preu basat en mitjana mòbil ± 2 desviacions estàndard. A prop de la banda superior = sobrecomprat. A prop de la inferior = sobrevenut. Bandes amples = alta volatilitat.",
     staleData:'Dades desactualitzades · darrera actualització fa',
     etfTitle:'ETF Bitcoin — Flux de Capital',
-    marketThermo:'Termòmetre del mercat',domOthers:'Altres',totalMcap:'Cap. total cripto',
+    marketThermo:'Termòmetre del mercat',
+    taDaily40:'últims 40 dies',macdSignalLine:'Senyal (EMA9)',taTimeframe:"Espelmes diàries · 90 dies d'historial",
+    taSrNote:'Nivells detectats per swing points sobre les espelmes diàries, els mateixos que marca el gràfic de sota.',bbRange:'Canal Bollinger (20d, ±2σ)',domOthers:'Altres',totalMcap:'Cap. total cripto',
     etfNoDataToday:'avui sense publicar',etfLastFlow:'Últim flux publicat',etfDataAt:'Dades a',
     etfOthers:'Altres (incl. GBTC)',etfDayShort:'dia',etfNetNote:'Net de tots els ETF: inclou les sortides de GBTC, per això el total pot ser menor que un fons concret.',
     etfTodayFlow:'Flux del dia',etfTotalAcum:'Total acumulat',
@@ -384,7 +388,9 @@ const T={
     tooltipBollinger:'Bollinger Bands: price channel based on moving average ± 2 standard deviations. Near upper band = overbought. Near lower band = oversold. Wide bands = high volatility.',
     staleData:'Stale data · last updated',
     etfTitle:'Bitcoin ETF — Capital Flows',
-    marketThermo:'Market thermometer',domOthers:'Others',totalMcap:'Total crypto cap',
+    marketThermo:'Market thermometer',
+    taDaily40:'last 40 days',macdSignalLine:'Signal (EMA9)',taTimeframe:'Daily candles · 90 days of history',
+    taSrNote:'Levels detected from swing points on the daily candles, the same ones drawn on the chart below.',bbRange:'Bollinger channel (20d, ±2σ)',domOthers:'Others',totalMcap:'Total crypto cap',
     etfNoDataToday:'not published yet today',etfLastFlow:'Last published flow',etfDataAt:'Data as of',
     etfOthers:'Others (incl. GBTC)',etfDayShort:'day',etfNetNote:'Net across all ETFs: it includes GBTC outflows, so the total can be lower than a single fund.',
     etfTodayFlow:"Today's flow",etfTotalAcum:'Total accumulated',
@@ -1482,13 +1488,21 @@ function analyze(){
   const signal=bullPct>=65?'COMPRAR':bullPct<=35?'VENDER':'NEUTRAL';
   return{lastRSI,sma7,sma30,lMACD,lSig,bbU,bbL,support,resistance,bullPct,bearPct:100-bullPct,signal,last,rsiData:rsiArr.slice(-40).filter(v=>v!=null),macdData:macd.slice(-40),sigData:padSig.slice(-40)};
 }
-function miniLine(data,color,h=65,refs=[]){
-  const v=data.filter(x=>x!=null);if(!v.length)return'';
-  const min=Math.min(...v),max=Math.max(...v),range=max-min||1;
+// `extra`: segona sèrie opcional {data,color} — s'escala amb la principal.
+// Serveix per dibuixar la línia de senyal del MACD, que fins ara es calculava
+// (analyze() retorna sigData) però no es dibuixava enlloc: la creuada de què parla
+// l'etiqueta "alcista/bajista" era justament l'única cosa que no es veia.
+function miniLine(data,color,h=65,refs=[],extra=null){
+  const all=data.concat(extra&&extra.data?extra.data:[]).filter(x=>x!=null);
+  if(!all.length)return'';
+  const min=Math.min(...all),max=Math.max(...all),range=max-min||1;
   const W=300,H=h,P=4;
-  const pts=data.map((x,i)=>{if(x==null)return null;return`${P+(i/(data.length-1))*(W-P*2)},${P+(1-(x-min)/range)*(H-P*2)}`;}).filter(Boolean).join(' ');
+  const toPts=arr=>arr.map((x,i)=>{if(x==null)return null;return`${P+(i/(arr.length-1))*(W-P*2)},${P+(1-(x-min)/range)*(H-P*2)}`;}).filter(Boolean).join(' ');
+  const pts=toPts(data);
   const rls=refs.map(({val,color:rc})=>{const y=P+(1-(val-min)/range)*(H-P*2);return`<line x1="${P}" y1="${y}" x2="${W-P}" y2="${y}" stroke="${rc}" stroke-dasharray="4 3" stroke-width="1" opacity=".7"/>`;}).join('');
-  return`<svg viewBox="0 0 ${W} ${H}" class="mini-chart" preserveAspectRatio="none">${rls}<polyline points="${pts}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round"/></svg>`;
+  const extraLine=extra&&extra.data&&extra.data.some(x=>x!=null)
+    ?`<polyline points="${toPts(extra.data)}" fill="none" stroke="${extra.color}" stroke-width="1.5" stroke-dasharray="4 3" stroke-linejoin="round" opacity=".9"/>`:'';
+  return`<svg viewBox="0 0 ${W} ${H}" class="mini-chart" preserveAspectRatio="none">${rls}<polyline points="${pts}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round"/>${extraLine}</svg>`;
 }
 function fmtPrice(v){if(v>=1e6)return(v/1e6).toFixed(2)+'M';if(v>=1e3)return(v/1e3).toFixed(1)+'k';return v.toFixed(0);}
 
@@ -2228,7 +2242,7 @@ function renderAutoTechnicalChart(){
     const bT=Math.min(yO,yC),bH=Math.max(1.5,Math.abs(yO-yC));
     const dateStr=c.ts?new Date(c.ts).toLocaleDateString('ca-ES',{day:'2-digit',month:'short',year:'numeric'}):'';
     const chgPct=c.open>0?((c.close-c.open)/c.open*100):0;
-    const tip=`${dateStr}\nObertura:  ${fmtTip(c.open)}\nMàxim:     ${fmtTip(c.high)}\nMínim:     ${fmtTip(c.low)}\nTanc.:     ${fmtTip(c.close)}\nVar.:      ${chgPct>=0?'+':''}${chgPct.toFixed(2)}%`;
+    const tip=`${dateStr}\nApertura:   ${fmtTip(c.open)}\nMáximo:     ${fmtTip(c.high)}\nMínimo:     ${fmtTip(c.low)}\nCierre:     ${fmtTip(c.close)}\nVar.:       ${chgPct>=0?'+':''}${chgPct.toFixed(2)}%`;
     candH+=`<g><title>${tip}</title>`;
     candH+=`<line x1="${x}" y1="${yH}" x2="${x}" y2="${yL}" stroke="${col}" stroke-width="1" opacity=".7"/>`;
     candH+=`<rect x="${x-cW/2}" y="${bT}" width="${cW}" height="${bH}" fill="${col}" rx="1"/>`;
@@ -2303,29 +2317,29 @@ function renderAutoTechnicalChart(){
   const legend=`
 <div style="padding:10px;background:#0f172a;border-top:1px solid #1e293b;font-size:12px;color:#94a3b8">
   <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:8px">
-    <span><span style="color:#22c55e;font-weight:bold">━━</span> Suport — nivell de preu on la demanda ha aturat caigudes anteriors</span>
-    <span><span style="color:#ef4444;font-weight:bold">━━</span> Resistència — nivell on la pressió venedora ha frenat pujades</span>
-    <span><span style="color:#3b82f6;font-weight:bold">━━</span> Tendència alcista — sèrie de mínims creixents</span>
-    <span><span style="color:#f97316;font-weight:bold">━━</span> Tendència baixista — sèrie de màxims decreixents</span>
-    <span><span style="color:#fbbf24;font-weight:bold">- -</span> Preu actual</span>
+    <span><span style="color:#22c55e;font-weight:bold">━━</span> Soporte — nivel de precio donde la demanda ha frenado caídas anteriores</span>
+    <span><span style="color:#ef4444;font-weight:bold">━━</span> Resistencia — nivel donde la presión vendedora ha frenado subidas</span>
+    <span><span style="color:#3b82f6;font-weight:bold">━━</span> Tendencia alcista — serie de mínimos crecientes</span>
+    <span><span style="color:#f97316;font-weight:bold">━━</span> Tendencia bajista — serie de máximos decrecientes</span>
+    <span><span style="color:#fbbf24;font-weight:bold">- -</span> Precio actual</span>
   </div>
   <div style="background:#1e293b;border-radius:6px;padding:8px;color:#cbd5e1;line-height:1.6">
-    <div style="font-size:10px;color:#64748b;margin-bottom:4px">💡 Toca (mòbil) o passa el ratolí (PC) sobre les veles per veure dades OHLC i variació diària</div>
-    ${nearestSupport?`<div>🟢 <b>Suport proper:</b> $${fmtComma(nearestSupport.price)} — si el preu cau fins aquí, és on podria rebotar</div>`:''}
-    ${nearestResistance?`<div>🔴 <b>Resistència propera:</b> $${fmtComma(nearestResistance.price)} — barrera a superar per continuar pujant</div>`:''}
-    ${hasUpTrend?`<div>📈 <b>Canal alcista</b> detectat — els mínims estan pujant, senyal positiu</div>`:''}
-    ${hasDownTrend?`<div>📉 <b>Canal baixista</b> detectat — els màxims estan baixant, pressió venedora</div>`:''}
-    ${!hasUpTrend&&!hasDownTrend?`<div>↔️ <b>Sense tendència clara</b> detectada en els últims 90 dies</div>`:''}
-    ${lastPattern?`<div>${lastPattern.label} <b>${lastPattern.desc}</b> — patró detectat fa ${n-1-lastPattern.idx} dia${n-1-lastPattern.idx===1?'':'s'}</div>`:''}
-    ${patterns.length?`<div style="font-size:10px;color:#64748b;margin-top:4px">📊 Patrons darrers 30 dies: ${Object.entries(patSummary).map(([k,v])=>`${v}× ${({doji:'Doji',hammer:'Martell',shooting:'Estrella fugaç','engulf-bull':'Englobador↑','engulf-bear':'Englobador↓'})[k]||k}`).join(' · ')}</div>`:''}
+    <div style="font-size:10px;color:#64748b;margin-bottom:4px">💡 Toca (móvil) o pasa el ratón (PC) sobre las velas para ver datos OHLC y variación diaria</div>
+    ${nearestSupport?`<div>🟢 <b>Soporte cercano:</b> $${fmtComma(nearestSupport.price)} — si el precio cae hasta aquí, es donde podría rebotar</div>`:''}
+    ${nearestResistance?`<div>🔴 <b>Resistencia cercana:</b> $${fmtComma(nearestResistance.price)} — barrera a superar para seguir subiendo</div>`:''}
+    ${hasUpTrend?`<div>📈 <b>Canal alcista</b> detectado — los mínimos están subiendo, señal positiva</div>`:''}
+    ${hasDownTrend?`<div>📉 <b>Canal bajista</b> detectado — los máximos están bajando, presión vendedora</div>`:''}
+    ${!hasUpTrend&&!hasDownTrend?`<div>↔️ <b>Sin tendencia clara</b> detectada en los últimos 90 días</div>`:''}
+    ${lastPattern?`<div>${lastPattern.label} <b>${lastPattern.desc}</b> — patrón detectado hace ${n-1-lastPattern.idx} día${n-1-lastPattern.idx===1?'':'s'}</div>`:''}
+    ${patterns.length?`<div style="font-size:10px;color:#64748b;margin-top:4px">📊 Patrones últimos 30 días: ${Object.entries(patSummary).map(([k,v])=>`${v}× ${({doji:'Doji',hammer:'Martillo',shooting:'Estrella fugaz','engulf-bull':'Englobador↑','engulf-bear':'Englobador↓'})[k]||k}`).join(' · ')}</div>`:''}
   </div>
   ${(lvlSup||lvlRes)?`<div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap;align-items:center">
-    <button onclick="createTechAlerts(${lvlSup},${lvlRes})" style="padding:6px 12px;background:rgba(249,115,22,.12);border:1px solid rgba(249,115,22,.4);border-radius:8px;color:#f97316;font-size:11px;font-weight:600;cursor:pointer">🔔 Crear alertes per aquests nivells</button>
+    <button onclick="createTechAlerts(${lvlSup},${lvlRes})" style="padding:6px 12px;background:rgba(249,115,22,.12);border:1px solid rgba(249,115,22,.4);border-radius:8px;color:#f97316;font-size:11px;font-weight:600;cursor:pointer">🔔 Crear alertas para estos niveles</button>
     <span style="font-size:10px;color:#64748b">avisarà quan trenqui suport/resistència</span>
   </div>`:''}
 </div>`;
   const expandBtn=`<button class="ampliar-btn" onclick="expandAutoTech(this)" style="align-self:flex-end;padding:3px 10px;background:#1e293b;color:#94a3b8;border:1px solid #334155;border-radius:6px;cursor:pointer;font-size:12px;margin-bottom:6px">⛶ Ampliar</button>`;
-  return`<div class="autoTechWrap" style="position:relative"><div class="card"><div style="font-size:15px;font-weight:700;margin-bottom:12px">📐 Anàlisi Tècnic Automàtic</div>${expandBtn}${svg}${legend}</div></div>`;
+  return`<div class="autoTechWrap" style="position:relative"><div class="card"><div style="font-size:15px;font-weight:700;margin-bottom:12px">📐 Análisis Técnico Automático</div>${expandBtn}${svg}${legend}</div></div>`;
 }
 function expandAutoTech(btn) {
   // Si rebem el botó, busquem el wrap més proper. Si no, el primer visible (compatibilitat)
@@ -2368,7 +2382,7 @@ function expandAutoTech(btn) {
     // Add close button at top
     const closeBtn = document.createElement('button');
     closeBtn.className = 'close-tech-btn';
-    closeBtn.textContent = '✕ Tancar';
+    closeBtn.textContent = '✕ Cerrar';
     closeBtn.style.cssText = 'align-self:flex-end;padding:6px 16px;background:#ef4444;color:white;border:none;border-radius:6px;cursor:pointer;font-size:14px;flex-shrink:0';
     closeBtn.onclick = function(){ expandAutoTech(closeBtn); };
     wrap.insertBefore(closeBtn, wrap.firstChild);
@@ -2454,11 +2468,31 @@ function renderAnalysis(){
   const rsiColor=a.lastRSI<30?'#10b981':a.lastRSI>70?'#ef4444':'#eab308';
   const rsiLabel=a.lastRSI<30?tr.rsiOversoldLabel:a.lastRSI>70?tr.rsiOverboughtLabel:tr.rsiNeutralLabel;
   const macdBull=a.lMACD>a.lSig,smaBull=a.sma7>a.sma30;
+  // Histograma (MACD − senyal): és el número que concorda amb l'etiqueta alcista/baixista.
+  // Abans es mostrava la línia MACD, que pot ser positiva mentre la senyal diu "baixista".
+  const macdHist=(a.lMACD||0)-(a.lSig||0);
+  // Suport/resistència amb la MATEIXA detecció que el gràfic automàtic (swing points
+  // + clustering). analyze() els calcula com a min/max de 30 dies amb un ±2% arbitrari,
+  // i això feia sortir dues xifres diferents per al mateix nivell a la mateixa pantalla.
+  let srSup=a.support, srRes=a.resistance, srSupN=0, srResN=0, srAuto=false;
+  if(S.ohlcTA&&S.ohlcTA.length>=20){
+    try{
+      const px=S.price.usd||a.last;
+      const sw=detectSwingPoints(S.ohlcTA,5);
+      const sup=clusterLevels(sw.swingLows.map(p=>({price:p.price}))).filter(l=>l.price<px).sort((x,y)=>y.price-x.price)[0];
+      const res=clusterLevels(sw.swingHighs.map(p=>({price:p.price}))).filter(l=>l.price>px).sort((x,y)=>x.price-y.price)[0];
+      if(sup&&res){srSup=sup.price;srRes=res.price;srSupN=sup.touches;srResN=res.touches;srAuto=true;}
+    }catch(e){console.warn('SR swing:',e);}
+  }
+  const srTouch=n=>n>1?' <span style="font-size:10px;color:var(--text3)">('+n+' toques)</span>':'';
   const bbPos=a.last>a.bbU?tr.overbought:a.last<a.bbL?tr.oversold:tr.inRange;
   const bbPosColor=a.last>a.bbU||a.last<a.bbL?'#eab308':'#3b82f6';
   return`<div class="space-y">
   <div class="card">
-    <div style="font-size:15px;font-weight:700;margin-bottom:12px">🧠 ${tr.technicalAnalysis}</div>
+    <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+      <div style="font-size:15px;font-weight:700">🧠 ${tr.technicalAnalysis}</div>
+      <div style="font-size:10px;color:var(--text3)">🕐 ${tr.taTimeframe}</div>
+    </div>
     <div class="signal-banner ${sigClass}">
       <div style="display:flex;justify-content:space-between;align-items:center">
         <div><div style="font-size:10px;color:var(--text3);text-transform:uppercase;margin-bottom:4px">${tr.marketSignal}</div><div style="font-size:24px;font-weight:800;color:${sigColor}">${sigText}</div></div>
@@ -2471,19 +2505,25 @@ function renderAnalysis(){
     </div>
     <div class="grid-2" style="gap:8px">
       <div class="stat-box"><div class="stat-label">RSI (14)<button class="ind-info" onclick="showIndTooltip(this,'${tr.tooltipRSI||'RSI: mide velocidad de cambios de precio. <30 sobrevendido, >70 sobrecomprado.'}')">?</button></div><div class="stat-val" style="color:${rsiColor}">${a.lastRSI.toFixed(1)}</div><div style="font-size:9px;color:var(--text3)">${rsiLabel}</div></div>
-      <div class="stat-box"><div class="stat-label">MACD<button class="ind-info" onclick="showIndTooltip(this,'${tr.tooltipMACD||'MACD: diferencia EMA(12)-EMA(26). Cruza arriba = alcista, cruza abajo = bajista.'}')">?</button></div><div class="stat-val" style="color:${macdBull?'#10b981':'#ef4444'}">${a.lMACD?.toFixed(0)}</div><div style="font-size:9px;color:var(--text3)">${macdBull?tr.macdBullish:tr.macdBearish}</div></div>
+      <div class="stat-box"><div class="stat-label">MACD<button class="ind-info" onclick="showIndTooltip(this,'${tr.tooltipMACD||'MACD: diferencia EMA(12)-EMA(26). Cruza arriba = alcista, cruza abajo = bajista.'}')">?</button></div><div class="stat-val" style="color:${macdBull?'#10b981':'#ef4444'}">${macdHist>=0?'+':''}${macdHist.toFixed(0)}</div><div style="font-size:9px;color:var(--text3)">${macdBull?tr.macdBullish:tr.macdBearish}</div></div>
       <div class="stat-box"><div class="stat-label">MA7 vs MA30<button class="ind-info" onclick="showIndTooltip(this,'${tr.tooltipMA||'Golden Cross (MA7>MA30) = alcista. Death Cross (MA7<MA30) = bajista.'}')">?</button></div><div class="stat-val" style="font-size:11px;color:${smaBull?'#10b981':'#ef4444'}">${smaBull?tr.goldenCross:tr.deathCross}</div><div style="font-size:9px;color:var(--text3)">${smaBull?tr.bullish:tr.bearish}</div></div>
-      <div class="stat-box"><div class="stat-label">Bollinger<button class="ind-info" onclick="showIndTooltip(this,'${tr.tooltipBollinger||'Bandas Bollinger: canal ±2σ alrededor de la media. Cerca del límite superior = sobrecomprado.'}')">?</button></div><div class="stat-val" style="font-size:11px;color:${bbPosColor}">${bbPos}</div></div>
+      <div class="stat-box"><div class="stat-label">Bollinger<button class="ind-info" onclick="showIndTooltip(this,'${tr.tooltipBollinger||'Bandas Bollinger: canal ±2σ alrededor de la media. Cerca del límite superior = sobrecomprado.'}')">?</button></div><div class="stat-val" style="font-size:11px;color:${bbPosColor}">${bbPos}</div><div style="font-size:9px;color:var(--text3);font-family:monospace">$${fmtN(Math.round(a.bbL),0)} – $${fmtN(Math.round(a.bbU),0)}</div></div>
     </div>
   </div>
   <div class="card">
     <div style="font-size:14px;font-weight:600;margin-bottom:10px">${tr.srTitle}</div>
-    <div class="sr-row" style="background:rgba(239,68,68,.06);border-color:rgba(239,68,68,.3)"><span style="font-size:12px;color:var(--text2)">🔴 ${tr.resistance}</span><span style="font-size:13px;font-weight:700;color:#ef4444;font-family:monospace">$${fmtN(a.resistance,0)}</span></div>
+    <div class="sr-row" style="background:rgba(239,68,68,.06);border-color:rgba(239,68,68,.3)"><span style="font-size:12px;color:var(--text2)">🔴 ${tr.resistance}${srTouch(srResN)}</span><span style="font-size:13px;font-weight:700;color:#ef4444;font-family:monospace">$${fmtN(Math.round(srRes),0)}</span></div>
     <div class="sr-row" style="background:rgba(249,115,22,.06);border-color:rgba(249,115,22,.3)"><span style="font-size:12px;color:var(--text2)">🟠 ${tr.currentPriceLbl}</span><span style="font-size:13px;font-weight:700;color:#f97316;font-family:monospace">$${fmtN(a.last,0)}</span></div>
-    <div class="sr-row" style="background:rgba(16,185,129,.06);border-color:rgba(16,185,129,.3)"><span style="font-size:12px;color:var(--text2)">🟢 ${tr.support}</span><span style="font-size:13px;font-weight:700;color:#10b981;font-family:monospace">$${fmtN(a.support,0)}</span></div>
+    <div class="sr-row" style="background:rgba(16,185,129,.06);border-color:rgba(16,185,129,.3)"><span style="font-size:12px;color:var(--text2)">🟢 ${tr.support}${srTouch(srSupN)}</span><span style="font-size:13px;font-weight:700;color:#10b981;font-family:monospace">$${fmtN(Math.round(srSup),0)}</span></div>
+    ${srAuto?`<div style="font-size:10px;color:var(--text3);line-height:1.5;margin-top:8px">${tr.taSrNote}</div>`:''}
   </div>
-  <div class="card"><div style="font-size:13px;font-weight:600;margin-bottom:6px;color:var(--text2)">RSI (últimos períodos)</div>${miniLine(a.rsiData,'#a855f7',65,[{val:70,color:'#ef4444'},{val:30,color:'#10b981'}])}<div style="font-size:10px;color:var(--text3);margin-top:4px">${tr.rsiDesc}</div></div>
-  <div class="card"><div style="font-size:13px;font-weight:600;margin-bottom:6px;color:var(--text2)">MACD</div>${miniLine(a.macdData,'#3b82f6',65,[])}<div style="font-size:10px;color:var(--text3);margin-top:4px">${tr.macdDesc}</div></div>
+  <div class="card"><div style="font-size:13px;font-weight:600;margin-bottom:6px;color:var(--text2)">RSI (14) <span style="font-weight:400;color:var(--text3);font-size:11px">· ${tr.taDaily40}</span></div>${miniLine(a.rsiData,'#a855f7',65,[{val:70,color:'#ef4444'},{val:30,color:'#10b981'}])}<div style="font-size:10px;color:var(--text3);margin-top:4px">${tr.rsiDesc}</div></div>
+  <div class="card"><div style="font-size:13px;font-weight:600;margin-bottom:6px;color:var(--text2)">MACD <span style="font-weight:400;color:var(--text3);font-size:11px">· ${tr.taDaily40}</span></div>${miniLine(a.macdData,'#3b82f6',65,[],{data:a.sigData,color:'#f59e0b'})}
+    <div style="display:flex;gap:12px;font-size:10px;color:var(--text3);margin-top:4px">
+      <span><span style="display:inline-block;width:12px;height:2px;background:#3b82f6;vertical-align:middle;margin-right:4px"></span>MACD</span>
+      <span><span style="display:inline-block;width:12px;height:0;border-top:2px dashed #f59e0b;vertical-align:middle;margin-right:4px"></span>${tr.macdSignalLine}</span>
+    </div>
+    <div style="font-size:10px;color:var(--text3);margin-top:4px">${tr.macdDesc}</div></div>
   ${renderAutoTechnicalChart()}
   <div style="font-size:10px;color:var(--text3);text-align:center">${tr.noFinancialAdvice}</div>
 </div>`;
@@ -5182,7 +5222,7 @@ function renderTechnicalOutlook(){
   const supportStr=nearestSupport?fmt(nearestSupport.price):'—';
   const resistanceStr=nearestResistance?fmt(nearestResistance.price):'—';
   return '<div class="card" style="border:1px solid '+signalColor+'33">'
-    +'<div style="font-size:15px;font-weight:700;margin-bottom:12px">📐 Perspectiva Tècnica a Curt Termini</div>'
+    +'<div style="font-size:15px;font-weight:700;margin-bottom:12px">📐 Perspectiva Técnica a Corto Plazo</div>'
     +'<div style="text-align:center;padding:16px 0;background:'+signalBg+';border-radius:10px;margin-bottom:12px">'
     +'<div style="font-size:28px;font-weight:900;color:'+signalColor+'">'+signal+'</div>'
     +'</div>'
@@ -5200,7 +5240,7 @@ function renderTechnicalOutlook(){
     +'<div style="font-size:14px;font-weight:800;color:var(--text)">'+activeTrends+'</div>'
     +'</div>'
     +'</div>'
-    +'<div style="font-size:10px;color:var(--text3);text-align:center">📅 Basat en els últims 90 dies · Actualitzat en temps real</div>'
+    +'<div style="font-size:10px;color:var(--text3);text-align:center">📅 Basado en los últimos 90 días · Actualizado en tiempo real</div>'
     +'</div>';
 }
 function renderFanChart(currentPrice, horizons){

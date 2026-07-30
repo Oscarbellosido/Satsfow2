@@ -142,7 +142,12 @@ Funció independent (~línia 2061) que genera un gràfic de veles SVG amb:
 - **Llegenda interpretativa** amb el suport/resistència més proper al preu actual i resum dels canals detectats
 - Botó "Ampliar" per veure a pantalla completa (`expandAutoTech`)
 
-S'usa a **dos llocs**: tab `technical` i tab `forecast` (entre el panell ML i els rangs per horitzó).
+S'usa **només al tab `technical`**. El tab `forecast` té una funció diferent,
+`renderTechnicalOutlook()` ("Perspectiva Técnica a Corto Plazo").
+
+Els seus nivells són també els que mostra la targeta "Soporte & Resistencia" del tab
+`technical`: abans aquesta targeta els calculava com a min/max de 30 dies amb un ±2%
+arbitrari i donava xifres diferents per al mateix nivell a la mateixa pantalla.
 
 ---
 
