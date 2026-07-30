@@ -136,6 +136,25 @@ S'usa a **dos llocs**: tab `technical` i tab `forecast` (entre el panell ML i el
 
 ---
 
+## ML adaptatiu (TensorFlow.js) — objecte `ML` (~línia 4098)
+Xarxa petita (10→16→8→3, softmax) que aprèn quin bloc d'indicadors (Tècnic / On-chain / Macro)
+ha predit millor el preu real, i ajusta els pesos del forecast al 40% (`ML.blend`).
+
+- **Dades d'entrenament:** snapshots de `predictions` (IndexedDB) amb ≥7 dies d'antiguitat
+  i amb `taTotal`/`onChainTotal`/`macroTotal`. Mínim 5 mostres.
+- **Preu real a 7 dies:** `mlResolveReal()` — primer busca el snapshot d'aquella data a
+  IndexedDB, i només com a fallback el `sf-pricelog` de localStorage.
+- **Persistència:** model a `localstorage://sf-ml-model`, mètriques a `sf-ml-meta`.
+- **Backend forçat a CPU** (`mlEnsureTF`): el model és minúscul i la CPU és ~6× més ràpida
+  que WebGL aquí, a més d'evitar contextos WebGL trencats en WebViews/PWA.
+- **`yieldEvery:'never'` al `fit()`** — crític: per defecte tfjs cedeix el control amb
+  `requestAnimationFrame`, que no dispara mai amb la pàgina no visible i deixa
+  l'entrenament penjat per sempre sense error. Hi ha també un timeout de 45s.
+- **Diagnòstic:** `ML.lastError` (`tf_load_fail` | `train_timeout` | `insufficient`) i
+  `ML.diag` ({total, aged, resolved}) es mostren al panell perquè es vegi la causa real.
+
+---
+
 ## Repositori
 - GitHub: `https://github.com/Oscarbellosido/Satsfow2`
 - Branca principal: `main`

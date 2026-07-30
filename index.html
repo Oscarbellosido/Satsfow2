@@ -4095,7 +4095,35 @@ async function updateForecastBias(){
 }
 
 /* ══════ ML: TensorFlow.js · Ajuste adaptativo de pesos ══════ */
-const ML={model:null,trained:null,training:false,accuracy:null,samplesUsed:0,lastTrained:null,blend:0.40};
+const ML={model:null,trained:null,training:false,accuracy:null,samplesUsed:0,lastTrained:null,blend:0.40,lastError:null,diag:null};
+
+function mlRender(){if(S.currentTab==='cycles')renderTab('cycles');else if(S.currentTab==='forecast')renderTab('forecast');}
+
+// Carrega tfjs (una sola vegada) i força el backend CPU.
+// El model és minúscul (10→16→8→3): la CPU entrena en ~0.5s contra ~3s amb WebGL
+// (el cost d'apujar tensors a la GPU domina) i evita els contextos WebGL
+// inestables o bloquejats dels WebViews i PWA d'Android.
+async function mlEnsureTF(){
+  if(typeof tf==='undefined'){
+    await new Promise((res,rej)=>{
+      const s=document.createElement('script');
+      s.src='https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js';
+      s.onload=res;s.onerror=()=>rej(new Error('tf_load_fail'));
+      document.head.appendChild(s);
+    });
+  }
+  try{if(tf.getBackend()!=='cpu'){await tf.setBackend('cpu');await tf.ready();}}catch(e){console.warn('[ML] backend cpu:',e);}
+}
+
+// Preu real d'una data: primer el snapshot d'aquell dia (IndexedDB), després el pricelog.
+// Mateixa estratègia que computeBacktestMetrics — abans l'ML només mirava el pricelog
+// de localStorage i descartava mostres que sí es podien resoldre.
+function mlResolveReal(preds,ts,days){
+  const target=new Date(ts+days*86400000).toISOString().slice(0,10);
+  const hit=preds.find(p=>p.date===target||(p.date&&p.date.startsWith(target)));
+  if(hit&&hit.price>0)return hit.price;
+  return getPriceAtDate(target);
+}
 
 function mlFeaturize(s){
   return[
@@ -4132,26 +4160,37 @@ function mlMakeLabel(s,chg){
 }
 
 async function mlTrain(){
-  if(ML.training||typeof tf==='undefined')return{error:'unavailable'};
-  ML.training=true;
+  if(ML.training)return{error:'busy'};
+  ML.training=true;ML.lastError=null;
   try{
-    const log=JSON.parse(localStorage.getItem('sf-pricelog')||'{}');
+    try{await mlEnsureTF();}
+    catch(e){ML.training=false;ML.trained=false;ML.lastError='tf_load_fail';return{error:'tf_load_fail'};}
     const preds=await loadPredictions();
     const now=Date.now(),D=86400000;
     const samples=[];
+    let aged=0;
     for(const snap of preds){
       if(snap.taTotal==null||snap.onChainTotal==null||snap.macroTotal==null)continue;
       if(now-snap.ts<7*D)continue;
-      const td=new Date(snap.ts+7*D).toISOString().slice(0,10);
-      const real=log[td]||getPriceAtDate(td);
+      aged++;
+      const real=mlResolveReal(preds,snap.ts,7);
       if(!real||real<=0||!snap.price)continue;
       samples.push({snap,chg:(real-snap.price)/snap.price});
     }
-    if(samples.length<5){ML.training=false;ML.trained=false;return{error:'insufficient',n:samples.length};}
+    ML.diag={total:preds.length,aged,resolved:samples.length};
+    if(samples.length<5){ML.training=false;ML.trained=false;ML.lastError='insufficient';return{error:'insufficient',n:samples.length};}
     if(!ML.model)ML.model=mlCreateModel();
     const xs=tf.tensor2d(samples.map(s=>mlFeaturize(s.snap)));
     const ys=tf.tensor2d(samples.map(s=>mlMakeLabel(s.snap,s.chg)));
-    await ML.model.fit(xs,ys,{epochs:100,batchSize:Math.min(16,Math.max(4,samples.length)),shuffle:true,validationSplit:samples.length>=10?0.15:0,verbose:0});
+    // yieldEvery:'never' és IMPRESCINDIBLE: per defecte fit() cedeix el control amb
+    // tf.nextFrame() (requestAnimationFrame). Si la pestanya/PWA no és visible, el rAF
+    // no dispara MAI i fit() es queda penjat per sempre, sense error ni rebuig.
+    // Guarda de seguretat addicional: timeout de 45s.
+    const fitOk=await Promise.race([
+      ML.model.fit(xs,ys,{epochs:100,batchSize:Math.min(16,Math.max(4,samples.length)),shuffle:true,validationSplit:samples.length>=10?0.15:0,yieldEvery:'never',verbose:0}).then(()=>true),
+      new Promise(r=>setTimeout(()=>r(false),45000))
+    ]);
+    if(!fitOk){xs.dispose();ys.dispose();ML.training=false;ML.trained=false;ML.lastError='train_timeout';return{error:'train_timeout'};}
     xs.dispose();ys.dispose();
     let ok=0;
     for(const{snap,chg}of samples){
@@ -4170,21 +4209,13 @@ async function mlTrain(){
     LOG('[ML] Entrenado accuracy='+ML.accuracy+'% n='+ML.samplesUsed);
     ML.training=false;
     return{accuracy:ML.accuracy,n:ML.samplesUsed};
-  }catch(e){console.error('[ML]',e);ML.training=false;return{error:e.message};}
+  }catch(e){console.error('[ML]',e);ML.training=false;ML.trained=false;ML.lastError=e.message||'error';return{error:e.message};}
 }
 
 async function mlInit(){
   if(ML.trained!==null&&!ML.training)return;
-  if(typeof tf==='undefined'){
-    try{
-      await new Promise((res,rej)=>{
-        const s=document.createElement('script');
-        s.src='https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js';
-        s.onload=res;s.onerror=()=>rej(new Error('tf_load_fail'));
-        document.head.appendChild(s);
-      });
-    }catch(e){ML.trained=false;return;}
-  }
+  try{await mlEnsureTF();}
+  catch(e){ML.trained=false;ML.lastError='tf_load_fail';return;}
   try{
     const loaded=await tf.loadLayersModel('localstorage://sf-ml-model').catch(()=>null);
     if(loaded){
@@ -4197,7 +4228,7 @@ async function mlInit(){
     }else{
       await mlTrain();
     }
-  }catch(e){console.warn('[ML] init:',e);ML.trained=false;}
+  }catch(e){console.warn('[ML] init:',e);ML.trained=false;ML.lastError=e.message||'error';}
 }
 
 function mlGetWeights(ctx){
@@ -4214,11 +4245,19 @@ function mlGetWeights(ctx){
 
 async function mlRetrainUI(){
   if(ML.training)return;
-  ML.model=null;ML.trained=null;
-  try{tf.io.removeModel('localstorage://sf-ml-model').catch(()=>{});localStorage.removeItem('sf-ml-meta');}catch{}
-  if(S.currentTab==='cycles')renderTab('cycles');else if(S.currentTab==='forecast')renderTab('forecast');
+  // training=true abans del render: evita que renderForecast dispari mlInit en paral·lel
+  ML.training=true;ML.model=null;ML.trained=null;ML.lastError=null;
+  mlRender();
+  try{await mlEnsureTF();}catch(e){ML.training=false;ML.trained=false;ML.lastError='tf_load_fail';mlRender();showNotif('🧠 SatsFlow','No s\'ha pogut carregar TensorFlow.js. Comprova la connexió.');return;}
+  try{await tf.io.removeModel('localstorage://sf-ml-model');}catch{}
+  try{localStorage.removeItem('sf-ml-meta');}catch{}
+  ML.training=false; // mlTrain el torna a activar immediatament
   const r=await mlTrain();
-  if(S.currentTab==='cycles')renderTab('cycles');else if(S.currentTab==='forecast')renderTab('forecast');
+  mlRender();
+  if(r&&r.error==='insufficient')showNotif('🧠 SatsFlow','Falten dades: '+(r.n||0)+' prediccions útils de 5 necessàries.');
+  else if(r&&r.error==='train_timeout')showNotif('🧠 SatsFlow','L\'entrenament s\'ha bloquejat en aquest dispositiu.');
+  else if(r&&r.error)showNotif('🧠 SatsFlow','Error entrenant el model: '+r.error);
+  else if(r&&r.accuracy!=null)showNotif('🧠 SatsFlow','Model entrenat: '+r.accuracy+'% precisió amb '+r.n+' mostres.');
 }
 
 function calcForecast(currentPrice){
@@ -5165,6 +5204,16 @@ function renderForecast(){
   // ── Panel ML ──
   const mlDays=ML.lastTrained?Math.floor((Date.now()-ML.lastTrained)/86400000):null;
   const mlAgeStr=mlDays===null?'–':mlDays===0?'hoy':mlDays===1?'ayer':mlDays+'d atrás';
+  const mlD=ML.diag;
+  const mlWhy=ML.lastError==='tf_load_fail'
+    ?'No se pudo cargar TensorFlow.js (¿sin conexión o CDN bloqueado?). Reintenta con red.'
+    :ML.lastError==='train_timeout'
+      ?'El entrenamiento se bloqueó en este dispositivo. Pulsa para reintentar.'
+      :(ML.lastError&&ML.lastError!=='insufficient')
+        ?'Error entrenando el modelo: '+ML.lastError
+        :'Necesita ≥5 predicciones con 7+ días de antigüedad.'
+          +(mlD?' Ahora: <b>'+mlD.resolved+' útiles</b> de '+mlD.aged+' con 7+ días ('+mlD.total+' guardadas).'
+            +(mlD.aged>mlD.resolved?' Faltan '+(mlD.aged-mlD.resolved)+' por no tener precio real a 7 días.':''):'');
   const mlCard=ML.trained===null
     ?'<div class="card" style="border:1px solid rgba(167,139,250,.2);background:rgba(167,139,250,.03)">'
       +'<div style="display:flex;justify-content:space-between;align-items:center">'
@@ -5178,7 +5227,9 @@ function renderForecast(){
         ?'<span style="font-size:10px;color:#f97316"><span class="spin">⚙️</span> Entrenando...</span>'
         :ML.trained
           ?'<span style="font-size:10px;background:rgba(16,185,129,.15);color:#10b981;padding:2px 8px;border-radius:999px;font-weight:700">● Activo</span>'
-          :'<span style="font-size:10px;color:#6b7280">Sin datos suficientes</span>')
+          :(ML.lastError&&ML.lastError!=='insufficient')
+            ?'<span style="font-size:10px;color:#ef4444">⚠️ Error</span>'
+            :'<span style="font-size:10px;color:#6b7280">Sin datos suficientes</span>')
       +'</div>'
       +(ML.trained
         ?'<div style="font-size:11px;color:var(--text2);line-height:1.5;margin-bottom:10px">TensorFlow.js aprende qué categorías predicen mejor el precio real. Pesos ajustados al <b>'+Math.round(ML.blend*100)+'%</b> según el historial.</div>'
@@ -5201,7 +5252,7 @@ function renderForecast(){
              +'</div>';
          }).join('')
          +'</div>'
-        :'<div style="font-size:11px;color:var(--text3);margin-bottom:10px">Necesita ≥5 predicciones con 7+ días de antigüedad para aprender del historial.</div>')
+        :'<div style="font-size:11px;color:var(--text3);margin-bottom:10px;line-height:1.5">'+mlWhy+'</div>')
       +'<button onclick="mlRetrainUI()" '+(ML.training?'disabled ':'')+'style="width:100%;padding:8px;background:rgba(167,139,250,.12);border:1px solid rgba(167,139,250,.4);border-radius:8px;color:#a78bfa;font-size:12px;font-weight:600;cursor:pointer">🔄 '+(ML.training?'Entrenando...':(ML.trained?'Reentrenar modelo':'Entrenar ahora'))+'</button>'
       +'</div>';
   const html='<div class="space-y">'
