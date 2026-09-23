@@ -80,7 +80,7 @@ const BUILD_TS='202603220001';
 // Logger: només mostra informacionals si DEBUG=true (activar via localStorage 'sf-debug')
 const DEBUG=localStorage.getItem('sf-debug')==='1';
 const LOG=DEBUG?console.log.bind(console):()=>{};
-const S={price:{usd:0,eur:0},change24h:0,marketCap:0,history:[],ohlc:[],mempool:null,marketData:null,miningData:null,news:[],alerts:[],days:'30',chartType:'area',chartCurrency:localStorage.getItem('sf-chart-cur')||'usd',dark:localStorage.getItem('sf-theme')!=='light',notifPerm:window.Notification?.permission||'unsupported',atmLoaded:false,leafletMap:null,lastUpdated:null,feeLevel:'hour',txSize:250,currentTab:'home',corrData:null,corrPeriod:'30',dominanceHistory:[],rainbowData:null,dominanceYearData:null,historyTA:[],lang:localStorage.getItem('sf-lang')||'es',morningAlert:JSON.parse(localStorage.getItem('sf-morning')||'null'),blockHeight:null,blocksToHalving:null,halvingPct:null,corrCached:null,
+const S={price:{usd:0,eur:0},change24h:0,marketCap:0,history:[],ohlc:[],mempool:null,marketData:null,miningData:null,news:[],alerts:[],days:'30',chartType:'area',chartCurrency:localStorage.getItem('sf-chart-cur')||'usd',dark:localStorage.getItem('sf-theme')!=='light',notifPerm:window.Notification?.permission||'unsupported',atmLoaded:false,leafletMap:null,lastUpdated:null,feeLevel:'hour',txSize:250,currentTab:'home',corrData:null,corrPeriod:'30',dominanceHistory:[],rainbowData:null,dominanceYearData:null,historyTA:[],ohlcW:null,lang:localStorage.getItem('sf-lang')||'es',morningAlert:JSON.parse(localStorage.getItem('sf-morning')||'null'),blockHeight:null,blocksToHalving:null,halvingPct:null,corrCached:null,
   // Mejora 7: seguimiento de datos obsoletos
   dataAge:{},
   // Mejora 8: control de peticiones en vuelo
@@ -2611,6 +2611,103 @@ function calcPiCycle(){
   else{status='Lluny del top de cicle';statusColor='#10b981';statusIcon='🟢';risk=Math.max(5,Math.round(100+distance*2));}
   return{ma111:Math.round(ma111),ma350x2:Math.round(ma350x2),distance,converging,status,statusColor,statusIcon,risk,hasEnoughData:n>=350};
 }
+/* ══════ ESTRUCTURA DE MÀXIMS I MÍNIMS (setmanal) ══════
+   El nucli del mètode: en un criptohivern els màxims i els mínims són decreixents;
+   el canvi de cicle es confirma quan apareix un mínim creixent I el preu tanca una
+   setmana per sobre del màxim anterior. Dona un ESTAT del mercat, no un número,
+   i és el que condiciona la resta de la predicció. */
+async function fetchWeekly(){
+  if(S.ohlcW&&S.ohlcW.length)return S.ohlcW;
+  try{
+    const c=JSON.parse(localStorage.getItem('sf-ohlc-w')||'null');
+    if(c&&Date.now()-c.t<6*3600000&&Array.isArray(c.d)&&c.d.length>30){S.ohlcW=c.d;return S.ohlcW;}
+  }catch{}
+  const urls=[
+    'https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=1w&limit=300',
+    'https://api.binance.us/api/v3/klines?symbol=BTCUSDT&interval=1w&limit=300'
+  ];
+  for(const u of urls){
+    try{
+      const r=await fetch(u,{signal:AbortSignal.timeout(8000)});
+      if(!r.ok)continue;
+      const k=await r.json();
+      if(!Array.isArray(k)||k.length<30)continue;
+      S.ohlcW=k.map(c=>({ts:c[0],open:+c[1],high:+c[2],low:+c[3],close:+c[4]}));
+      try{localStorage.setItem('sf-ohlc-w',JSON.stringify({t:Date.now(),d:S.ohlcW}));}catch{}
+      return S.ohlcW;
+    }catch(e){console.warn('fetchWeekly:',e.message);}
+  }
+  // Últim recurs: reconstruir setmanes a partir de les 90 espelmes diàries (~13 setmanes)
+  try{
+    if(S.ohlcTA&&S.ohlcTA.length>=30){
+      const by={};
+      for(const c of S.ohlcTA){
+        const d=new Date(c.ts),day=(d.getUTCDay()+6)%7;
+        const k=new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth(),d.getUTCDate()-day)).getTime();
+        if(!by[k])by[k]={ts:k,open:c.open,high:c.high,low:c.low,close:c.close};
+        else{by[k].high=Math.max(by[k].high,c.high);by[k].low=Math.min(by[k].low,c.low);by[k].close=c.close;}
+      }
+      S.ohlcW=Object.values(by).sort((a,b)=>a.ts-b.ts);
+    }
+  }catch{}
+  return S.ohlcW||null;
+}
+
+function calcStructure(){
+  const w=S.ohlcW;
+  if(!w||w.length<12)return null;
+  const closed=w.slice(0,-1);              // la setmana en curs encara no confirma res
+  const inProgress=w[w.length-1];
+  const lastClose=closed[closed.length-1].close;
+  const win=closed.length>=40?3:2;
+  const{swingHighs,swingLows}=detectSwingPoints(closed,win);
+  if(swingHighs.length<2||swingLows.length<2)return null;
+  const fmtD=i=>new Date(closed[i].ts).toISOString().slice(0,10);
+  const H=swingHighs.slice(-4).map(h=>({price:h.price,date:fmtD(h.index),index:h.index}));
+  const L=swingLows.slice(-4).map(l=>({price:l.price,date:fmtD(l.index),index:l.index}));
+  const highsRising=H[H.length-1].price>H[H.length-2].price;
+  const lowsRising=L[L.length-1].price>L[L.length-2].price;
+
+  // Nivells: cada màxim swing és un esglaó a recuperar. Els que el preu ja ha
+  // deixat enrere estan "superats"; el més proper per sobre és el següent a vigilar.
+  // (Agafar el màxim MÉS ALT com a nivell de confirmació seria massa exigent: saltaria
+  // esglaons i marcaria un nivell que no toca encara.)
+  const brokenLevels=H.filter(h=>h.price<=lastClose).sort((a,b)=>b.price-a.price);
+  const pending=H.filter(h=>h.price>lastClose).sort((a,b)=>a.price-b.price);
+  const nextLevel=pending[0]||null;
+  const confirmLevel=nextLevel||H.reduce((a,b)=>b.price>a.price?b:a);
+  const confirmed=!pending.length;
+  const distPct=nextLevel?(nextLevel.price-lastClose)/lastClose*100:0;
+  const fmt$=v=>'$'+Math.round(v).toLocaleString();
+
+  // Cicle: sostre, terra posterior i temps transcorregut (els hiverns duren ~12 mesos)
+  let topIdx=0;for(let i=1;i<closed.length;i++)if(closed[i].high>closed[topIdx].high)topIdx=i;
+  let botIdx=topIdx;for(let i=topIdx;i<closed.length;i++)if(closed[i].low<closed[botIdx].low)botIdx=i;
+  const top={price:closed[topIdx].high,date:fmtD(topIdx)};
+  const bottom={price:closed[botIdx].low,date:fmtD(botIdx)};
+  const monthsSinceTop=(Date.now()-closed[topIdx].ts)/(30.44*86400000);
+  const drawdownPct=(bottom.price-top.price)/top.price*100;
+  const recoveryPct=(lastClose-bottom.price)/bottom.price*100;
+
+  let regime,label,desc;
+  if(confirmed&&lowsRising){
+    regime='bull';label='Ciclo alcista confirmado';
+    desc='Mínimos crecientes y el precio ha recuperado todos los máximos de la estructura bajista. El invierno ha terminado.';
+  }else if(confirmed){
+    regime='transition';label='Máximos recuperados — falta un mínimo creciente';
+    desc='El precio ha dejado atrás todos los máximos recientes, pero aún no hay un mínimo creciente que confirme el cambio de estructura.';
+  }else if(brokenLevels.length&&recoveryPct>15){
+    regime='transition';label='Transición — pendiente de confirmar';
+    desc='El precio ya ha recuperado '+fmt$(brokenLevels[0].price)+' ('+brokenLevels[0].date+') y sube un '+recoveryPct.toFixed(0)+'% desde el suelo, pero hace falta un cierre semanal por encima de '+fmt$(nextLevel.price)+' para dar por terminado el invierno.';
+  }else{
+    regime='bear';label='Invierno — estructura bajista intacta';
+    desc='Máximos y mínimos siguen decrecientes. Haría falta un cierre semanal por encima de '+fmt$(nextLevel.price)+' ('+nextLevel.date+') para empezar a romper la estructura.';
+  }
+  return{regime,label,desc,highs:H,lows:L,highsRising,lowsRising,confirmLevel,nextLevel,brokenLevels,
+    confirmed,lastClose,inProgressClose:inProgress.close,distPct,
+    top,bottom,monthsSinceTop,drawdownPct,recoveryPct,weeks:closed.length};
+}
+
 // ══════ MODEL DE VALORACIÓ DE LLARG TERMINI: Power Law ══════
 // Únic model de valoració estructural de l'app. Substitueix el Rainbow Chart (que
 // era aquesta mateixa fórmula amb altres bandes) i el Stock-to-Flow (que projectava
@@ -5983,7 +6080,7 @@ async function init(){
         fetchOHLC().catch(()=>{}),fetchMempool().catch(()=>{}),
         fetchMarket().catch(()=>{}),fetchMining().catch(()=>{}),
         fetchNews().catch(()=>{}),fetchCycleHistory().catch(()=>{}),
-        fetchBlockInfo().catch(()=>{}),fetchETF().catch(()=>{}),
+        fetchBlockInfo().catch(()=>{}),fetchETF().catch(()=>{}),fetchWeekly().catch(()=>{}),
         (typeof fetchOnChain==='function'?fetchOnChain().catch(()=>{}):Promise.resolve())
       ]);}catch{}
       try{renderCurrentTab();}catch{}
