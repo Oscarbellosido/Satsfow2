@@ -2334,7 +2334,7 @@ function renderAutoTechnicalChart(){
   </div>
   ${(lvlSup||lvlRes)?`<div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap;align-items:center">
     <button onclick="createTechAlerts(${lvlSup},${lvlRes})" style="padding:6px 12px;background:rgba(249,115,22,.12);border:1px solid rgba(249,115,22,.4);border-radius:8px;color:#f97316;font-size:11px;font-weight:600;cursor:pointer">🔔 Crear alertas para estos niveles</button>
-    <span style="font-size:10px;color:#64748b">avisarà quan trenqui suport/resistència</span>
+    <span style="font-size:10px;color:#64748b">avisará cuando rompa soporte/resistencia</span>
   </div>`:''}
 </div>`;
   const expandBtn=`<button class="ampliar-btn" onclick="expandAutoTech(this)" style="align-self:flex-end;padding:3px 10px;background:#1e293b;color:#94a3b8;border:1px solid #334155;border-radius:6px;cursor:pointer;font-size:12px;margin-bottom:6px">⛶ Ampliar</button>`;
@@ -2505,7 +2505,7 @@ function renderAnalysis(){
     ${renderStateStrip()}
     <div class="grid-2" style="gap:8px">
       <div class="stat-box"><div class="stat-label">RSI (14)<button class="ind-info" onclick="showIndTooltip(this,'${tr.tooltipRSI||'RSI: mide velocidad de cambios de precio. <30 sobrevendido, >70 sobrecomprado.'}')">?</button></div><div class="stat-val" style="color:${rsiColor}">${a.lastRSI.toFixed(1)}</div><div style="font-size:9px;color:var(--text3)">${rsiLabel}</div></div>
-      <div class="stat-box"><div class="stat-label">MACD<button class="ind-info" onclick="showIndTooltip(this,'${tr.tooltipMACD||'MACD: diferencia EMA(12)-EMA(26). Cruza arriba = alcista, cruza abajo = bajista.'}')">?</button></div><div class="stat-val" style="color:${macdBull?'#10b981':'#ef4444'}">${macdHist>=0?'+':''}${macdHist.toFixed(0)}</div><div style="font-size:9px;color:var(--text3)">${macdBull?tr.macdBullish:tr.macdBearish}</div></div>
+      <div class="stat-box"><div class="stat-label">MACD<button class="ind-info" onclick="showIndTooltip(this,'${tr.tooltipMACD||'MACD: diferencia EMA(12)-EMA(26). Cruza arriba = alcista, cruza abajo = bajista.'}')">?</button></div><div class="stat-val" style="color:${macdBull?'#10b981':'#ef4444'}">${macdHist>=0.5?'+':macdHist<=-0.5?'':'±'}${Math.abs(macdHist)<0.5?'0':macdHist.toFixed(0)}</div><div style="font-size:9px;color:var(--text3)">${macdBull?tr.macdBullish:tr.macdBearish}</div></div>
       <div class="stat-box"><div class="stat-label">MA7 vs MA30<button class="ind-info" onclick="showIndTooltip(this,'${tr.tooltipMA||'Golden Cross (MA7>MA30) = alcista. Death Cross (MA7<MA30) = bajista.'}')">?</button></div><div class="stat-val" style="font-size:11px;color:${smaBull?'#10b981':'#ef4444'}">${smaBull?tr.goldenCross:tr.deathCross}</div><div style="font-size:9px;color:var(--text3)">${smaBull?tr.bullish:tr.bearish}</div></div>
       <div class="stat-box"><div class="stat-label">Bollinger<button class="ind-info" onclick="showIndTooltip(this,'${tr.tooltipBollinger||'Bandas Bollinger: canal ±2σ alrededor de la media. Cerca del límite superior = sobrecomprado.'}')">?</button></div><div class="stat-val" style="font-size:11px;color:${bbPosColor}">${bbPos}</div><div style="font-size:9px;color:var(--text3);font-family:monospace">$${fmtN(Math.round(a.bbL),0)} – $${fmtN(Math.round(a.bbU),0)}</div></div>
     </div>
