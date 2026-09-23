@@ -1838,28 +1838,27 @@ function renderCycles(){
     <div style="display:flex;flex-direction:column;gap:8px">${compCards}</div>
   </div>
 
-  <div class="card">
-    <div style="font-size:14px;font-weight:700;margin-bottom:10px">🎯 ${tr.cyclesAthTitle}</div>
-    <div style="background:#1e293b;border-radius:10px;padding:12px">
-      <div style="display:flex;justify-content:space-between;margin-bottom:8px">
-        <span style="font-size:11px;color:#94a3b8">${tr.cyclesAthModel}</span>
-        <span style="font-size:14px;font-weight:700;color:#eab308">$${projATH.toLocaleString()}</span>
-      </div>
-      <div style="display:flex;justify-content:space-between;margin-bottom:8px">
-        <span style="font-size:11px;color:#94a3b8">${tr.cyclesAthMult}</span>
-        <span style="font-size:13px;font-weight:700;color:#eab308">${projATHMult.toFixed(1)}x</span>
-      </div>
-      <div style="display:flex;justify-content:space-between;margin-bottom:8px">
-        <span style="font-size:11px;color:#94a3b8">${tr.cyclesAthDate}</span>
-        <span style="font-size:12px;font-weight:600;color:#94a3b8">${dateATH.toLocaleDateString(S.lang==='ca'?'ca-ES':'es-ES',{month:'long',year:'numeric'})}</span>
-      </div>
-      <div style="display:flex;justify-content:space-between">
-        <span style="font-size:11px;color:#94a3b8">${tr.cyclesAthDays}</span>
-        <span style="font-size:13px;font-weight:700;color:${daysToATH>0?'#10b981':'#ef4444'}">${daysToATH>0?'~'+daysToATH+(S.lang==='ca'?' dies':' días'):tr.cyclesAthPassed}</span>
-      </div>
-    </div>
-    <div style="font-size:10px;color:#475569;margin-top:8px">${tr.cyclesDisclaimer}</div>
-  </div>
+  ${(function(){
+    var st=(typeof calcStructure==='function')?calcStructure():null;
+    var real=st&&st.top&&new Date(st.top.date).getTime()>new Date('2024-04-20').getTime()?st.top:null;
+    var err=real?((real.price-projATH)/projATH*100):null;
+    var head='<div class="card"><div style="font-size:14px;font-weight:700;margin-bottom:4px">🎯 '+(real?'Techo del ciclo 2024':tr.cyclesAthTitle)+'</div>';
+    if(!real){
+      return head+'<div style="font-size:11px;color:var(--text3);margin-bottom:10px">Proyección del modelo de multiplicadores históricos. La predicción del mercado está en Previsión.</div>'
+        +'<div style="background:#1e293b;border-radius:10px;padding:12px">'
+        +'<div style="display:flex;justify-content:space-between;margin-bottom:8px"><span style="font-size:11px;color:#94a3b8">'+tr.cyclesAthModel+'</span><span style="font-size:14px;font-weight:700;color:#eab308">$'+projATH.toLocaleString()+'</span></div>'
+        +'<div style="display:flex;justify-content:space-between;margin-bottom:8px"><span style="font-size:11px;color:#94a3b8">'+tr.cyclesAthMult+'</span><span style="font-size:13px;font-weight:700;color:#eab308">'+projATHMult.toFixed(1)+'x</span></div>'
+        +'<div style="display:flex;justify-content:space-between"><span style="font-size:11px;color:#94a3b8">'+tr.cyclesAthDate+'</span><span style="font-size:12px;font-weight:600;color:#94a3b8">'+dateATH.toLocaleDateString(S.lang==='ca'?'ca-ES':'es-ES',{month:'long',year:'numeric'})+'</span></div>'
+        +'</div><div style="font-size:10px;color:#475569;margin-top:8px">'+tr.cyclesDisclaimer+'</div></div>';
+    }
+    return head+'<div style="font-size:11px;color:var(--text3);margin-bottom:10px">Este ciclo ya hizo techo. Lo que sigue es el contraste entre lo que proyectaba el modelo de multiplicadores y lo que pasó.</div>'
+      +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">'
+      +'<div style="background:var(--bg);border-radius:10px;padding:10px;text-align:center;border:1px solid rgba(16,185,129,.35)"><div style="font-size:9px;color:var(--text3)">Techo real</div><div style="font-size:16px;font-weight:800;color:#10b981">$'+Math.round(real.price).toLocaleString()+'</div><div style="font-size:9px;color:var(--text3)">'+real.date+'</div></div>'
+      +'<div style="background:var(--bg);border-radius:10px;padding:10px;text-align:center"><div style="font-size:9px;color:var(--text3)">Proyectaba el modelo</div><div style="font-size:16px;font-weight:800;color:#eab308">$'+projATH.toLocaleString()+'</div><div style="font-size:9px;color:'+(err<0?'#ef4444':'#10b981')+'">'+(err>=0?'+':'')+err.toFixed(0)+'% de error</div></div>'
+      +'</div>'
+      +'<div style="font-size:10px;color:var(--text3);line-height:1.5">El multiplicador desde el halving fue de '+(real.price/halvingPrice).toFixed(1)+'x, frente a los '+projATHMult.toFixed(1)+'x que extrapolaban los ciclos de 2016 y 2020: cada ciclo rinde menos que el anterior. '+tr.cyclesDisclaimer+'</div>'
+      +'</div>';
+  })()}
 </div>`;
 }
 
@@ -2495,7 +2494,7 @@ function renderAnalysis(){
     </div>
     <div class="signal-banner ${sigClass}">
       <div style="display:flex;justify-content:space-between;align-items:center">
-        <div><div style="font-size:10px;color:var(--text3);text-transform:uppercase;margin-bottom:4px">${tr.marketSignal}</div><div style="font-size:24px;font-weight:800;color:${sigColor}">${sigText}</div></div>
+        <div><div style="font-size:10px;color:var(--text3);text-transform:uppercase;margin-bottom:4px">Balance de indicadores (diario)</div><div style="font-size:24px;font-weight:800;color:${sigColor}">${sigText}</div></div>
         <div style="font-size:40px;font-weight:900;color:${sigColor}">${sigIcon}</div>
       </div>
       <div style="margin-top:10px">
@@ -2503,6 +2502,7 @@ function renderAnalysis(){
         <div style="display:flex;border-radius:999px;overflow:hidden;height:6px"><div style="width:${a.bullPct}%;background:#10b981"></div><div style="width:${a.bearPct}%;background:#ef4444"></div></div>
       </div>
     </div>
+    ${renderStateStrip()}
     <div class="grid-2" style="gap:8px">
       <div class="stat-box"><div class="stat-label">RSI (14)<button class="ind-info" onclick="showIndTooltip(this,'${tr.tooltipRSI||'RSI: mide velocidad de cambios de precio. <30 sobrevendido, >70 sobrecomprado.'}')">?</button></div><div class="stat-val" style="color:${rsiColor}">${a.lastRSI.toFixed(1)}</div><div style="font-size:9px;color:var(--text3)">${rsiLabel}</div></div>
       <div class="stat-box"><div class="stat-label">MACD<button class="ind-info" onclick="showIndTooltip(this,'${tr.tooltipMACD||'MACD: diferencia EMA(12)-EMA(26). Cruza arriba = alcista, cruza abajo = bajista.'}')">?</button></div><div class="stat-val" style="color:${macdBull?'#10b981':'#ef4444'}">${macdHist>=0?'+':''}${macdHist.toFixed(0)}</div><div style="font-size:9px;color:var(--text3)">${macdBull?tr.macdBullish:tr.macdBearish}</div></div>
@@ -5002,34 +5002,48 @@ function calcForecast(currentPrice){
   const macroTotal=halvingScore+institutionalScore+macroScore+fgScore+domScore+regulationScore+riskScore+corrScore+m2Score+dxyScore+etfScore+trendsScore+rainbowScore+s2fScore+seasonScore;
 
   // ── MEJORA 1: Detectar régimen de mercado y ajustar pesos dinámicamente
-  // Régimen basado en: precio vs SMA, dominancia, Fear&Greed, hashrate
+  // ── Règim: l'estructura setmanal de màxims i mínims mana ──
+  // Abans el règim es deduïa de preu vs SMA + Fear&Greed + dominància, que és un
+  // segon detector d'estat competint amb el de l'estructura. Ara l'estructura és
+  // la font única i l'heurística antiga només actua si no hi ha dades setmanals.
   const sma30val=ta?.sma30||0;
   const sma7val=ta?.sma7||0;
   const aboveSMA30=sma30val>0&&currentPrice>sma30val;
   const aboveSMA7=sma7val>0&&currentPrice>sma7val;
   const strongTrend=Math.abs(adxScore)>0.08;
+  const struct=(typeof calcStructure==='function')?calcStructure():null;
 
-  let regime, regimeDesc, wTA, wOC, wMacro;
-  if(aboveSMA30&&aboveSMA7&&fg>55&&dom>52){
+  let regime, regimeDesc, wTA, wOC, wMacro, structBias=0;
+  if(struct){
+    // Els valors de `regime` es mantenen dins del vocabulari que entén el model ML
+    // (bull/bear/trend_up/trend_down/lateral) perquè els snapshots antics segueixin comparables.
+    if(struct.regime==='bull'){regime='bull';wTA=0.40;wOC=0.25;wMacro=0.35;structBias=0.05;}
+    else if(struct.regime==='transition'){regime='trend_up';wTA=0.35;wOC=0.30;wMacro=0.35;structBias=0.02;}
+    else if(struct.regime==='topping'){regime='trend_down';wTA=0.30;wOC=0.35;wMacro=0.35;structBias=-0.03;}
+    else{regime='bear';wTA=0.25;wOC=0.35;wMacro=0.40;structBias=-0.05;}
+    regimeDesc=struct.label+' · '+(struct.nextLevel
+      ?'siguiente nivel $'+Math.round(struct.nextLevel.price).toLocaleString()+' ('+struct.distPct.toFixed(1)+'%)'
+      :'sin niveles pendientes por encima');
+  } else if(aboveSMA30&&aboveSMA7&&fg>55&&dom>52){
     regime='bull';
-    regimeDesc='Bull market confirmado (precio>SMA30/7, F&G '+fg+', dom '+dom.toFixed(1)+'%)';
-    wTA=0.40; wOC=0.25; wMacro=0.35; // técnico más relevante en tendencia alcista
+    regimeDesc='Bull market (precio>SMA30/7, F&G '+fg+', dom '+dom.toFixed(1)+'%) — sin datos semanales';
+    wTA=0.40; wOC=0.25; wMacro=0.35;
   } else if(!aboveSMA30&&fg<40&&dom<50){
     regime='bear';
-    regimeDesc='Bear market / corrección (precio<SMA30, F&G '+fg+', dom '+dom.toFixed(1)+'%)';
-    wTA=0.25; wOC=0.35; wMacro=0.40; // macro y on-chain dominan en bajadas
+    regimeDesc='Bear market / corrección (precio<SMA30, F&G '+fg+', dom '+dom.toFixed(1)+'%) — sin datos semanales';
+    wTA=0.25; wOC=0.35; wMacro=0.40;
   } else if(strongTrend&&aboveSMA30){
     regime='trend_up';
-    regimeDesc='Tendencia alcista fuerte (ADX elevado, sobre SMA30)';
+    regimeDesc='Tendencia alcista fuerte (ADX elevado, sobre SMA30) — sin datos semanales';
     wTA=0.45; wOC=0.25; wMacro=0.30;
   } else if(strongTrend&&!aboveSMA30){
     regime='trend_down';
-    regimeDesc='Tendencia bajista fuerte (ADX elevado, bajo SMA30)';
+    regimeDesc='Tendencia bajista fuerte (ADX elevado, bajo SMA30) — sin datos semanales';
     wTA=0.30; wOC=0.35; wMacro=0.35;
   } else {
     regime='lateral';
-    regimeDesc='Mercado lateral/indeciso (F&G '+fg+', dom '+dom.toFixed(1)+'%)';
-    wTA=0.30; wOC=0.35; wMacro=0.35; // on-chain más fiable en laterales
+    regimeDesc='Mercado lateral/indeciso (F&G '+fg+', dom '+dom.toFixed(1)+'%) — sin datos semanales';
+    wTA=0.30; wOC=0.35; wMacro=0.35;
   }
 
   // ── MEJORA ML: Ajuste de pesos via TensorFlow.js
@@ -5048,7 +5062,7 @@ function calcForecast(currentPrice){
     wTA/=tot;wOC/=tot;wMacro/=tot;
   }
 
-  const netScore = taTotal*wTA + onChainTotal*wOC + macroTotal*wMacro;
+  const netScore = taTotal*wTA + onChainTotal*wOC + macroTotal*wMacro + structBias;
 
   // ── MEJORA 2: Penalización por divergencia entre categorías
   // Si TA, on-chain y macro apuntan en direcciones distintas hay más incertidumbre real
@@ -5162,7 +5176,7 @@ function calcForecast(currentPrice){
     h.mostLikely=bias>0.05?'bull':bias<-0.05?'bear':'base';
     h.signal=bias>0.1?'COMPRAR':bias<-0.1?'VENDER':'NEUTRAL';
   });
-  return{horizons,factors,netScore,taTotal,onChainTotal,macroTotal,ta,regime,regimeDesc,wTA,wOC,wMacro,asymBull,asymBear,divergenceMult,divergenceNote,realVol,biasFix,mlActive};
+  return{horizons,factors,netScore,taTotal,onChainTotal,macroTotal,ta,regime,regimeDesc,struct,structBias,powerLaw:calcPowerLaw(currentPrice),wTA,wOC,wMacro,asymBull,asymBear,divergenceMult,divergenceNote,realVol,biasFix,mlActive};
 }
 // Mejora 4: barra visual de rango Bear/Base/Bull sobre el precio actual
 function renderForecastRangeBar(cur, bearP, baseP, bullP){
@@ -5302,7 +5316,7 @@ function renderTechnicalOutlook(){
   const supportStr=nearestSupport?fmt(nearestSupport.price):'—';
   const resistanceStr=nearestResistance?fmt(nearestResistance.price):'—';
   return '<div class="card" style="border:1px solid '+signalColor+'33">'
-    +'<div style="font-size:15px;font-weight:700;margin-bottom:12px">📐 Perspectiva Técnica a Corto Plazo</div>'
+    +'<div style="font-size:15px;font-weight:700;margin-bottom:12px">📐 Evidencia técnica (velas diarias)</div>'
     +'<div style="text-align:center;padding:16px 0;background:'+signalBg+';border-radius:10px;margin-bottom:12px">'
     +'<div style="font-size:28px;font-weight:900;color:'+signalColor+'">'+signal+'</div>'
     +'</div>'
@@ -5372,6 +5386,123 @@ function renderFanChart(currentPrice, horizons){
     +'</div>'
     +'</div>';
 }
+function renderStateStrip(note){
+  const st=(typeof calcStructure==='function')?calcStructure():null;
+  if(!st)return'';
+  const c=st.regime==='bull'?'#10b981':st.regime==='transition'?'#eab308':st.regime==='topping'?'#f97316':'#ef4444';
+  return'<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;background:'+c+'12;border:1px solid '+c+'33;margin-bottom:10px">'
+    +'<span style="font-size:14px">🔮</span>'
+    +'<div style="flex:1">'
+    +'<div style="font-size:11px;font-weight:700;color:'+c+'">'+st.label+'</div>'
+    +'<div style="font-size:10px;color:var(--text3)">'+(note||'Estado del mercado según la estructura semanal · la predicción completa está en Previsión')+'</div>'
+    +'</div></div>';
+}
+
+// ══════ LA PREDICCIÓ ══════
+// Única predicció de l'app. Abans hi havia vuit veredictes repartits per tres
+// pestanyes (senyal tècnica, perspectiva a curt, senyal global, Cycle Score,
+// Pi Cycle, Rainbow, Power Law i els pesos del ML) que no sabien els uns dels
+// altres. Ara tots són evidència d'aquesta, i l'estat mana sobre els rangs.
+function calcConfirmations(f){
+  const st=f.struct, out=[];
+  const add=(name,ok,detail)=>out.push({name,ok,detail});
+  if(st){
+    add('Cierre semanal sobre el nivel clave',st.confirmed,
+      st.confirmed?'Todos los máximos recientes recuperados':'Falta cerrar sobre $'+Math.round(st.nextLevel.price).toLocaleString());
+    add('Mínimo creciente',st.lowsRising,
+      st.lowsRising?'Último suelo por encima del anterior':'El último mínimo aún perfora al anterior');
+    add('Calendario del ciclo',st.monthsSinceTop>=11,
+      'Mes '+st.monthsSinceTop.toFixed(1)+' desde el techo (los inviernos duran ~12)');
+  }else{
+    add('Estructura semanal',null,'Sin datos semanales');
+    add('Mínimo creciente',null,'Sin datos semanales');
+    add('Calendario del ciclo',null,'Sin datos semanales');
+  }
+  const pl=f.powerLaw;
+  add('Valoración de largo plazo',pl.position<45,pl.position+'% del corredor Power Law · '+pl.zone.toLowerCase());
+  add('Momento técnico',f.taTotal>0,f.taTotal>0?'Indicadores técnicos netos a favor':'Indicadores técnicos netos en contra');
+  add('Señales on-chain',f.onChainTotal>0,f.onChainTotal>0?'Red y flujos acompañan':'Red y flujos no acompañan');
+  add('Contexto macro',f.macroTotal>0,f.macroTotal>0?'Ciclo, ETFs y liquidez a favor':'Ciclo, ETFs y liquidez en contra');
+  const domH=Array.isArray(S.dominanceHistory)?S.dominanceHistory:[];
+  if(domH.length>=2){
+    const first=domH[0].btc,last=domH[domH.length-1].btc;
+    add('Altcoins mejor que BTC',last<first,'Dominancia BTC '+last.toFixed(1)+'% ('+(last>=first?'+':'')+(last-first).toFixed(1)+' pts)');
+  }else{
+    add('Altcoins mejor que BTC',null,'Hace falta más histórico de dominancia');
+  }
+  return out;
+}
+
+function renderPrediction(f){
+  const st=f.struct, pl=f.powerLaw, price=S.price.usd;
+  const col=st?(st.regime==='bull'?'#10b981':st.regime==='transition'?'#eab308':st.regime==='topping'?'#f97316':'#ef4444'):'#94a3b8';
+  const icon=st?(st.regime==='bull'?'🚀':st.regime==='transition'?'⚖️':st.regime==='topping'?'⚠️':'❄️'):'❓';
+  const fmt=v=>'$'+Math.round(v).toLocaleString();
+  const conf=calcConfirmations(f);
+  const aplicables=conf.filter(c=>c.ok!==null);
+  const ok=aplicables.filter(c=>c.ok).length;
+  const pct=aplicables.length?Math.round(ok/aplicables.length*100):0;
+  const pctCol=pct>=66?'#10b981':pct>=33?'#eab308':'#ef4444';
+
+  let escala='';
+  if(st){
+    const rows=[];
+    (st.brokenLevels||[]).slice(0,3).reverse().forEach(h=>rows.push({p:h.price,d:h.date,estat:'superado',c:'#10b981',i:'✅'}));
+    if(st.nextLevel)rows.push({p:st.nextLevel.price,d:st.nextLevel.date,estat:'siguiente · cierre semanal',c:'#eab308',i:'🎯'});
+    (st.highs||[]).filter(h=>st.nextLevel&&h.price>st.nextLevel.price).sort((a,b)=>a.price-b.price)
+      .forEach(h=>rows.push({p:h.price,d:h.date,estat:'después',c:'var(--text3)',i:'⬜'}));
+    escala='<div style="margin:12px 0">'
+      +'<div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Niveles de la estructura</div>'
+      +rows.map(r=>'<div style="display:flex;align-items:center;gap:8px;padding:5px 8px;border-radius:7px;margin-bottom:3px;background:'+(r.i==='🎯'?'rgba(234,179,8,.10)':'var(--bg)')+'">'
+        +'<span style="font-size:11px">'+r.i+'</span>'
+        +'<span style="font-family:monospace;font-size:12px;font-weight:700;color:'+r.c+'">'+fmt(r.p)+'</span>'
+        +'<span style="font-size:10px;color:var(--text3);flex:1">'+r.estat+'</span>'
+        +'<span style="font-size:9px;color:var(--text3)">'+r.d+'</span></div>').join('')
+      +'<div style="display:flex;align-items:center;gap:8px;padding:5px 8px;border-radius:7px;background:rgba(249,115,22,.10)">'
+      +'<span style="font-size:11px">📍</span><span style="font-family:monospace;font-size:12px;font-weight:700;color:#f97316">'+fmt(price)+'</span>'
+      +'<span style="font-size:10px;color:var(--text3);flex:1">precio ahora · último cierre semanal '+fmt(st.lastClose)+'</span></div>'
+      +'</div>';
+  }
+
+  const cicle=st?'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin:12px 0">'
+    +[{l:'Techo del ciclo',v:fmt(st.top.price),s:st.top.date},
+      {l:'Suelo',v:fmt(st.bottom.price),s:st.drawdownPct.toFixed(0)+'% desde el techo'},
+      {l:'Desde el suelo',v:(st.recoveryPct>=0?'+':'')+st.recoveryPct.toFixed(0)+'%',s:'mes '+st.monthsSinceTop.toFixed(1)+' del invierno'}]
+      .map(x=>'<div style="background:var(--bg);border-radius:8px;padding:8px 6px;text-align:center">'
+        +'<div style="font-size:9px;color:var(--text3);margin-bottom:3px">'+x.l+'</div>'
+        +'<div style="font-size:13px;font-weight:800;color:var(--text)">'+x.v+'</div>'
+        +'<div style="font-size:9px;color:var(--text3);margin-top:2px">'+x.s+'</div></div>').join('')
+    +'</div>':'';
+
+  return '<div class="card" style="border:1px solid '+col+'55;background:linear-gradient(135deg,'+col+'0d,transparent)">'
+    +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">'
+    +'<div style="font-size:15px;font-weight:700">🔮 Predicción BTC</div>'
+    +'<span style="font-size:10px;font-weight:700;padding:2px 9px;border-radius:999px;background:'+col+'22;color:'+col+'">'+(st?st.label.split('—')[0].trim():'Sin estructura')+'</span>'
+    +'</div>'
+    +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">'
+    +'<span style="font-size:26px">'+icon+'</span>'
+    +'<div><div style="font-size:16px;font-weight:800;color:'+col+';line-height:1.2">'+(st?st.label:'Estructura no disponible')+'</div>'
+    +'<div style="font-size:11px;color:var(--text2);line-height:1.5;margin-top:3px">'+(st?st.desc:'No se han podido cargar las velas semanales; la predicción usa solo indicadores diarios.')+'</div></div>'
+    +'</div>'
+    +escala
+    +cicle
+    +'<div style="background:var(--bg);border-radius:10px;padding:10px;margin-bottom:10px">'
+    +'<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px">'
+    +'<span style="font-size:11px;font-weight:700">Confianza</span>'
+    +'<span style="font-size:13px;font-weight:800;color:'+pctCol+'">'+pct+'% · '+ok+'/'+aplicables.length+'</span></div>'
+    +'<div style="background:var(--bg3);border-radius:999px;height:5px;margin-bottom:8px"><div style="height:100%;border-radius:999px;background:'+pctCol+';width:'+pct+'%"></div></div>'
+    +conf.map(c=>'<div style="display:flex;gap:6px;align-items:flex-start;font-size:10px;padding:3px 0">'
+      +'<span>'+(c.ok===null?'—':c.ok?'✅':'❌')+'</span>'
+      +'<span style="color:'+(c.ok===null?'var(--text3)':'var(--text2)')+';font-weight:600;min-width:150px">'+c.name+'</span>'
+      +'<span style="color:var(--text3);flex:1">'+c.detail+'</span></div>').join('')
+    +'</div>'
+    +'<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:10px;color:var(--text3);background:var(--bg);border-radius:8px;padding:8px 10px">'
+    +'<span>📐 Objetivo de ciclo (Power Law)</span>'
+    +'<span style="font-family:monospace;color:var(--text2)"><b>'+fmt(pl.floor)+'</b> · '+fmt(pl.fair)+' · <b>'+fmt(pl.cap)+'</b></span>'
+    +'</div>'
+    +'</div>';
+}
+
 function renderForecast(){
   try{
   const tr=t();
@@ -5381,7 +5512,8 @@ function renderForecast(){
   // ── MEJORA 3: Calcular sesgo histórico de forma asíncrona si aún no está cacheado
   if(S.forecastBias===undefined){S.forecastBias=0;updateForecastBias().then(()=>{if(S.currentTab==='cycles')renderTab('cycles');else if(S.currentTab==='forecast')renderTab('forecast');});}
   if(ML.trained===null&&!ML.training){mlInit().then(()=>mlRender(ML.trained===true));}
-  const{horizons,factors,netScore,taTotal,onChainTotal,macroTotal,ta,regime,regimeDesc,wTA,wOC,wMacro,asymBull,asymBear,divergenceMult,divergenceNote,realVol,biasFix,mlActive}=calcForecast(price);
+  const{horizons,factors,netScore,taTotal,onChainTotal,macroTotal,ta,regime,regimeDesc,struct,powerLaw,wTA,wOC,wMacro,asymBull,asymBear,divergenceMult,divergenceNote,realVol,biasFix,mlActive}=calcForecast(price);
+  if(!S.ohlcW)fetchWeekly().then(()=>{if(S.currentTab==="forecast")renderTab("forecast");});
   if(!OC.loaded)fetchOnChain();
   // Formateja milers amb 1 decimal per evitar col·lisions visuals (p.ex. $74.0K vs $74.1K)
   const fmt=p=>'$'+(p>=1e6?(p/1e6).toFixed(2)+'M':p>=1000?(p/1000).toFixed(1)+'K':p.toFixed(0));
@@ -5545,14 +5677,14 @@ function renderForecast(){
     +(mlActive?'<div style="color:#a78bfa;margin-top:3px">🧠 Pesos ajustados por ML ('+ML.blendUsed+'% de influencia)</div>':'')
     +'</div></details>';
   const html='<div class="space-y">'
-    +'<div id="technical-outlook-container">'+renderTechnicalOutlook()+'</div>'
     +'<div style="background:rgba(234,179,8,.08);border:1px solid rgba(234,179,8,.3);border-radius:12px;padding:12px;display:flex;gap:10px">'
     +'<div style="font-size:20px">⚠️</div>'
     +'<div style="font-size:11px;color:var(--text2);line-height:1.5"><b style="color:#eab308"><b style=\"color:#eab308\">⚠️</b> '+tr.forecastDisclaimer+'</div>'
     +'</div>'
+    +renderPrediction({horizons,factors,netScore,taTotal,onChainTotal,macroTotal,ta,regime,regimeDesc,struct,powerLaw,wTA,wOC,wMacro})
     +'<div class="card">'
     +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">'
-    +'<div style="font-size:15px;font-weight:700">🔮 Señal global</div>'
+    +'<div style="font-size:15px;font-weight:700">🧭 Evidencia: qué dicen los indicadores</div>'
     +onChainBadge
     +'</div>'
     +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px">'
@@ -5580,6 +5712,7 @@ function renderForecast(){
     +'</div>'
     +'</div>'
     +'<div id="model-quality-container"></div>'
+    +'<div id="technical-outlook-container">'+renderTechnicalOutlook()+'</div>'
     +'<div class="card">'
     +'<div style="font-size:15px;font-weight:700;margin-bottom:4px">📅 Rangos por horizonte</div>'
     +'<div style="font-size:11px;color:var(--text3);margin-bottom:14px">Precio actual: <b style="color:#f97316;font-size:13px">$'+Math.round(price).toLocaleString()+'</b>'+(ta?' · RSI: <b style="color:var(--text)">'+ta.lastRSI.toFixed(0)+'</b> · Señal TA: <b style="color:var(--text)">'+ta.signal+'</b>':'')+'</div>'
@@ -5832,7 +5965,7 @@ function renderCyclesTab(){
       +'<div style="font-size:10px;color:var(--text3);margin-top:8px">⚠️ Indicador de tendència, no garantia. Sempre complementa amb altres senyals.</div>'
       +'</div>';
   }
-  return cycleScoreHTML+powerLawHTML+piHTML+renderCycles();
+  return renderStateStrip('Estas tarjetas son evidencia del estado, no predicciones aparte · la predicción está en Previsión')+cycleScoreHTML+powerLawHTML+piHTML+renderCycles();
 }
 function renderDCA(){
   const tr=t();

@@ -22,8 +22,8 @@ Desplegament automàtic via `.github/workflows/deploy.yml` a cada push a `main`.
 | `news` | 📰 | Notícies Bitcoin filtrades per IA |
 | `alerts` | 🔔 | Alertes de preu personalitzades (via Service Worker) |
 | `macroglobal` | 🌍 | Propers esdeveniments, dominància BTC històrica, mapa d'adopció, correlació BTC vs MSTR/SPY/GLD/WTI |
-| `cycles` | 🔄 | Cicles de mercat BTC, Rainbow Chart, Stock-to-Flow |
-| `forecast` | 🔮 | Prediccions de preu + gràfic tècnic automàtic (suports/resistències/tendències) |
+| `cycles` | 🔄 | Evidència del cicle: Cycle Score, corredor Power Law, Pi Cycle i comparador de cicles |
+| `forecast` | 🔮 | **La predicció** (estat + nivells + rangs) i tota la seva evidència |
 | `dca` | 📐 | Calculadora DCA (Dollar Cost Averaging) |
 
 ---
@@ -178,16 +178,60 @@ ha predit millor el preu real, i ajusta els pesos del forecast al 40% (`ML.blend
   punts). Amb poques mostres el "54% de precisió" és soroll, i barrejar-lo al 40%
   contaminava el model base. `ML.blendUsed` és el % realment aplicat i es mostra al panell.
 
-## Estructura de la pestanya Previsió
-Ordre de targetes: perspectiva tècnica → disclaimer → **🔮 Señal global** (titular +
-règim, amb `<details>` "Detalles del cálculo") → **🎯 Calidad del modelo** (fusiona en
-una sola targeta el backtest per horitzó, la correcció de biaix i el panell ML, que
-abans eren tres targetes amb tres percentatges no comparables) → rangs per horitzó →
-factors (extrems visibles, els ~29-36 restants dins un `<details>`) → gràfic tècnic
-automàtic → historial de prediccions.
+## Una sola predicció — el motor unificat
 
-La pestanya és **tota en castellà** (idioma per defecte de l'app). Els textos narratius
-que genera `calcForecast` no passen per `t()`: si algun dia es tradueix, cal fer-ho allà.
+Fins al setembre del 2026 l'app donava **vuit veredictes** repartits per tres pestanyes
+(senyal COMPRAR/VENDER de Técnico, Perspectiva a curt, Señal global, Cycle Score, Pi
+Cycle, banda Rainbow, posició Power Law i pesos del ML) i **sis mapes de preus**, cap
+dels quals sabia que els altres existien. Ara n'hi ha **una**, i la resta és evidència.
+
+### Les tres capes
+1. **Estat** — `calcStructure()` sobre espelmes **setmanals** (`S.ohlcW`, 300 setmanes
+   de Binance amb cache de 6 h). Estructura de màxims i mínims: en hivern són
+   decreixents; el canvi es confirma amb un **mínim creixent** més un **tancament
+   setmanal** per sobre del màxim anterior. Retorna `regime` (bear / transition /
+   topping / bull), l'escala de nivells a recuperar (cada màxim swing és un esglaó, els
+   superats queden marcats i el més proper per sobre és el següent a vigilar) i les
+   dades del cicle: sostre, terra, caiguda, recuperació i mesos des del sostre.
+   *Mètode pres del vídeo de Pablo Gil "¿fin del criptoinvierno o falsa señal?"
+   (20-09-2026); amb les dades d'aquell dia el reprodueix sol, inclòs el nivell de
+   $82.850 que ell dibuixava a mà com "83.000".*
+2. **Rangs** — `calcForecast()` segueix calculant els 4 horitzons bear/base/bull, però
+   ara el **règim li ve de l'estructura** (abans en tenia un de propi fet amb preu vs
+   SMA + Fear&Greed + dominància) i aplica un `structBias` al `netScore`:
+   bull +0,05 · transition +0,02 · topping −0,03 · bear −0,05. Els valors de `regime`
+   es mantenen dins del vocabulari del ML (bull/bear/trend_up/trend_down/lateral)
+   perquè els snapshots antics segueixin comparables.
+3. **Ancoratge de llarg termini** — `calcPowerLaw()` (veure més avall).
+
+`renderPrediction()` pinta l'única predicció i `calcConfirmations()` la llista de
+confirmacions que en fixa la confiança (estructura, mínim creixent, calendari del
+cicle, valoració, tècnic, on-chain, macro i dominància; les que no tenen dades
+s'exclouen del denominador en lloc de comptar com a fallades).
+
+### Model de valoració (`calcPowerLaw`)
+Únic model estructural. Substitueix el Rainbow Chart (era la **mateixa fórmula** amb
+altres bandes) i el Stock-to-Flow (interpolava cap a un objectiu de cicle de $300.000
+escrit a mà). Calibrat per regressió log-log sobre els extrems reals dels cicles, amb
+exponents separats per a sostres (4,369, R² 0,988) i terres (5,660, R² 0,999): els
+terres pugen més de pressa, així que el corredor s'estreny (x3,7 avui, x2,7 el 2031).
+Els paràmetres antics (A=5,84, offset −17,01) donaven terra $14k i sostre $1,4M.
+
+### Pestanya Previsió
+🔮 Predicción BTC (l'única predicció) → 🧭 Evidencia: qué dicen los indicadores →
+🎯 Calidad del modelo (backtest + biaix + ML) → 📐 Evidencia técnica (velas diarias) →
+📅 Rangos por horizonte → 🧩 Factores → 📖 Metodología → 📜 Historial.
+
+### Les altres pestanyes
+- **Técnico**: el banner ja no és un veredicte de mercat sinó "Balance de indicadores
+  (diario)", amb `renderStateStrip()` a sota recordant l'estat únic.
+- **Cicles**: encapçalada per la mateixa tira d'estat; Cycle Score, Power Law i Pi
+  Cycle hi són com a evidència. La "Proyección ATH ciclo 2024" projectava $742.842 per
+  a un cicle que ja havia fet sostre a $126.200: ara és un **marcador** que compara el
+  que deia el model amb el que va passar (−83% d'error, 2,0x real contra 11,6x previst).
+
+La pestanya Previsió és tota en castellà; **la de Cicles encara barreja català i
+castellà**. Els textos narratius que genera `calcForecast` no passen per `t()`.
 
 ---
 
