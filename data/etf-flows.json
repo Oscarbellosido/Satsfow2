@@ -1,16 +1,86 @@
 {
-  "updated": "2026-03-28",
+  "updated": "2026-10-25",
   "source": "farside.co.uk",
   "flows": [
-    {"date": "17 Mar", "IBIT": null, "FBTC": null, "ARKB": null, "total": 312.4},
-    {"date": "18 Mar", "IBIT": null, "FBTC": null, "ARKB": null, "total": -89.3},
-    {"date": "19 Mar", "IBIT": null, "FBTC": null, "ARKB": null, "total": 445.1},
-    {"date": "20 Mar", "IBIT": null, "FBTC": null, "ARKB": null, "total": 178.6},
-    {"date": "21 Mar", "IBIT": null, "FBTC": null, "ARKB": null, "total": -234.8},
-    {"date": "24 Mar", "IBIT": null, "FBTC": null, "ARKB": null, "total": 567.2},
-    {"date": "25 Mar", "IBIT": null, "FBTC": null, "ARKB": null, "total": 123.4},
-    {"date": "26 Mar", "IBIT": null, "FBTC": null, "ARKB": null, "total": -45.7},
-    {"date": "27 Mar", "IBIT": null, "FBTC": null, "ARKB": null, "total": 289.1},
-    {"date": "28 Mar", "IBIT": 89.2, "FBTC": 38.1, "ARKB": 12.4, "total": 156.3}
+    {
+      "date": "13 Oct 2026",
+      "IBIT": 65.9,
+      "FBTC": 103.1,
+      "ARKB": 0.0,
+      "MSBT": 6.7,
+      "total": 175.7
+    },
+    {
+      "date": "14 Oct 2026",
+      "IBIT": -110.9,
+      "FBTC": -152.7,
+      "ARKB": 0.0,
+      "MSBT": 0.0,
+      "total": -261.4
+    },
+    {
+      "date": "15 Oct 2026",
+      "IBIT": 16.8,
+      "FBTC": 0.0,
+      "ARKB": 0.0,
+      "MSBT": 0.0,
+      "total": 5.1
+    },
+    {
+      "date": "16 Oct 2026",
+      "IBIT": -71.8,
+      "FBTC": -10.6,
+      "ARKB": 0.0,
+      "MSBT": 0.0,
+      "total": -82.4
+    },
+    {
+      "date": "19 Oct 2026",
+      "IBIT": 665.2,
+      "FBTC": -83.6,
+      "ARKB": 0.0,
+      "MSBT": 0.0,
+      "total": 526.7
+    },
+    {
+      "date": "20 Oct 2026",
+      "IBIT": 29.9,
+      "FBTC": 3.6,
+      "ARKB": 0.0,
+      "MSBT": 0.0,
+      "total": 23.2
+    },
+    {
+      "date": "21 Oct 2026",
+      "IBIT": 235.0,
+      "FBTC": 212.7,
+      "ARKB": 9.8,
+      "MSBT": 0.0,
+      "total": 524.8
+    },
+    {
+      "date": "22 Oct 2026",
+      "IBIT": -254.1,
+      "FBTC": -217.5,
+      "ARKB": -109.4,
+      "MSBT": 2.3,
+      "total": -635.6
+    },
+    {
+      "date": "23 Oct 2026",
+      "IBIT": -110.3,
+      "FBTC": -31.8,
+      "ARKB": 0.0,
+      "MSBT": 4.2,
+      "total": -137.9
+    },
+    {
+      "date": "Total",
+      "IBIT": 66134.0,
+      "FBTC": 10348.0,
+      "ARKB": 1099.0,
+      "MSBT": 806.0,
+      "total": 57251.0
+    }
   ]
 }
