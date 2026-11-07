@@ -1,5 +1,5 @@
 {
-  "updated": "2026-11-06",
+  "updated": "2026-11-07",
   "source": "farside.co.uk",
   "flows": [
     {
@@ -68,19 +68,19 @@
     },
     {
       "date": "06 Nov 2026",
-      "IBIT": null,
-      "FBTC": null,
-      "ARKB": null,
+      "IBIT": -403.0,
+      "FBTC": 42.8,
+      "ARKB": -20.1,
       "MSBT": 0.0,
-      "total": -11.1
+      "total": -411.9
     },
     {
       "date": "Total",
-      "IBIT": 65504.0,
-      "FBTC": 10232.0,
-      "ARKB": 971.0,
+      "IBIT": 65101.0,
+      "FBTC": 10275.0,
+      "ARKB": 951.0,
       "MSBT": 814.0,
-      "total": 56167.0
+      "total": 55766.0
     }
   ]
 }
