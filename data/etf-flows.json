@@ -68,19 +68,19 @@
     },
     {
       "date": "13 Nov 2026",
-      "IBIT": null,
-      "FBTC": null,
+      "IBIT": -143.5,
+      "FBTC": -41.9,
       "ARKB": 0.0,
       "MSBT": 0.0,
-      "total": 0.0
+      "total": -185.4
     },
     {
       "date": "Total",
-      "IBIT": 64336.0,
-      "FBTC": 10206.0,
+      "IBIT": 64193.0,
+      "FBTC": 10164.0,
       "ARKB": 922.0,
       "MSBT": 868.0,
-      "total": 54887.0
+      "total": 54701.0
     }
   ]
 }
